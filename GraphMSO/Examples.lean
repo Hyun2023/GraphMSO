@@ -2,6 +2,8 @@ import GraphMSO.Semantics
 
 namespace GraphMSO
 
+universe u
+
 namespace Examples
 
 open Formula
@@ -38,6 +40,50 @@ def dominating (X : SOVar) : Formula :=
 def hasNonemptyClique : Formula :=
   existsSO X (conj (existsFO x (inSet x X)) (clique X))
 
+theorem eval_clique_iff {V : Type u} (G : Graph V) (rho : Assignment V) (X : SOVar) :
+    Eval G rho (clique X) ↔ Graph.IsClique G (rho.so X) := by
+  simp [clique, Graph.IsClique, Formula.forallFOs, Formula.notEqual, Semantics.Eval, x, y,
+    Assignment.updateFO]
+
+theorem eval_independent_iff {V : Type u} (G : Graph V) (rho : Assignment V) (X : SOVar) :
+    Eval G rho (independent X) ↔ Graph.IsIndependent G (rho.so X) := by
+  classical
+  simp [independent, Graph.IsIndependent, Formula.forallFOs, Semantics.Eval, x, y,
+    Assignment.updateFO]
+  constructor
+  · intro h u v hSu hSv hne hAdj
+    exact hne (h u v hSu hSv hAdj)
+  · intro h u v hSu hSv hAdj
+    by_cases hEq : u = v
+    · exact hEq
+    · exfalso
+      exact h u v hSu hSv hEq hAdj
+
+theorem eval_dominating_iff {V : Type u} (G : Graph V) (rho : Assignment V) (X : SOVar) :
+    Eval G rho (dominating X) ↔ Graph.IsDominating G (rho.so X) := by
+  simp [dominating, Graph.IsDominating, Semantics.Eval, x, y, Assignment.updateFO]
+
+theorem clique_no_freeFO (X : SOVar) (a : FOVar) :
+    Not (Formula.FreeFO (clique X) a) := by
+  simp [clique, Formula.forallFOs, Formula.FreeFO, Formula.notEqual, x, y]
+  intro h0 h1
+  exact ⟨⟨h0, h1, h0, h1⟩, h0, h1⟩
+
+theorem clique_freeSO_iff (X Y : SOVar) :
+    Formula.FreeSO (clique X) Y ↔ Y = X := by
+  simp [clique, Formula.forallFOs, Formula.FreeSO, Formula.notEqual, x, y]
+
+theorem hasNonemptyClique_closed : Formula.Closed hasNonemptyClique := by
+  constructor
+  · intro a
+    simp [hasNonemptyClique, clique, Formula.forallFOs, Formula.FreeFO, Formula.notEqual,
+      x, y, X]
+    intro h0 h1
+    exact ⟨⟨h0, h1, h0, h1⟩, h0, h1⟩
+  · intro Z
+    simp [hasNonemptyClique, clique, Formula.forallFOs, Formula.FreeSO, Formula.notEqual,
+      x, y, X]
+
 /-- A one-vertex type for smoke-test examples. -/
 inductive One where
   | star : One
@@ -48,7 +94,7 @@ def oneEmptyGraph : Graph One :=
 
 def allTrueAssignment : Assignment One where
   fo := fun _ => One.star
-  so := fun _ => fun _ => True
+  so := fun _ => Set.univ
 
 example : Eval oneEmptyGraph allTrueAssignment Formula.true_ := by
   exact eval_true oneEmptyGraph allTrueAssignment

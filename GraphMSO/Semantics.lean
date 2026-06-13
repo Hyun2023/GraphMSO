@@ -29,9 +29,29 @@ theorem updateFO_here (rho : Assignment V) (x : FOVar) (v : V) :
   simp [updateFO]
 
 @[simp]
+theorem updateFO_other (rho : Assignment V) {x y : FOVar} (v : V) (h : y ≠ x) :
+    (rho.updateFO x v).fo y = rho.fo y := by
+  simp [updateFO, h]
+
+@[simp]
+theorem updateFO_so (rho : Assignment V) (x : FOVar) (v : V) (X : SOVar) :
+    (rho.updateFO x v).so X = rho.so X := by
+  rfl
+
+@[simp]
 theorem updateSO_here (rho : Assignment V) (X : SOVar) (S : VSet V) :
     (rho.updateSO X S).so X = S := by
   simp [updateSO]
+
+@[simp]
+theorem updateSO_other (rho : Assignment V) {X Y : SOVar} (S : VSet V) (h : Y ≠ X) :
+    (rho.updateSO X S).so Y = rho.so Y := by
+  simp [updateSO, h]
+
+@[simp]
+theorem updateSO_fo (rho : Assignment V) (X : SOVar) (S : VSet V) (x : FOVar) :
+    (rho.updateSO X S).fo x = rho.fo x := by
+  rfl
 
 end Assignment
 
@@ -46,7 +66,7 @@ def Eval (G : Graph V) (rho : Assignment V) : Formula -> Prop
   | false_ => False
   | equal x y => rho.fo x = rho.fo y
   | edge x y => G.Adj (rho.fo x) (rho.fo y)
-  | inSet x X => rho.so X (rho.fo x)
+  | inSet x X => rho.fo x ∈ rho.so X
   | neg phi => Not (Eval G rho phi)
   | conj phi psi => Eval G rho phi /\ Eval G rho psi
   | disj phi psi => Eval G rho phi \/ Eval G rho psi

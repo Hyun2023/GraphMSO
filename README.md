@@ -5,22 +5,27 @@ graphs.
 
 The current project is intentionally small and build-oriented:
 
-- `GraphMSO.Basic`: graphs as adjacency predicates and basic graph predicates.
+- `GraphMSO.Basic`: graphs as adjacency predicates, mathlib `Set`-based vertex sets,
+  and bridges to/from mathlib `SimpleGraph`.
 - `GraphMSO.Syntax`: named-variable MSO syntax over the graph signature.
 - `GraphMSO.Semantics`: Tarski semantics by first-order and second-order
-  assignments, using `VSet V := V -> Prop` for vertex sets.
+  assignments, using `VSet V := Set V` for vertex sets.
 - `GraphMSO.Examples`: representative MSO graph formulas such as clique,
   independence, domination, and smoke-test examples.
 
-This initial version avoids external dependencies, including mathlib, so it can
-serve as a stable base. A later phase can add mathlib and connect this encoding
-to `SimpleGraph`, finite graphs, and existing graph-theory results.
+The project now depends on mathlib. The core graph representation is still the
+small relation-based `Graph V`, but vertex sets use mathlib `Set V`, and
+`GraphMSO.Basic` provides conversion helpers for mathlib `SimpleGraph`.
 
 ## Build
 
 ```bash
+lake exe cache get
 lake build
 ```
+
+Run `lake exe cache get` before the first build after dependency updates so Lean
+uses mathlib's precompiled cache instead of compiling mathlib locally.
 
 ## Design Status
 
