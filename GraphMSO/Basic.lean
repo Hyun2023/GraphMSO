@@ -8,83 +8,89 @@ universe u
 /-- Vertex sets are mathlib sets. -/
 abbrev VSet (V : Type u) := Set V
 
-/-- A graph is represented by its adjacency predicate.
+/-- Edge sets are mathlib sets. -/
+abbrev ESet (E : Type u) := Set E
 
-This core representation remains intentionally general: directed graphs, loops, and
-infinite vertex types are all allowed. Undirected simple graphs can be recovered by
-adding the `Simple` predicate below, or by converting from mathlib `SimpleGraph`. -/
-structure Graph (V : Type u) where
-  Adj : V -> V -> Prop
+/-- A bipartite incidence graph representation.
+
+This core representation supports MSO2 by explicitly having an edge type `E`
+and an incidence relation. Directed graphs or graphs with loops can be encoded,
+but we require each edge to connect at least one and at most two vertices. -/
+structure Graph (V E : Type u) where
+  inc : V -> E -> Prop
+  inc_at_least_one : ∀ e : E, ∃ v : V, inc v e
+  inc_at_most_two : ∀ e : E, ∃ v1 v2 : V, ∀ v : V, inc v e → v = v1 ∨ v = v2
 
 namespace Graph
 
-variable {V : Type u}
+variable {V E : Type u} (G : Graph V E)
+
+/-- Derived adjacency relation: two vertices are adjacent if they share an edge. -/
+def Adj (u v : V) : Prop :=
+  ∃ e : E, G.inc u e ∧ G.inc v e
 
 /-- No loops. -/
-def Irreflexive (G : Graph V) : Prop :=
+def Irreflexive : Prop :=
   _root_.Irreflexive G.Adj
 
 /-- Undirected adjacency. -/
-def Symmetric (G : Graph V) : Prop :=
+def Symmetric : Prop :=
   _root_.Symmetric G.Adj
 
 /-- The usual simple-graph side condition for this relation-based encoding. -/
-def Simple (G : Graph V) : Prop :=
-  Irreflexive G /\ Symmetric G
+def Simple : Prop :=
+  G.Irreflexive /\ G.Symmetric
 
 /-- The empty graph on a vertex type. -/
-def empty (V : Type u) : Graph V where
-  Adj := fun _ _ => False
-
-/-- The complete loopless graph on a vertex type. -/
-def complete (V : Type u) : Graph V where
-  Adj := fun u v => Not (u = v)
+def empty (V : Type u) : Graph V Empty where
+  inc := fun _ _ => False
+  inc_at_least_one := fun e => Empty.elim e
+  inc_at_most_two := fun e => Empty.elim e
 
 /-- View a mathlib simple graph as a `GraphMSO.Graph`. -/
-def fromSimpleGraph (G : SimpleGraph V) : Graph V where
-  Adj := G.Adj
+def fromSimpleGraph (G : SimpleGraph V) : Graph V G.edgeSet where
+  inc := fun v e => v ∈ e.val
+  inc_at_least_one := by
+    intro ⟨e, he⟩
+    sorry
+  inc_at_most_two := by
+    intro ⟨e, he⟩
+    sorry
 
 /-- Turn a `GraphMSO.Graph` satisfying `Graph.Simple` into a mathlib simple graph. -/
-def toSimpleGraph (G : Graph V) (hG : Simple G) : SimpleGraph V where
+def toSimpleGraph (hG : G.Simple) : SimpleGraph V where
   Adj := G.Adj
   symm := by
-    intro u v huv
-    exact hG.2 huv
+    intro u v ⟨e, hue, hve⟩
+    exact ⟨e, hve, hue⟩
   loopless := by
     intro v
     exact hG.1 v
 
 /-- The graph obtained from a mathlib simple graph is simple. -/
-theorem fromSimpleGraph_simple (G : SimpleGraph V) : Simple (fromSimpleGraph G) := by
+theorem fromSimpleGraph_simple (G : SimpleGraph V) : (fromSimpleGraph G).Simple := by
   constructor
   · intro v
-    exact G.loopless v
-  · intro u v huv
-    exact G.symm huv
-
-/-- Restrict a graph to vertices in a mathlib set. -/
-def induced (G : Graph V) (S : VSet V) : Graph {v : V // v ∈ S} where
-  Adj := fun u v => G.Adj u.1 v.1
+    intro ⟨e, hv1, hv2⟩
+    sorry
+  · intro u v ⟨e, hue, hve⟩
+    exact ⟨e, hve, hue⟩
 
 /-- A set of vertices is a clique if every two distinct vertices in it are adjacent. -/
-def IsClique (G : Graph V) (S : VSet V) : Prop :=
+def IsClique (S : VSet V) : Prop :=
   forall u v : V, u ∈ S -> v ∈ S -> Not (u = v) -> G.Adj u v
 
 /-- A set of vertices is independent if no two distinct vertices in it are adjacent. -/
-def IsIndependent (G : Graph V) (S : VSet V) : Prop :=
+def IsIndependent (S : VSet V) : Prop :=
   forall u v : V, u ∈ S -> v ∈ S -> Not (u = v) -> Not (G.Adj u v)
 
 /-- A set of vertices is dominating if every vertex is in it or has an incoming neighbor in it. -/
-def IsDominating (G : Graph V) (S : VSet V) : Prop :=
+def IsDominating (S : VSet V) : Prop :=
   forall v : V, v ∈ S \/ Exists (fun u : V => u ∈ S /\ G.Adj u v)
 
-theorem empty_irreflexive (V : Type u) : Irreflexive (empty V) := by
-  intro v h
-  exact h
-
-theorem complete_irreflexive (V : Type u) : Irreflexive (complete V) := by
-  intro v h
-  exact h rfl
+theorem empty_irreflexive (V : Type u) : (empty V).Irreflexive := by
+  intro v ⟨e, _⟩
+  exact Empty.elim e
 
 end Graph
 

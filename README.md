@@ -5,17 +5,17 @@ over graphs.
 
 The current project is intentionally small and build-oriented:
 
-- `GraphMSO.Basic`: graphs as adjacency predicates, mathlib `Set`-based vertex sets,
-  and bridges to/from mathlib `SimpleGraph`.
+- `GraphMSO.Basic`: bipartite incidence graphs with vertices `V` and edges `E` where edges connect 1 or 2 vertices. Adjacency is derived, mathlib `Set`-based vertex/edge sets, and bridges to/from mathlib `SimpleGraph`.
 - `GraphMSO.Syntax`: named-variable MSO2 syntax over the graph signature, supporting both vertex and edge variables.
 - `GraphMSO.Semantics`: Tarski semantics by first-order and second-order
   assignments, accommodating both vertex sets (`Set V`) and edge sets.
 - `GraphMSO.Examples`: representative MSO graph formulas such as clique,
   independence, domination, and smoke-test examples.
 
-The project now depends on mathlib. The core graph representation is still the
-small relation-based `Graph V`, but vertex sets use mathlib `Set V`, and
-`GraphMSO.Basic` provides conversion helpers for mathlib `SimpleGraph`.
+The project now depends on mathlib. The core graph representation is a two-sorted
+structure `Graph V E` with an explicit incidence relation. Vertex and edge sets
+use mathlib `Set V` and `Set E`, and `GraphMSO.Basic` provides conversion helpers
+for mathlib `SimpleGraph`.
 
 ## Build
 

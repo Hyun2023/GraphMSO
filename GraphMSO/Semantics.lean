@@ -59,10 +59,10 @@ namespace Semantics
 
 open Formula
 
-variable {V : Type u}
+variable {V E : Type u}
 
 /-- Tarski semantics for MSO formulas over a graph and an assignment. -/
-def Eval (G : Graph V) (rho : Assignment V) : Formula -> Prop
+def Eval (G : Graph V E) (rho : Assignment V) : Formula -> Prop
   | false_ => False
   | equal x y => rho.fo x = rho.fo y
   | edge x y => G.Adj (rho.fo x) (rho.fo y)
@@ -77,15 +77,15 @@ def Eval (G : Graph V) (rho : Assignment V) : Formula -> Prop
   | existsSO X phi => Exists (fun S : VSet V => Eval G (rho.updateSO X S) phi)
   | forallSO X phi => forall S : VSet V, Eval G (rho.updateSO X S) phi
 
-theorem eval_true (G : Graph V) (rho : Assignment V) : Eval G rho Formula.true_ := by
+theorem eval_true (G : Graph V E) (rho : Assignment V) : Eval G rho Formula.true_ := by
   intro h
   exact h
 
-theorem eval_equal_self (G : Graph V) (rho : Assignment V) (x : FOVar) :
+theorem eval_equal_self (G : Graph V E) (rho : Assignment V) (x : FOVar) :
     Eval G rho (Formula.equal x x) := by
   rfl
 
-theorem eval_not_equal_self_false (G : Graph V) (rho : Assignment V) (x : FOVar) :
+theorem eval_not_equal_self_false (G : Graph V E) (rho : Assignment V) (x : FOVar) :
     Not (Eval G rho (Formula.notEqual x x)) := by
   intro h
   exact h rfl

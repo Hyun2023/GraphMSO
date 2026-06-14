@@ -40,12 +40,12 @@ def dominating (X : SOVar) : Formula :=
 def hasNonemptyClique : Formula :=
   existsSO X (conj (existsFO x (inSet x X)) (clique X))
 
-theorem eval_clique_iff {V : Type u} (G : Graph V) (rho : Assignment V) (X : SOVar) :
+theorem eval_clique_iff {V E : Type u} (G : Graph V E) (rho : Assignment V) (X : SOVar) :
     Eval G rho (clique X) ↔ Graph.IsClique G (rho.so X) := by
   simp [clique, Graph.IsClique, Formula.forallFOs, Formula.notEqual, Semantics.Eval, x, y,
     Assignment.updateFO]
 
-theorem eval_independent_iff {V : Type u} (G : Graph V) (rho : Assignment V) (X : SOVar) :
+theorem eval_independent_iff {V E : Type u} (G : Graph V E) (rho : Assignment V) (X : SOVar) :
     Eval G rho (independent X) ↔ Graph.IsIndependent G (rho.so X) := by
   classical
   simp [independent, Graph.IsIndependent, Formula.forallFOs, Semantics.Eval, x, y,
@@ -59,7 +59,7 @@ theorem eval_independent_iff {V : Type u} (G : Graph V) (rho : Assignment V) (X 
     · exfalso
       exact h u v hSu hSv hEq hAdj
 
-theorem eval_dominating_iff {V : Type u} (G : Graph V) (rho : Assignment V) (X : SOVar) :
+theorem eval_dominating_iff {V E : Type u} (G : Graph V E) (rho : Assignment V) (X : SOVar) :
     Eval G rho (dominating X) ↔ Graph.IsDominating G (rho.so X) := by
   simp [dominating, Graph.IsDominating, Semantics.Eval, x, y, Assignment.updateFO]
 
@@ -89,7 +89,7 @@ inductive One where
   | star : One
   deriving Repr, DecidableEq
 
-def oneEmptyGraph : Graph One :=
+def oneEmptyGraph : Graph One Empty :=
   Graph.empty One
 
 def allTrueAssignment : Assignment One where
