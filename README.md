@@ -1,15 +1,15 @@
 # GraphMSO
 
-`GraphMSO` is a Lean 4 scaffold for formalizing monadic second-order logic over
-graphs.
+`GraphMSO` is a Lean 4 scaffold for formalizing monadic second-order logic (MSO2)
+over graphs.
 
 The current project is intentionally small and build-oriented:
 
 - `GraphMSO.Basic`: graphs as adjacency predicates, mathlib `Set`-based vertex sets,
   and bridges to/from mathlib `SimpleGraph`.
-- `GraphMSO.Syntax`: named-variable MSO syntax over the graph signature.
+- `GraphMSO.Syntax`: named-variable MSO2 syntax over the graph signature, supporting both vertex and edge variables.
 - `GraphMSO.Semantics`: Tarski semantics by first-order and second-order
-  assignments, using `VSet V := Set V` for vertex sets.
+  assignments, accommodating both vertex sets (`Set V`) and edge sets.
 - `GraphMSO.Examples`: representative MSO graph formulas such as clique,
   independence, domination, and smoke-test examples.
 
