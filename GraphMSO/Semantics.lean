@@ -91,6 +91,44 @@ theorem updateEdgeSO_other (rho : Assignment V E) {E_var E' : EdgeSOVar} (S : ES
     (rho.updateEdgeSO E_var S).eso E' = rho.eso E' := by
   simp [updateEdgeSO, h]
 
+@[simp]
+theorem updateFO_comm (rho : Assignment V E) (x y : FOVar) (vx vy : V) (h : x ≠ y) :
+    (rho.updateFO x vx).updateFO y vy = (rho.updateFO y vy).updateFO x vx := by
+  cases rho
+  dsimp [updateFO]
+  congr
+  funext z
+  by_cases hy : z = y
+  · subst hy
+    have hx : y ≠ x := h.symm
+    simp [hx]
+  · simp [hy]
+
+@[simp]
+theorem updateSO_comm (rho : Assignment V E) (X Y : SOVar) (SX SY : VSet V) (h : X ≠ Y) :
+    (rho.updateSO X SX).updateSO Y SY = (rho.updateSO Y SY).updateSO X SX := by
+  cases rho
+  dsimp [updateSO]
+  congr
+  funext Z
+  by_cases hY : Z = Y
+  · subst hY
+    have hX : Y ≠ X := h.symm
+    simp [hX]
+  · simp [hY]
+
+@[simp]
+theorem updateFO_updateSO_comm (rho : Assignment V E) (x : FOVar) (v : V) (X : SOVar) (S : VSet V) :
+    (rho.updateFO x v).updateSO X S = (rho.updateSO X S).updateFO x v := by
+  cases rho
+  rfl
+
+@[simp]
+theorem updateEdgeFO_updateEdgeSO_comm (rho : Assignment V E) (e : EdgeFOVar) (val : E) (E_var : EdgeSOVar) (S : ESet E) :
+    (rho.updateEdgeFO e val).updateEdgeSO E_var S = (rho.updateEdgeSO E_var S).updateEdgeFO e val := by
+  cases rho
+  rfl
+
 end Assignment
 
 namespace Semantics
@@ -125,6 +163,51 @@ def Eval (G : Graph V E) (rho : Assignment V E) : Formula -> Prop
 theorem eval_true (G : Graph V E) (rho : Assignment V E) : Eval G rho Formula.true_ := by
   intro h
   exact h
+
+@[simp]
+theorem eval_notEqual (G : Graph V E) (rho : Assignment V E) (x y : FOVar) :
+    Eval G rho (Formula.notEqual x y) ↔ rho.fo x ≠ rho.fo y := by
+  rfl
+
+@[simp]
+theorem eval_conj (G : Graph V E) (rho : Assignment V E) (phi psi : Formula) :
+    Eval G rho (Formula.conj phi psi) ↔ Eval G rho phi ∧ Eval G rho psi := by
+  rfl
+
+@[simp]
+theorem eval_disj (G : Graph V E) (rho : Assignment V E) (phi psi : Formula) :
+    Eval G rho (Formula.disj phi psi) ↔ Eval G rho phi ∨ Eval G rho psi := by
+  rfl
+
+@[simp]
+theorem eval_impl (G : Graph V E) (rho : Assignment V E) (phi psi : Formula) :
+    Eval G rho (Formula.impl phi psi) ↔ (Eval G rho phi → Eval G rho psi) := by
+  rfl
+
+@[simp]
+theorem eval_biimpl (G : Graph V E) (rho : Assignment V E) (phi psi : Formula) :
+    Eval G rho (Formula.biimpl phi psi) ↔ (Eval G rho phi ↔ Eval G rho psi) := by
+  rfl
+
+@[simp]
+theorem eval_existsFOs_nil (G : Graph V E) (rho : Assignment V E) (phi : Formula) :
+    Eval G rho (Formula.existsFOs [] phi) ↔ Eval G rho phi := by
+  rfl
+
+@[simp]
+theorem eval_existsFOs_cons (G : Graph V E) (rho : Assignment V E) (x : FOVar) (xs : List FOVar) (phi : Formula) :
+    Eval G rho (Formula.existsFOs (x :: xs) phi) ↔ ∃ v : V, Eval G (rho.updateFO x v) (Formula.existsFOs xs phi) := by
+  rfl
+
+@[simp]
+theorem eval_forallFOs_nil (G : Graph V E) (rho : Assignment V E) (phi : Formula) :
+    Eval G rho (Formula.forallFOs [] phi) ↔ Eval G rho phi := by
+  rfl
+
+@[simp]
+theorem eval_forallFOs_cons (G : Graph V E) (rho : Assignment V E) (x : FOVar) (xs : List FOVar) (phi : Formula) :
+    Eval G rho (Formula.forallFOs (x :: xs) phi) ↔ ∀ v : V, Eval G (rho.updateFO x v) (Formula.forallFOs xs phi) := by
+  rfl
 
 theorem eval_equal_self (G : Graph V E) (rho : Assignment V E) (x : FOVar) :
     Eval G rho (Formula.equal x x) := by

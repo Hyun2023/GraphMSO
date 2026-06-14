@@ -84,9 +84,6 @@ lake build
 - `SimpleGraph` 기본 변환의 `sorry` 증명 완료.
 - MSO2 확장을 위한 문법(`EdgeSOVar`, `inc`, `inEdgeSet` 등)과 의미론 추가 완료.
 - `induced` 및 `complete` 그래프 명시적 간선 타입에 맞춰 재구현.
-
-남은 작업:
-
 - `Eval` 주변의 기본 정리를 늘린다.
   - `Eval G rho (Formula.notEqual x y)`와 `rho.fo x != rho.fo y`의 관계.
   - `conj`, `disj`, `impl`, `biimpl`에 대한 simp-friendly lemma.
@@ -95,6 +92,9 @@ lake build
   - 서로 다른 1차 변수 update 교환 법칙.
   - 서로 다른 2차 변수 update 교환 법칙.
   - 1차 update와 2차 update의 교환 법칙.
+
+남은 작업:
+- 없음 (1단계 완료)
 
 완료 기준:
 
