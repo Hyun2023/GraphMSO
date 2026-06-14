@@ -81,17 +81,12 @@ lake build
 - `Formula`의 핵심 문법.
 - `Assignment`와 `Semantics.Eval`.
 - assignment update 기본 `simp` lemma.
-- `SimpleGraph` 기본 변환 정의.
+- `SimpleGraph` 기본 변환의 `sorry` 증명 완료.
+- MSO2 확장을 위한 문법(`EdgeSOVar`, `inc`, `inEdgeSet` 등)과 의미론 추가 완료.
+- `induced` 및 `complete` 그래프 명시적 간선 타입에 맞춰 재구현.
 
 남은 작업:
 
-- MSO2 확장을 위한 문법과 의미론을 추가한다.
-  - 간선 집합을 위한 2차 변수(`EdgeSOVar`)를 추가한다.
-  - 간선 집합에 대한 소속성(membership) 및 발생(incidence) 관계를 나타내는 원자식을 추가한다.
-  - `Assignment`를 확장하여 간선 집합에 대한 할당을 포함시킨다.
-- `GraphMSO.Basic`의 그래프 API 및 증명을 보완한다.
-  - MSO2(`Graph V E`) 확장을 위해 잠시 제거된 `induced`(유도 부분 그래프)와 `complete`(완전 그래프)를 명시적 간선 타입에 맞춰 다시 구현한다.
-  - `fromSimpleGraph` 및 `fromSimpleGraph_simple` 등에 남아있는 `sorry` 증명을 채운다.
 - `Eval` 주변의 기본 정리를 늘린다.
   - `Eval G rho (Formula.notEqual x y)`와 `rho.fo x != rho.fo y`의 관계.
   - `conj`, `disj`, `impl`, `biimpl`에 대한 simp-friendly lemma.

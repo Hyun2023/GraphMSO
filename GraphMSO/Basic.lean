@@ -104,6 +104,37 @@ theorem fromSimpleGraph_simple (G : SimpleGraph V) : (fromSimpleGraph G).Simple 
     · left; exact ⟨heq.symm, ⟨e, hloop, by rwa [heq]⟩⟩
     · right; exact ⟨hne.symm, ⟨e, hinc_v, hinc_u⟩⟩
 
+/-- The complete simple graph on a vertex type. -/
+def complete (V : Type u) : Graph V (⊤ : SimpleGraph V).edgeSet :=
+  fromSimpleGraph ⊤
+
+/-- Restrict a graph to vertices in a mathlib set and edges incident only to those vertices. -/
+def induced (S : VSet V) : Graph {v : V // v ∈ S} {e : E // ∀ v, G.inc v e → v ∈ S} where
+  inc := fun v e => G.inc v.val e.val
+  inc_at_least_one := by
+    rintro ⟨e, he⟩
+    rcases G.inc_at_least_one e with ⟨v, hv⟩
+    exact ⟨⟨v, he v hv⟩, hv⟩
+  inc_at_most_two := by
+    rintro ⟨e, he⟩
+    rcases G.inc_at_least_one e with ⟨v0, hv0⟩
+    have hv0S : v0 ∈ S := he v0 hv0
+    rcases G.inc_at_most_two e with ⟨v1, v2, h_most_two⟩
+    classical
+    let v1' : {v : V // v ∈ S} := if h : G.inc v1 e then ⟨v1, he v1 h⟩ else ⟨v0, hv0S⟩
+    let v2' : {v : V // v ∈ S} := if h : G.inc v2 e then ⟨v2, he v2 h⟩ else ⟨v0, hv0S⟩
+    use v1', v2'
+    intro ⟨v, hvS⟩ h_inc
+    rcases h_most_two v.val h_inc with (rfl | rfl)
+    · left
+      apply Subtype.ext
+      dsimp [v1']
+      rw [dif_pos h_inc]
+    · right
+      apply Subtype.ext
+      dsimp [v2']
+      rw [dif_pos h_inc]
+
 /-- A set of vertices is a clique if every two distinct vertices in it are adjacent. -/
 def IsClique (S : VSet V) : Prop :=
   forall u v : V, u ∈ S -> v ∈ S -> Not (u = v) -> G.Adj u v
