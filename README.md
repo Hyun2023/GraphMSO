@@ -1,21 +1,23 @@
 # GraphMSO
 
-`GraphMSO` is a Lean 4 scaffold for formalizing monadic second-order logic (MSO2)
-over graphs.
+`GraphMSO` is a Lean 4 scaffold for formalizing MSO2 over graphs on the way to a
+formalization of Courcelle's theorem.
 
 The current project is intentionally small and build-oriented:
 
-- `GraphMSO.Basic`: bipartite incidence graphs with vertices `V` and edges `E` where edges connect 1 or 2 vertices. Adjacency is derived, mathlib `Set`-based vertex/edge sets, and bridges to/from mathlib `SimpleGraph`.
-- `GraphMSO.Syntax`: named-variable MSO2 syntax over the graph signature, supporting both vertex and edge variables.
-- `GraphMSO.Semantics`: Tarski semantics by first-order and second-order
-  assignments, accommodating both vertex sets (`Set V`) and edge sets.
+- `GraphMSO.Basic`: a monomorphic incidence-graph compatibility layer
+  (`IncidenceGraph V E`) plus bridges to/from mathlib `SimpleGraph`.
+- `GraphMSO.Syntax`: named-variable MSO2 syntax over the graph signature,
+  supporting both vertex and edge variables.
+- `GraphMSO.Semantics`: Tarski semantics over mathlib `SimpleGraph V`; edge
+  variables range over `G.edgeSet`, while `Assignment V E` remains the reusable
+  environment type.
 - `GraphMSO.Examples`: representative MSO graph formulas such as clique,
-  independence, domination, and smoke-test examples.
+  independence, domination, vertex cover, bipartiteness, and smoke tests.
 
-The project now depends on mathlib. The core graph representation is a two-sorted
-structure `Graph V E` with an explicit incidence relation. Vertex and edge sets
-use mathlib `Set V` and `Set E`, and `GraphMSO.Basic` provides conversion helpers
-for mathlib `SimpleGraph`.
+The theorem-facing graph representation is now mathlib `SimpleGraph V`.
+`IncidenceGraph V E` remains available for explicit-incidence experiments and
+conversion lemmas.
 
 ## Build
 
@@ -29,7 +31,12 @@ uses mathlib's precompiled cache instead of compiling mathlib locally.
 
 ## Design Status
 
-The syntax currently uses named numeric variables (`Nat`) for both first-order
-and second-order variables. This is simple and readable for early development.
-If substitution, alpha-equivalence, or automation becomes central, the project
-should migrate to de Bruijn indices or locally nameless syntax.
+Free-variable semantics use `Semantics.EvalAt phi G rho`. The graph-property
+wrapper `Semantics.Eval phi G` is intended for closed formulas and is currently
+implemented as validity under every assignment until assignment independence is
+proved.
+
+The syntax currently uses named numeric variables (`Nat`) for first-order and
+second-order variables. If substitution, alpha-equivalence, or automation becomes
+central, the project should migrate to de Bruijn indices or locally nameless
+syntax while keeping named syntax as a user-facing layer.
