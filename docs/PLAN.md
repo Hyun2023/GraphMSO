@@ -94,7 +94,8 @@ lake build
   - 1차 update와 2차 update의 교환 법칙.
 
 남은 작업:
-- 없음 (1단계 완료)
+- mathlib의 더 일반적인 그래프 구조에 대한 `Graph` 변환을 추가한다.
+
 
 완료 기준:
 

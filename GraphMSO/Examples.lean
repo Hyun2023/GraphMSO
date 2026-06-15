@@ -89,21 +89,49 @@ theorem hasNonemptyClique_closed : Formula.Closed hasNonemptyClique := by
   · intro E_var
     simp [hasNonemptyClique, clique, Formula.forallFOs, Formula.FreeEdgeSO, Formula.notEqual, x, y, X]
 
+/-- "The edge `e` is a loop (incident to exactly one vertex)." -/
+def isLoop (e : EdgeFOVar) : Formula :=
+  existsFO y (conj (inc y e) (forallFO z (impl (inc z e) (equal z y))))
+
 /-- "The subset `M` of edges is a perfect matching." -/
 def uniqueIncEdgeIn (v : FOVar) (M : EdgeSOVar) : Formula :=
   existsEdgeFO e0 (conj (inEdgeSet e0 M) (conj (inc v e0)
     (forallEdgeFO e1 (impl (conj (inEdgeSet e1 M) (inc v e1)) (equalEdge e1 e0)))))
 
 def perfectMatching (M : EdgeSOVar) : Formula :=
-  forallFO x (uniqueIncEdgeIn x M)
+  conj (forallEdgeFO e0 (impl (inEdgeSet e0 M) (neg (isLoop e0))))
+       (forallFO x (uniqueIncEdgeIn x M))
 
 def Graph.HasPerfectMatching {V E : Type u} (G : Graph V E) (M : ESet E) : Prop :=
-  ∀ v : V, ∃! e : E, e ∈ M ∧ G.inc v e
+  (∀ e : E, e ∈ M → ¬ G.IsLoop e) ∧ (∀ v : V, ∃! e : E, e ∈ M ∧ G.inc v e)
 
 theorem eval_perfectMatching_iff {V E : Type u} (G : Graph V E) (rho : Assignment V E) (M : EdgeSOVar) :
     Eval G rho (perfectMatching M) ↔ Graph.HasPerfectMatching G (rho.eso M) := by
-  simp [perfectMatching, uniqueIncEdgeIn, Graph.HasPerfectMatching, Semantics.Eval, x, e0, e1, ExistsUnique,
+  simp [perfectMatching, isLoop, uniqueIncEdgeIn, Graph.HasPerfectMatching, Graph.IsLoop, Semantics.Eval, x, y, z, e0, e1, ExistsUnique,
     Assignment.updateFO, Assignment.updateEdgeFO]
+
+/-- A vertex cover is a set of vertices such that every edge is incident to at least one vertex in the set. -/
+def Graph.IsVertexCover {V E : Type u} (G : Graph V E) (S : VSet V) : Prop :=
+  ∀ e : E, ∃ v : V, v ∈ S ∧ G.inc v e
+
+def vertexCover (X : SOVar) : Formula :=
+  forallEdgeFO e0 (existsFO x (conj (inSet x X) (inc x e0)))
+
+theorem eval_vertexCover_iff {V E : Type u} (G : Graph V E) (rho : Assignment V E) (X : SOVar) :
+    Eval G rho (vertexCover X) ↔ Graph.IsVertexCover G (rho.so X) := by
+  simp [vertexCover, Graph.IsVertexCover, Semantics.Eval, x, e0]
+
+/-- A graph is bipartite if there exists a vertex set X such that every edge connects a vertex in X and a vertex not in X. -/
+def Graph.IsBipartite {V E : Type u} (G : Graph V E) : Prop :=
+  ∃ X_set : VSet V, ∀ e : E, ∃ u v : V, u ∈ X_set ∧ v ∉ X_set ∧ G.inc u e ∧ G.inc v e
+
+def bipartite : Formula :=
+  existsSO X (forallEdgeFO e0 (existsFO x (existsFO y
+    (conj (inSet x X) (conj (neg (inSet y X)) (conj (inc x e0) (inc y e0)))))))
+
+theorem eval_bipartite_iff {V E : Type u} (G : Graph V E) (rho : Assignment V E) :
+    Eval G rho bipartite ↔ Graph.IsBipartite G := by
+  simp [bipartite, Graph.IsBipartite, Semantics.Eval, X, e0, x, y]
 
 /-- A one-vertex type for smoke-test examples. -/
 inductive One where
