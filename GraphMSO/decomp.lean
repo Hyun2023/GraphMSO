@@ -1,4 +1,4 @@
-import GraphMSO.Basic
+import Mathlib.Data.Set.Basic
 
 namespace GraphMSO
 

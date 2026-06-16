@@ -5,8 +5,6 @@ formalization of Courcelle's theorem.
 
 The current project is intentionally small and build-oriented:
 
-- `GraphMSO.Basic`: a monomorphic incidence-graph compatibility layer
-  (`IncidenceGraph V E`) plus bridges to/from mathlib `SimpleGraph`.
 - `GraphMSO.Syntax`: named-variable MSO2 syntax over the graph signature,
   supporting both vertex and edge variables.
 - `GraphMSO.Semantics`: Tarski semantics over mathlib `SimpleGraph V`; edge
@@ -15,9 +13,7 @@ The current project is intentionally small and build-oriented:
 - `GraphMSO.Examples`: representative MSO graph formulas such as clique,
   independence, domination, vertex cover, bipartiteness, and smoke tests.
 
-The theorem-facing graph representation is now mathlib `SimpleGraph V`.
-`IncidenceGraph V E` remains available for explicit-incidence experiments and
-conversion lemmas.
+The graph representation is mathlib `SimpleGraph V`.
 
 ## Build
 
