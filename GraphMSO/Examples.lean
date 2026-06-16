@@ -108,6 +108,44 @@ def IsColoringBySets (colors : List (Set V)) : Prop :=
 def IsThreeColorableBySets : Prop :=
   ∃ S T U : Set V, G.IsColoringBySets [S, T, U]
 
+/-- The graph has an edge with one endpoint in `S` and one endpoint in `T`. -/
+def HasEdgeBetween (S T : Set V) : Prop :=
+  ∃ e : G.edgeSet, ∃ u v : V,
+    u ∈ S ∧ v ∈ T ∧ u ∈ (e : Sym2 V) ∧ v ∈ (e : Sym2 V)
+
+/-- `A` and `B` form a nontrivial partition of `U`. -/
+def IsPartitionOfSet (A B U : Set V) : Prop :=
+  A.Nonempty ∧ B.Nonempty ∧
+    (∀ v : V, v ∈ A -> v ∈ U) ∧
+    (∀ v : V, v ∈ B -> v ∈ U) ∧
+    (∀ v : V, v ∈ U -> v ∈ A ∨ v ∈ B) ∧
+    (∀ v : V, v ∈ A -> v ∈ B -> False)
+
+/-- The induced subgraph on `U` is connected, phrased by cuts inside `U`. -/
+def IsConnectedVertexSet (U : Set V) : Prop :=
+  ∀ A B : Set V, IsPartitionOfSet A B U -> G.HasEdgeBetween A B
+
+/-- Every listed branch set is nonempty and connected. -/
+def BranchSetsConnected (G : SimpleGraph V) : List (Set V) -> Prop
+  | [] => True
+  | U :: Us => U.Nonempty ∧ G.IsConnectedVertexSet U ∧ BranchSetsConnected G Us
+
+/-- Every listed pair of branch sets is adjacent by at least one graph edge. -/
+def MinorEdgesRealized (G : SimpleGraph V) : List (Set V × Set V) -> Prop
+  | [] => True
+  | (S, T) :: pairs => G.HasEdgeBetween S T ∧ MinorEdgesRealized G pairs
+
+/-- A minor model represented by branch sets and required adjacencies between them. -/
+def IsMinorModelBySets (branchSets : List (Set V)) (edgePairs : List (Set V × Set V)) :
+    Prop :=
+  ColorClassesPairwiseDisjoint branchSets ∧
+  G.BranchSetsConnected branchSets ∧
+  G.MinorEdgesRealized edgePairs
+
+/-- The graph has a `K_3` minor, represented by three branch sets. -/
+def HasK3MinorBySets : Prop :=
+  ∃ S T U : Set V, G.IsMinorModelBySets [S, T, U] [(S, T), (S, U), (T, U)]
+
 end SimpleGraph
 
 namespace GraphMSO
@@ -123,6 +161,8 @@ def z : FOVar := 2
 def X : SOVar := 0
 def Y : SOVar := 1
 def Z : SOVar := 2
+def P : SOVar := 3
+def Q : SOVar := 4
 def e0 : EdgeFOVar := 0
 def e1 : EdgeFOVar := 1
 def e2 : EdgeFOVar := 2
@@ -161,6 +201,10 @@ def coverAll (X Y : SOVar) : Formula :=
 def disjointSets (X Y : SOVar) : Formula :=
   forallFO x (impl (inSet x X) (neg (inSet x Y)))
 
+/-- "The set variable `X` is a subset of the set variable `Y`." -/
+def subsetSet (X Y : SOVar) : Formula :=
+  forallFO x (impl (inSet x X) (inSet x Y))
+
 /-- "The set variables `X` and `Y` form a nontrivial partition of the vertices." -/
 def nontrivialPartition (X Y : SOVar) : Formula :=
   conj (nonemptySet X)
@@ -170,6 +214,43 @@ def nontrivialPartition (X Y : SOVar) : Formula :=
 /-- "There are no edges between the set variables `X` and `Y`." -/
 def noEdgesBetween (X Y : SOVar) : Formula :=
   forallFOs [x, y] (impl (conj (inSet x X) (inSet y Y)) (neg (edge x y)))
+
+/-- "The set variables `X` and `Y` have an edge between them." -/
+def edgeBetween (X Y : SOVar) : Formula :=
+  existsEdgeFO e0
+    (existsFO x (existsFO y
+      (conj (inSet x X)
+        (conj (inSet y Y) (conj (inc x e0) (inc y e0))))))
+
+/-- "`A` and `B` form a nontrivial partition of `U`." -/
+def partitionOfSet (A B U : SOVar) : Formula :=
+  conj (nonemptySet A)
+    (conj (nonemptySet B)
+      (conj (subsetSet A U)
+        (conj (subsetSet B U)
+          (conj (forallFO x (impl (inSet x U) (disj (inSet x A) (inSet x B))))
+            (disjointSets A B)))))
+
+/-- "The set variable `U` induces a connected subgraph."
+
+The variables `A` and `B` are used as locally-bound partition variables, so callers
+should choose them fresh from `U` and the surrounding free set variables. -/
+def connectedVertexSetUsing (A B U : SOVar) : Formula :=
+  forallSO A (forallSO B (impl (partitionOfSet A B U) (edgeBetween A B)))
+
+/-- "The set variable `U` is a nonempty connected branch set." -/
+def branchSetConnectedUsing (A B U : SOVar) : Formula :=
+  conj (nonemptySet U) (connectedVertexSetUsing A B U)
+
+/-- "Every listed set variable is a nonempty connected branch set." -/
+def branchSetsConnectedUsing (A B : SOVar) : List SOVar -> Formula
+  | [] => true_
+  | U :: Us => conj (branchSetConnectedUsing A B U) (branchSetsConnectedUsing A B Us)
+
+/-- "Every listed pair of set variables has an edge between the two sets." -/
+def minorEdgeConstraints : List (SOVar × SOVar) -> Formula
+  | [] => true_
+  | (X, Y) :: pairs => conj (edgeBetween X Y) (minorEdgeConstraints pairs)
 
 /-- "The graph is disconnected: there is a nontrivial partition with no crossing edges." -/
 def disconnected : Formula :=
@@ -208,6 +289,32 @@ def coloring (colors : List SOVar) : Formula :=
   conj (colorClassesCover colors)
     (conj (colorClassesPairwiseDisjoint colors) (colorClassesIndependent colors))
 
+/-- A finite MSO minor model formula.
+
+`branchVars` are the branch-set variables. `edgePairs` records which pairs of
+branch sets must be adjacent, i.e. the edges of the fixed pattern graph `H`.
+The variables `A` and `B` are temporary partition variables used inside the
+connectedness test, and should be fresh from `branchVars` and `edgePairs`. -/
+def minorModelUsing (A B : SOVar) (branchVars : List SOVar)
+    (edgePairs : List (SOVar × SOVar)) : Formula :=
+  conj (colorClassesPairwiseDisjoint branchVars)
+    (conj (branchSetsConnectedUsing A B branchVars) (minorEdgeConstraints edgePairs))
+
+/-- Pair one item with every item in the list. -/
+def pairsWith {α : Type} (a : α) : List α -> List (α × α)
+  | [] => []
+  | b :: bs => (a, b) :: pairsWith a bs
+
+/-- All unordered pairs from a list, keeping the list order. -/
+def completePairs {α : Type} : List α -> List (α × α)
+  | [] => []
+  | a :: as => pairsWith a as ++ completePairs as
+
+/-- The closed MSO2 sentence saying that the graph has a `K_3` minor. -/
+def k3Minor : Formula :=
+  existsSO X (existsSO Y (existsSO Z
+    (minorModelUsing P Q [X, Y, Z] [(X, Y), (X, Z), (Y, Z)])))
+
 /-- A convenient open formula whose first `k` second-order variables are color classes. -/
 def kColoring (k : Nat) : Formula :=
   coloring (List.range k)
@@ -216,6 +323,20 @@ def kColoring (k : Nat) : Formula :=
 def existsSOs : List SOVar -> Formula -> Formula
   | [], phi => phi
   | X :: Xs, phi => existsSO X (existsSOs Xs phi)
+
+/-- A closed finite-pattern minor sentence from explicit branch variables and
+explicit required adjacencies. `A` and `B` must be fresh partition variables. -/
+def minorSentenceUsing (A B : SOVar) (branchVars : List SOVar)
+    (edgePairs : List (SOVar × SOVar)) : Formula :=
+  existsSOs branchVars (minorModelUsing A B branchVars edgePairs)
+
+/-- The open formula saying that the first `t` set variables form a `K_t` minor model. -/
+def completeGraphMinorModel (t : Nat) : Formula :=
+  minorModelUsing t (t + 1) (List.range t) (completePairs (List.range t))
+
+/-- The closed MSO2 sentence saying that the graph has a `K_t` minor. -/
+def completeGraphMinor (t : Nat) : Formula :=
+  minorSentenceUsing t (t + 1) (List.range t) (completePairs (List.range t))
 
 /-- A closed sentence saying that there exists a coloring using the first `k`
 second-order variables as color classes. For each fixed `k`, this is one finite
@@ -229,6 +350,10 @@ def threeColorable : Formula :=
 
 theorem threeColorable_eq_kColorable_three :
     threeColorable = kColorable 3 := by
+  rfl
+
+theorem k3Minor_eq_completeGraphMinor_three :
+    k3Minor = completeGraphMinor 3 := by
   rfl
 
 /-- "There exists a nonempty clique." -/
@@ -363,6 +488,70 @@ theorem eval_kColorable_three_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
     EvalAt (kColorable 3) G rho ↔ G.IsThreeColorableBySets := by
   simpa [← threeColorable_eq_kColorable_three] using eval_threeColorable_iff G rho
+
+theorem eval_edgeBetween_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (X Y : SOVar) :
+    EvalAt (edgeBetween X Y) G rho ↔
+      G.HasEdgeBetween (rho.so X) (rho.so Y) := by
+  simp [edgeBetween, SimpleGraph.HasEdgeBetween, Semantics.EvalAt, e0, x, y,
+    Assignment.updateEdgeFO, Assignment.updateFO]
+
+theorem eval_partitionOfSet_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (A B U : SOVar) :
+    EvalAt (partitionOfSet A B U) G rho ↔
+      SimpleGraph.IsPartitionOfSet (rho.so A) (rho.so B) (rho.so U) := by
+  simp [partitionOfSet, nonemptySet, subsetSet, disjointSets,
+    SimpleGraph.IsPartitionOfSet, Set.Nonempty, Semantics.EvalAt, x,
+    Assignment.updateFO]
+
+theorem eval_connectedVertexSetUsing_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (A B U : SOVar)
+    (hAB : A ≠ B) (hAU : A ≠ U) (hBU : B ≠ U) :
+    EvalAt (connectedVertexSetUsing A B U) G rho ↔
+      G.IsConnectedVertexSet (rho.so U) := by
+  simp [connectedVertexSetUsing, SimpleGraph.IsConnectedVertexSet, Semantics.EvalAt,
+    Assignment.updateSO, hAB, hAU.symm, hBU.symm,
+    eval_partitionOfSet_iff, eval_edgeBetween_iff]
+
+theorem eval_branchSetConnectedUsing_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (A B U : SOVar)
+    (hAB : A ≠ B) (hAU : A ≠ U) (hBU : B ≠ U) :
+    EvalAt (branchSetConnectedUsing A B U) G rho ↔
+      (rho.so U).Nonempty ∧ G.IsConnectedVertexSet (rho.so U) := by
+  simp [branchSetConnectedUsing, nonemptySet, Semantics.EvalAt, Set.Nonempty,
+    eval_connectedVertexSetUsing_iff, hAB, hAU, hBU, x, Assignment.updateFO]
+
+theorem eval_minorEdgeConstraints_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (edgePairs : List (SOVar × SOVar)) :
+    EvalAt (minorEdgeConstraints edgePairs) G rho ↔
+      G.MinorEdgesRealized (edgePairs.map (fun p => (rho.so p.1, rho.so p.2))) := by
+  induction edgePairs with
+  | nil =>
+      simp [minorEdgeConstraints, SimpleGraph.MinorEdgesRealized, Formula.true_,
+        Semantics.EvalAt]
+  | cons p pairs ih =>
+      cases p with
+      | mk X Y =>
+          simp [minorEdgeConstraints, SimpleGraph.MinorEdgesRealized, eval_edgeBetween_iff, ih]
+
+theorem eval_k3Minor_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) :
+    EvalAt k3Minor G rho ↔ G.HasK3MinorBySets := by
+  simp [k3Minor, minorModelUsing, branchSetsConnectedUsing,
+    SimpleGraph.HasK3MinorBySets, SimpleGraph.IsMinorModelBySets,
+    SimpleGraph.BranchSetsConnected, Formula.true_, Semantics.EvalAt, X, Y, Z, P, Q,
+    Assignment.updateSO, eval_colorClassesPairwiseDisjoint_iff,
+    eval_branchSetConnectedUsing_iff, eval_minorEdgeConstraints_iff]
+  constructor
+  · rintro ⟨S, T, U, hdisj, ⟨⟨hSnon, hSconn⟩, ⟨hTnon, hTconn⟩, hUnon, hUconn⟩, hedges⟩
+    exact ⟨S, T, U, hdisj, ⟨hSnon, hSconn, hTnon, hTconn, hUnon, hUconn⟩, hedges⟩
+  · rintro ⟨S, T, U, hdisj, ⟨hSnon, hSconn, hTnon, hTconn, hUnon, hUconn⟩, hedges⟩
+    exact ⟨S, T, U, hdisj, ⟨⟨hSnon, hSconn⟩, ⟨hTnon, hTconn⟩, hUnon, hUconn⟩, hedges⟩
+
+theorem eval_completeGraphMinor_three_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) :
+    EvalAt (completeGraphMinor 3) G rho ↔ G.HasK3MinorBySets := by
+  simpa [← k3Minor_eq_completeGraphMinor_three] using eval_k3Minor_iff G rho
 
 theorem clique_no_freeFO (X : SOVar) (a : FOVar) :
     Not (Formula.FreeFO (clique X) a) := by
