@@ -158,35 +158,64 @@ substitution, alpha-equivalence 정리는 formula normalization이나 user-facin
 
 ## 3단계: `SimpleGraph` 그래프 술어와 MSO 명세 라이브러리
 
-목표는 손으로 쓴 `SimpleGraph` 술어와 MSO 공식 사이의 동치성을 Lean에서 증명하는 것이다.
+목표는 MSO 공식이 표준 graph-theoretic 의미와 같다는 것을 Lean에서 증명하는 것이다.
+가능하면 mathlib의 기존 `SimpleGraph` 정의를 직접 목표로 삼고, 프로젝트-local 술어는
+mathlib에 적절한 정의가 없거나 MSO2 edge-sort 표현과 맞추기 위한 wrapper로만 둔다.
+이 경우에도 local 술어 자체가 최종 의미가 되지 않도록, 나중에 mathlib 정의 또는
+문헌적으로 표준적인 정의와의 동치 정리를 추가한다.
 
 완료됨:
 
 - 목표: clique MSO 공식과 mathlib의 clique 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `Examples.clique`와 `Examples.eval_clique_iff`.
-- 목표: independent set MSO 공식과 `SimpleGraph` 술어를 연결한다. 구현:
+- 목표: independent set MSO 공식과 표준 independent-set 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `SimpleGraph.IsIndependent`, `Examples.independent`,
-  `Examples.eval_independent_iff`.
-- 목표: dominating set MSO 공식과 `SimpleGraph` 술어를 연결한다. 구현:
+  `Examples.eval_independent_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: dominating set MSO 공식과 표준 dominating-set 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `SimpleGraph.IsDominating`, `Examples.dominating`,
-  `Examples.eval_dominating_iff`.
-- 목표: vertex cover MSO2 공식과 edge 기반 `SimpleGraph` 술어를 연결한다. 구현:
+  `Examples.eval_dominating_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: vertex cover MSO2 공식과 표준 vertex-cover 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `SimpleGraph.IsVertexCover`, `Examples.vertexCover`,
-  `Examples.eval_vertexCover_iff`.
-- 목표: bipartite MSO2 공식과 edge 기반 `SimpleGraph` 술어를 연결한다. 구현:
+  `Examples.eval_vertexCover_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: bipartite MSO2 공식과 표준 bipartite 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `SimpleGraph.IsBipartiteByEdges`, `Examples.bipartite`,
-  `Examples.eval_bipartite_iff`.
+  `Examples.eval_bipartite_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: disconnectedness/connectivity 공식을 partition 기반 `SimpleGraph` 술어와 연결한다.
+  구현: `GraphMSO/Examples.lean`의 `SimpleGraph.IsDisconnectedByPartition`,
+  `SimpleGraph.IsConnectedByPartition`, `Examples.disconnected`, `Examples.connected`,
+  `Examples.eval_disconnected_iff`, `Examples.eval_connected_iff`.
+- 목표: fixed `k` coloring 공식을 color-class partition 기반 술어와 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsColoringBySets`, `Examples.coloring`,
+  `Examples.kColoring`, `Examples.eval_coloring_iff`, `Examples.eval_kColoring_iff`.
+- 목표: closed 3-colorability sentence를 추가하고 graph 술어와 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsThreeColorableBySets`,
+  `Examples.kColorable`, `Examples.threeColorable`,
+  `Examples.eval_threeColorable_iff`, `Examples.eval_kColorable_three_iff`.
+- 목표: Hamiltonian cycle MSO2 sentence를 edge-set 기반 술어와 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.HasHamiltonianCycleByEdges`,
+  `Examples.hamiltonian`, `Examples.eval_hamiltonian_iff`.
 
 남은 작업:
 
+- 각 예제마다 먼저 mathlib에 기존 정의가 있는지 확인하고, 있으면 theorem statement를
+  그 정의를 향하게 바꾼다.
 - mathlib에 이미 있는 정의와 프로젝트-local 정의를 구분하고 이름을 정리한다.
-- fixed `k` coloring, connectedness, disconnectedness 공식을 추가한다.
-- MSO2가 필요한 spanning tree, Hamiltonian cycle, minor 관련 인코딩을 추가한다.
+- project-local 술어가 필요한 경우 `Is...ByEdges`처럼 표현 방식이 드러나는 이름을 쓰고,
+  circular하게 보이지 않도록 표준 정의와의 comparison theorem을 둔다.
+- 일반 `k`에 대해 closed `kColorable k`가 길이 `k`인 color-class list가 존재한다는
+  술어와 같다는 정리를 추가한다.
+- MSO2가 필요한 spanning tree, minor 관련 인코딩을 추가한다.
 - `perfectMatching` 공식의 `SimpleGraph.HasPerfectMatching` 정확성 정리를 추가한다.
 
 완료 기준:
 
-- 주요 예제 공식마다 손으로 쓴 `SimpleGraph` 술어와의 iff 정리가 있다.
+- 주요 예제 공식마다 mathlib 또는 표준 graph-theoretic 술어와의 iff 정리가 있다.
+- project-local wrapper만 있는 경우, wrapper와 표준 정의 사이의 iff 정리가 있거나
+  mathlib에 적절한 정의가 없다는 이유가 문서화되어 있다.
 - theorem statement가 이후 Courcelle 명세에서 재사용 가능한 모양이다.
 
 ## 4단계: 유한 model checking 의미론
