@@ -104,6 +104,10 @@ def IsColoringBySets (colors : List (Set V)) : Prop :=
   ColorClassesPairwiseDisjoint colors ∧
   G.ColorClassesIndependent colors
 
+/-- The graph has a coloring represented by exactly `k` color classes. -/
+def HasColoringBySetsOfSize (k : Nat) : Prop :=
+  ∃ colors : List (Set V), colors.length = k ∧ G.IsColoringBySets colors
+
 /-- The graph is 3-colorable if it has three color classes forming a coloring. -/
 def IsThreeColorableBySets : Prop :=
   ∃ S T U : Set V, G.IsColoringBySets [S, T, U]
@@ -324,6 +328,12 @@ def existsSOs : List SOVar -> Formula -> Formula
   | [], phi => phi
   | X :: Xs, phi => existsSO X (existsSOs Xs phi)
 
+/-- Update a list of vertex-set variables by a list of concrete vertex sets. -/
+def updateSOsByList {V E : Type} (rho : Assignment V E) : List SOVar -> List (Set V) ->
+    Assignment V E
+  | X :: Xs, S :: Ss => updateSOsByList (rho.updateSO X S) Xs Ss
+  | _, _ => rho
+
 /-- A closed finite-pattern minor sentence from explicit branch variables and
 explicit required adjacencies. `A` and `B` must be fresh partition variables. -/
 def minorSentenceUsing (A B : SOVar) (branchVars : List SOVar)
@@ -478,6 +488,129 @@ theorem eval_kColoring_iff {V : Type} (G : SimpleGraph V)
       G.IsColoringBySets ((List.range k).map rho.so) := by
   simp [kColoring, eval_coloring_iff]
 
+theorem updateSOsByList_so_of_not_mem {V E : Type} (rho : Assignment V E)
+    {X : SOVar} :
+    ∀ (vars : List SOVar) (sets : List (Set V)), X ∉ vars ->
+      (updateSOsByList rho vars sets).so X = rho.so X := by
+  intro vars
+  induction vars generalizing rho with
+  | nil =>
+      intro sets _
+      cases sets <;> simp [updateSOsByList]
+  | cons Y Ys ih =>
+      intro sets hnot
+      cases sets with
+      | nil =>
+          simp [updateSOsByList]
+      | cons S Ss =>
+          have hXY : X ≠ Y := by
+            intro hXY
+            exact hnot (by simp [hXY])
+          have hnot_tail : X ∉ Ys := by
+            intro hmem
+            exact hnot (by simp [hmem])
+          calc
+            (updateSOsByList (rho.updateSO Y S) Ys Ss).so X =
+                (rho.updateSO Y S).so X := ih (rho.updateSO Y S) Ss hnot_tail
+            _ = rho.so X := by simp [Assignment.updateSO, hXY]
+
+theorem map_updateSOsByList_eq {V E : Type} (rho : Assignment V E) :
+    ∀ (vars : List SOVar) (sets : List (Set V)), vars.Nodup ->
+      sets.length = vars.length ->
+      vars.map (fun X => (updateSOsByList rho vars sets).so X) = sets := by
+  intro vars
+  induction vars generalizing rho with
+  | nil =>
+      intro sets _ hlen
+      cases sets with
+      | nil =>
+          simp [updateSOsByList]
+      | cons S Ss =>
+          simp at hlen
+  | cons X Xs ih =>
+      intro sets hnodup hlen
+      cases hnodup with
+      | cons hXnot hXsNodup =>
+          cases sets with
+          | nil =>
+              simp at hlen
+          | cons S Ss =>
+              have hXnot_mem : X ∉ Xs := by
+                intro hmem
+                exact hXnot X hmem rfl
+              have hlen_tail : Ss.length = Xs.length := by
+                simpa using hlen
+              have hhead :
+                  (updateSOsByList (rho.updateSO X S) Xs Ss).so X = S := by
+                rw [updateSOsByList_so_of_not_mem (rho.updateSO X S) Xs Ss hXnot_mem]
+                simp
+              have htail :
+                  Xs.map (fun Y => (updateSOsByList (rho.updateSO X S) Xs Ss).so Y) = Ss :=
+                ih (rho.updateSO X S) Ss hXsNodup hlen_tail
+              simp [updateSOsByList, hhead, htail]
+
+theorem eval_existsSOs_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (vars : List SOVar) (phi : Formula) :
+    EvalAt (existsSOs vars phi) G rho ↔
+      ∃ sets : List (Set V), sets.length = vars.length ∧
+        EvalAt phi G (updateSOsByList rho vars sets) := by
+  induction vars generalizing rho with
+  | nil =>
+      constructor
+      · intro h
+        exact ⟨[], rfl, by simpa [existsSOs, updateSOsByList] using h⟩
+      · rintro ⟨sets, hlen, hEval⟩
+        cases sets with
+        | nil =>
+            simpa [existsSOs, updateSOsByList] using hEval
+        | cons S Ss =>
+            simp at hlen
+  | cons X Xs ih =>
+      constructor
+      · intro h
+        rcases (by
+          simpa [existsSOs, Semantics.EvalAt] using h :
+            ∃ S : Set V, EvalAt (existsSOs Xs phi) G (rho.updateSO X S)) with
+          ⟨S, hS⟩
+        rcases (ih (rho.updateSO X S)).mp hS with ⟨Ss, hlen, hEval⟩
+        exact ⟨S :: Ss, by simp [hlen], by simpa [updateSOsByList] using hEval⟩
+      · rintro ⟨sets, hlen, hEval⟩
+        cases sets with
+        | nil =>
+            simp at hlen
+        | cons S Ss =>
+            have hlen_tail : Ss.length = Xs.length := by
+              simpa using hlen
+            simp [existsSOs, Semantics.EvalAt]
+            refine ⟨S, ?_⟩
+            apply (ih (rho.updateSO X S)).mpr
+            exact ⟨Ss, hlen_tail, by simpa [updateSOsByList] using hEval⟩
+
+theorem eval_kColorable_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (k : Nat) :
+    EvalAt (kColorable k) G rho ↔ G.HasColoringBySetsOfSize k := by
+  rw [kColorable, eval_existsSOs_iff]
+  constructor
+  · rintro ⟨sets, hlen, hEval⟩
+    have hmap :
+        (List.range k).map
+            (fun X => (updateSOsByList rho (List.range k) sets).so X) = sets :=
+      map_updateSOsByList_eq rho (List.range k) sets List.nodup_range hlen
+    have hcolor : G.IsColoringBySets sets := by
+      have h := (eval_kColoring_iff G (updateSOsByList rho (List.range k) sets) k).mp hEval
+      simpa [hmap] using h
+    exact ⟨sets, by simpa using hlen, hcolor⟩
+  · rintro ⟨sets, hlen, hcolor⟩
+    refine ⟨sets, by simpa using hlen, ?_⟩
+    have hlen_range : sets.length = (List.range k).length := by
+      simpa using hlen
+    have hmap :
+        (List.range k).map
+            (fun X => (updateSOsByList rho (List.range k) sets).so X) = sets :=
+      map_updateSOsByList_eq rho (List.range k) sets List.nodup_range hlen_range
+    apply (eval_kColoring_iff G (updateSOsByList rho (List.range k) sets) k).mpr
+    simpa [hmap] using hcolor
+
 theorem eval_threeColorable_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
     EvalAt threeColorable G rho ↔ G.IsThreeColorableBySets := by
@@ -594,6 +727,45 @@ def uniqueIncEdgeIn (v : FOVar) (M : EdgeSOVar) : Formula :=
 def perfectMatching (M : EdgeSOVar) : Formula :=
   conj (forallEdgeFO e0 (impl (inEdgeSet e0 M) (neg (isLoop e0))))
        (forallFO x (uniqueIncEdgeIn x M))
+
+theorem edgeSet_not_singleton_incident {V : Type} (G : SimpleGraph V)
+    (edge : G.edgeSet) :
+    ¬ ∃ v : V, v ∈ (edge : Sym2 V) ∧
+      ∀ w : V, w ∈ (edge : Sym2 V) -> w = v := by
+  rcases edge with ⟨edge, hedge⟩
+  induction edge using Sym2.ind with
+  | _ a b =>
+      intro h
+      rcases h with ⟨v, _, hall⟩
+      have ha : a = v := hall a (by simp)
+      have hb : b = v := hall b (by simp)
+      have hab : a = b := ha.trans hb.symm
+      have hadj : G.Adj a b := by
+        simpa using (SimpleGraph.mem_edgeSet (G := G) (v := a) (w := b)).mp hedge
+      exact (G.ne_of_adj hadj) hab
+
+theorem eval_isLoop_false {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (e : EdgeFOVar) :
+    ¬ EvalAt (isLoop e) G rho := by
+  rw [show EvalAt (isLoop e) G rho ↔
+      ∃ v : V, v ∈ (rho.efo e : Sym2 V) ∧
+        ∀ w : V, w ∈ (rho.efo e : Sym2 V) -> w = v by
+    simp [isLoop, Semantics.EvalAt, y, z, Assignment.updateFO]]
+  exact edgeSet_not_singleton_incident G (rho.efo e)
+
+theorem eval_uniqueIncEdgeIn_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (v : FOVar) (M : EdgeSOVar) :
+    EvalAt (uniqueIncEdgeIn v M) G rho ↔
+      ∃! e : G.edgeSet, e ∈ rho.eso M ∧ rho.fo v ∈ (e : Sym2 V) := by
+  simp [uniqueIncEdgeIn, Semantics.EvalAt, ExistsUnique, e0, e1, Assignment.updateEdgeFO,
+    and_assoc]
+
+theorem eval_perfectMatching_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (M : EdgeSOVar) :
+    EvalAt (perfectMatching M) G rho ↔ G.HasPerfectMatching (rho.eso M) := by
+  simp [perfectMatching, SimpleGraph.HasPerfectMatching, Semantics.EvalAt,
+    eval_isLoop_false, eval_uniqueIncEdgeIn_iff, x, e0, Assignment.updateFO,
+    Assignment.updateEdgeFO]
 
 /-- "Exactly two edges in `M` are incident to vertex variable `v`." -/
 def exactlyTwoIncEdgesIn (v : FOVar) (M : EdgeSOVar) : Formula :=
