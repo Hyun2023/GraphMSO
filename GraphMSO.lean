@@ -2,3 +2,4 @@ import GraphMSO.Basic
 import GraphMSO.Syntax
 import GraphMSO.Semantics
 import GraphMSO.Examples
+import GraphMSO.decomp
