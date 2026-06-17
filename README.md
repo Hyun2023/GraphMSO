@@ -27,10 +27,14 @@ uses mathlib's precompiled cache instead of compiling mathlib locally.
 
 ## Design Status
 
-Free-variable semantics use `Semantics.EvalAt phi G rho`. The graph-property
-wrapper `Semantics.Eval phi G` is intended for closed formulas and is currently
-implemented as validity under every assignment until assignment independence is
-proved.
+Free-variable semantics use `Semantics.SatisfiesAt phi G rho`. The assignment
+stores first-order vertex and edge variables as `Option` values, so a closed
+formula can start from `Assignment.empty` even when the vertex type or edge sort
+is empty. Monadic vertex and edge variables are interpreted as ordinary sets.
+
+Closed graph properties use `Semantics.Satisfies G phi`, defined as
+`phi.Closed` together with `SatisfiesAt phi G Assignment.empty`. This is the API
+that finite model checking and Courcelle-style statements should target.
 
 The syntax currently uses named numeric variables (`Nat`) for first-order and
 second-order variables. If substitution, alpha-equivalence, or automation becomes

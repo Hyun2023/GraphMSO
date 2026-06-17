@@ -370,23 +370,23 @@ theorem k3Minor_eq_completeGraphMinor_three :
 def hasNonemptyClique : Formula :=
   existsSO X (conj (nonemptySet X) (clique X))
 
-theorem eval_clique_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_clique_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
-    EvalAt (clique X) G rho ↔ G.IsClique (rho.so X) := by
+    SatisfiesAt (clique X) G rho ↔ G.IsClique (rho.so X) := by
   simp [clique, SimpleGraph.IsClique, Set.Pairwise, Formula.forallFOs, Formula.notEqual,
-    Semantics.EvalAt, x, y, Assignment.updateFO]
+    Semantics.SatisfiesAt, x, y, Assignment.updateFO, eq_comm]
   constructor
   · intro h u hu v hv hne
     exact h u v hu hv hne
   · intro h u v hu hv hne
     exact h hu hv hne
 
-theorem eval_independent_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_independent_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
-    EvalAt (independent X) G rho ↔ G.IsIndependent (rho.so X) := by
+    SatisfiesAt (independent X) G rho ↔ G.IsIndependent (rho.so X) := by
   classical
-  simp [independent, SimpleGraph.IsIndependent, Formula.forallFOs, Semantics.EvalAt, x, y,
-    Assignment.updateFO]
+  simp [independent, SimpleGraph.IsIndependent, Formula.forallFOs, Semantics.SatisfiesAt, x, y,
+    Assignment.updateFO, eq_comm]
   constructor
   · intro h u v hSu hSv hne hAdj
     exact hne (h u v hSu hSv hAdj)
@@ -394,99 +394,109 @@ theorem eval_independent_iff {V : Type} (G : SimpleGraph V)
     by_contra hne
     exact h u v hSu hSv hne hAdj
 
-theorem eval_dominating_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_dominating_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
-    EvalAt (dominating X) G rho ↔ G.IsDominating (rho.so X) := by
-  simp [dominating, SimpleGraph.IsDominating, Semantics.EvalAt, x, y, Assignment.updateFO]
+    SatisfiesAt (dominating X) G rho ↔ G.IsDominating (rho.so X) := by
+  simp [dominating, SimpleGraph.IsDominating, Semantics.SatisfiesAt, x, y, Assignment.updateFO]
 
-theorem eval_disconnected_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_disconnected_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt disconnected G rho ↔ G.IsDisconnectedByPartition := by
+    SatisfiesAt disconnected G rho ↔ G.IsDisconnectedByPartition := by
   simp [disconnected, nontrivialPartition, nonemptySet, coverAll, disjointSets, noEdgesBetween,
     SimpleGraph.IsDisconnectedByPartition, SimpleGraph.IsNontrivialPartition,
     SimpleGraph.HasNoEdgesBetween,
-    Set.Nonempty, Formula.forallFOs, Semantics.EvalAt, X, Y, x, y, Assignment.updateSO,
+    Set.Nonempty, Formula.forallFOs, Semantics.SatisfiesAt, X, Y, x, y, Assignment.updateSO,
     Assignment.updateFO]
 
-theorem eval_connected_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_connected_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt connected G rho ↔ G.IsConnectedByPartition := by
-  simpa [connected, SimpleGraph.IsConnectedByPartition, Semantics.EvalAt]
-    using not_congr (eval_disconnected_iff G rho)
+    SatisfiesAt connected G rho ↔ G.IsConnectedByPartition := by
+  simpa [connected, SimpleGraph.IsConnectedByPartition, Semantics.SatisfiesAt]
+    using not_congr (satisfiesAt_disconnected_iff G rho)
 
-theorem eval_inSomeColor_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_inSomeColor_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (v : FOVar) (colors : List SOVar) :
-    EvalAt (inSomeColor v colors) G rho ↔
-      SimpleGraph.IsInSomeColor (rho.fo v) (colors.map rho.so) := by
+    SatisfiesAt (inSomeColor v colors) G rho ↔
+      ∃ vertex : V, rho.fo v = some vertex ∧
+        SimpleGraph.IsInSomeColor vertex (colors.map rho.so) := by
   induction colors with
   | nil =>
-      simp [inSomeColor, SimpleGraph.IsInSomeColor, Semantics.EvalAt]
+      simp [inSomeColor, SimpleGraph.IsInSomeColor, Semantics.SatisfiesAt]
   | cons X Xs ih =>
-      simp [inSomeColor, SimpleGraph.IsInSomeColor, Semantics.EvalAt, ih]
+      simp [inSomeColor, SimpleGraph.IsInSomeColor, Semantics.SatisfiesAt, ih]
+      constructor
+      · rintro (hX | hXs)
+        · rcases hX with ⟨vertex, hfo, hmem⟩
+          exact ⟨vertex, hfo, Or.inl hmem⟩
+        · rcases hXs with ⟨vertex, hfo, hmem⟩
+          exact ⟨vertex, hfo, Or.inr hmem⟩
+      · rintro ⟨vertex, hfo, hmem | hmem⟩
+        · exact Or.inl ⟨vertex, hfo, hmem⟩
+        · exact Or.inr ⟨vertex, hfo, hmem⟩
 
-theorem eval_colorClassesCover_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_colorClassesCover_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (colors : List SOVar) :
-    EvalAt (colorClassesCover colors) G rho ↔
+    SatisfiesAt (colorClassesCover colors) G rho ↔
       SimpleGraph.ColorClassesCover (colors.map rho.so) := by
-  simp [colorClassesCover, SimpleGraph.ColorClassesCover, Semantics.EvalAt,
-    eval_inSomeColor_iff, x, Assignment.updateFO]
+  simp [colorClassesCover, SimpleGraph.ColorClassesCover, Semantics.SatisfiesAt,
+    satisfiesAt_inSomeColor_iff, x, Assignment.updateFO]
 
-theorem eval_disjointSets_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_disjointSets_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X Y : SOVar) :
-    EvalAt (disjointSets X Y) G rho ↔
+    SatisfiesAt (disjointSets X Y) G rho ↔
       SimpleGraph.ColorClassesDisjoint (rho.so X) (rho.so Y) := by
-  simp [disjointSets, SimpleGraph.ColorClassesDisjoint, Semantics.EvalAt, x,
+  simp [disjointSets, SimpleGraph.ColorClassesDisjoint, Semantics.SatisfiesAt, x,
     Assignment.updateFO]
 
-theorem eval_colorClassDisjointFrom_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_colorClassDisjointFrom_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) (colors : List SOVar) :
-    EvalAt (colorClassDisjointFrom X colors) G rho ↔
+    SatisfiesAt (colorClassDisjointFrom X colors) G rho ↔
       SimpleGraph.ColorClassDisjointFrom (rho.so X) (colors.map rho.so) := by
   induction colors with
   | nil =>
       simp [colorClassDisjointFrom, SimpleGraph.ColorClassDisjointFrom, Formula.true_,
-        Semantics.EvalAt]
+        Semantics.SatisfiesAt]
   | cons Y Ys ih =>
       simp [colorClassDisjointFrom, SimpleGraph.ColorClassDisjointFrom,
-        eval_disjointSets_iff, ih]
+        satisfiesAt_disjointSets_iff, ih]
 
-theorem eval_colorClassesPairwiseDisjoint_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_colorClassesPairwiseDisjoint_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (colors : List SOVar) :
-    EvalAt (colorClassesPairwiseDisjoint colors) G rho ↔
+    SatisfiesAt (colorClassesPairwiseDisjoint colors) G rho ↔
       SimpleGraph.ColorClassesPairwiseDisjoint (colors.map rho.so) := by
   induction colors with
   | nil =>
       simp [colorClassesPairwiseDisjoint, SimpleGraph.ColorClassesPairwiseDisjoint,
-        Formula.true_, Semantics.EvalAt]
+        Formula.true_, Semantics.SatisfiesAt]
   | cons X Xs ih =>
       simp [colorClassesPairwiseDisjoint, SimpleGraph.ColorClassesPairwiseDisjoint,
-        eval_colorClassDisjointFrom_iff, ih]
+        satisfiesAt_colorClassDisjointFrom_iff, ih]
 
-theorem eval_colorClassesIndependent_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_colorClassesIndependent_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (colors : List SOVar) :
-    EvalAt (colorClassesIndependent colors) G rho ↔
+    SatisfiesAt (colorClassesIndependent colors) G rho ↔
       G.ColorClassesIndependent (colors.map rho.so) := by
   induction colors with
   | nil =>
       simp [colorClassesIndependent, SimpleGraph.ColorClassesIndependent, Formula.true_,
-        Semantics.EvalAt]
+        Semantics.SatisfiesAt]
   | cons X Xs ih =>
       simp [colorClassesIndependent, SimpleGraph.ColorClassesIndependent,
-        eval_independent_iff, ih]
+        satisfiesAt_independent_iff, ih]
 
-theorem eval_coloring_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_coloring_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (colors : List SOVar) :
-    EvalAt (coloring colors) G rho ↔
+    SatisfiesAt (coloring colors) G rho ↔
       G.IsColoringBySets (colors.map rho.so) := by
-  simp [coloring, SimpleGraph.IsColoringBySets, Semantics.EvalAt,
-    eval_colorClassesCover_iff, eval_colorClassesPairwiseDisjoint_iff,
-    eval_colorClassesIndependent_iff]
+  simp [coloring, SimpleGraph.IsColoringBySets, Semantics.SatisfiesAt,
+    satisfiesAt_colorClassesCover_iff, satisfiesAt_colorClassesPairwiseDisjoint_iff,
+    satisfiesAt_colorClassesIndependent_iff]
 
-theorem eval_kColoring_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_kColoring_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (k : Nat) :
-    EvalAt (kColoring k) G rho ↔
+    SatisfiesAt (kColoring k) G rho ↔
       G.IsColoringBySets ((List.range k).map rho.so) := by
-  simp [kColoring, eval_coloring_iff]
+  simp [kColoring, satisfiesAt_coloring_iff]
 
 theorem updateSOsByList_so_of_not_mem {V E : Type} (rho : Assignment V E)
     {X : SOVar} :
@@ -549,11 +559,11 @@ theorem map_updateSOsByList_eq {V E : Type} (rho : Assignment V E) :
                 ih (rho.updateSO X S) Ss hXsNodup hlen_tail
               simp [updateSOsByList, hhead, htail]
 
-theorem eval_existsSOs_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_existsSOs_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (vars : List SOVar) (phi : Formula) :
-    EvalAt (existsSOs vars phi) G rho ↔
+    SatisfiesAt (existsSOs vars phi) G rho ↔
       ∃ sets : List (Set V), sets.length = vars.length ∧
-        EvalAt phi G (updateSOsByList rho vars sets) := by
+        SatisfiesAt phi G (updateSOsByList rho vars sets) := by
   induction vars generalizing rho with
   | nil =>
       constructor
@@ -569,8 +579,8 @@ theorem eval_existsSOs_iff {V : Type} (G : SimpleGraph V)
       constructor
       · intro h
         rcases (by
-          simpa [existsSOs, Semantics.EvalAt] using h :
-            ∃ S : Set V, EvalAt (existsSOs Xs phi) G (rho.updateSO X S)) with
+          simpa [existsSOs, Semantics.SatisfiesAt] using h :
+            ∃ S : Set V, SatisfiesAt (existsSOs Xs phi) G (rho.updateSO X S)) with
           ⟨S, hS⟩
         rcases (ih (rho.updateSO X S)).mp hS with ⟨Ss, hlen, hEval⟩
         exact ⟨S :: Ss, by simp [hlen], by simpa [updateSOsByList] using hEval⟩
@@ -581,15 +591,15 @@ theorem eval_existsSOs_iff {V : Type} (G : SimpleGraph V)
         | cons S Ss =>
             have hlen_tail : Ss.length = Xs.length := by
               simpa using hlen
-            simp [existsSOs, Semantics.EvalAt]
+            simp [existsSOs, Semantics.SatisfiesAt]
             refine ⟨S, ?_⟩
             apply (ih (rho.updateSO X S)).mpr
             exact ⟨Ss, hlen_tail, by simpa [updateSOsByList] using hEval⟩
 
-theorem eval_kColorable_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_kColorable_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (k : Nat) :
-    EvalAt (kColorable k) G rho ↔ G.HasColoringBySetsOfSize k := by
-  rw [kColorable, eval_existsSOs_iff]
+    SatisfiesAt (kColorable k) G rho ↔ G.HasColoringBySetsOfSize k := by
+  rw [kColorable, satisfiesAt_existsSOs_iff]
   constructor
   · rintro ⟨sets, hlen, hEval⟩
     have hmap :
@@ -597,7 +607,7 @@ theorem eval_kColorable_iff {V : Type} (G : SimpleGraph V)
             (fun X => (updateSOsByList rho (List.range k) sets).so X) = sets :=
       map_updateSOsByList_eq rho (List.range k) sets List.nodup_range hlen
     have hcolor : G.IsColoringBySets sets := by
-      have h := (eval_kColoring_iff G (updateSOsByList rho (List.range k) sets) k).mp hEval
+      have h := (satisfiesAt_kColoring_iff G (updateSOsByList rho (List.range k) sets) k).mp hEval
       simpa [hmap] using h
     exact ⟨sets, by simpa using hlen, hcolor⟩
   · rintro ⟨sets, hlen, hcolor⟩
@@ -608,83 +618,83 @@ theorem eval_kColorable_iff {V : Type} (G : SimpleGraph V)
         (List.range k).map
             (fun X => (updateSOsByList rho (List.range k) sets).so X) = sets :=
       map_updateSOsByList_eq rho (List.range k) sets List.nodup_range hlen_range
-    apply (eval_kColoring_iff G (updateSOsByList rho (List.range k) sets) k).mpr
+    apply (satisfiesAt_kColoring_iff G (updateSOsByList rho (List.range k) sets) k).mpr
     simpa [hmap] using hcolor
 
-theorem eval_threeColorable_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_threeColorable_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt threeColorable G rho ↔ G.IsThreeColorableBySets := by
-  simp [threeColorable, SimpleGraph.IsThreeColorableBySets, Semantics.EvalAt,
-    eval_coloring_iff, X, Y, Z, Assignment.updateSO]
+    SatisfiesAt threeColorable G rho ↔ G.IsThreeColorableBySets := by
+  simp [threeColorable, SimpleGraph.IsThreeColorableBySets, Semantics.SatisfiesAt,
+    satisfiesAt_coloring_iff, X, Y, Z, Assignment.updateSO]
 
-theorem eval_kColorable_three_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_kColorable_three_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt (kColorable 3) G rho ↔ G.IsThreeColorableBySets := by
-  simpa [← threeColorable_eq_kColorable_three] using eval_threeColorable_iff G rho
+    SatisfiesAt (kColorable 3) G rho ↔ G.IsThreeColorableBySets := by
+  simpa [← threeColorable_eq_kColorable_three] using satisfiesAt_threeColorable_iff G rho
 
-theorem eval_edgeBetween_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_edgeBetween_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X Y : SOVar) :
-    EvalAt (edgeBetween X Y) G rho ↔
+    SatisfiesAt (edgeBetween X Y) G rho ↔
       G.HasEdgeBetween (rho.so X) (rho.so Y) := by
-  simp [edgeBetween, SimpleGraph.HasEdgeBetween, Semantics.EvalAt, e0, x, y,
+  simp [edgeBetween, SimpleGraph.HasEdgeBetween, Semantics.SatisfiesAt, e0, x, y,
     Assignment.updateEdgeFO, Assignment.updateFO]
 
-theorem eval_partitionOfSet_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_partitionOfSet_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (A B U : SOVar) :
-    EvalAt (partitionOfSet A B U) G rho ↔
+    SatisfiesAt (partitionOfSet A B U) G rho ↔
       SimpleGraph.IsPartitionOfSet (rho.so A) (rho.so B) (rho.so U) := by
   simp [partitionOfSet, nonemptySet, subsetSet, disjointSets,
-    SimpleGraph.IsPartitionOfSet, Set.Nonempty, Semantics.EvalAt, x,
+    SimpleGraph.IsPartitionOfSet, Set.Nonempty, Semantics.SatisfiesAt, x,
     Assignment.updateFO]
 
-theorem eval_connectedVertexSetUsing_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_connectedVertexSetUsing_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (A B U : SOVar)
     (hAB : A ≠ B) (hAU : A ≠ U) (hBU : B ≠ U) :
-    EvalAt (connectedVertexSetUsing A B U) G rho ↔
+    SatisfiesAt (connectedVertexSetUsing A B U) G rho ↔
       G.IsConnectedVertexSet (rho.so U) := by
-  simp [connectedVertexSetUsing, SimpleGraph.IsConnectedVertexSet, Semantics.EvalAt,
+  simp [connectedVertexSetUsing, SimpleGraph.IsConnectedVertexSet, Semantics.SatisfiesAt,
     Assignment.updateSO, hAB, hAU.symm, hBU.symm,
-    eval_partitionOfSet_iff, eval_edgeBetween_iff]
+    satisfiesAt_partitionOfSet_iff, satisfiesAt_edgeBetween_iff]
 
-theorem eval_branchSetConnectedUsing_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_branchSetConnectedUsing_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (A B U : SOVar)
     (hAB : A ≠ B) (hAU : A ≠ U) (hBU : B ≠ U) :
-    EvalAt (branchSetConnectedUsing A B U) G rho ↔
+    SatisfiesAt (branchSetConnectedUsing A B U) G rho ↔
       (rho.so U).Nonempty ∧ G.IsConnectedVertexSet (rho.so U) := by
-  simp [branchSetConnectedUsing, nonemptySet, Semantics.EvalAt, Set.Nonempty,
-    eval_connectedVertexSetUsing_iff, hAB, hAU, hBU, x, Assignment.updateFO]
+  simp [branchSetConnectedUsing, nonemptySet, Semantics.SatisfiesAt, Set.Nonempty,
+    satisfiesAt_connectedVertexSetUsing_iff, hAB, hAU, hBU, x, Assignment.updateFO]
 
-theorem eval_minorEdgeConstraints_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_minorEdgeConstraints_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (edgePairs : List (SOVar × SOVar)) :
-    EvalAt (minorEdgeConstraints edgePairs) G rho ↔
+    SatisfiesAt (minorEdgeConstraints edgePairs) G rho ↔
       G.MinorEdgesRealized (edgePairs.map (fun p => (rho.so p.1, rho.so p.2))) := by
   induction edgePairs with
   | nil =>
       simp [minorEdgeConstraints, SimpleGraph.MinorEdgesRealized, Formula.true_,
-        Semantics.EvalAt]
+        Semantics.SatisfiesAt]
   | cons p pairs ih =>
       cases p with
       | mk X Y =>
-          simp [minorEdgeConstraints, SimpleGraph.MinorEdgesRealized, eval_edgeBetween_iff, ih]
+          simp [minorEdgeConstraints, SimpleGraph.MinorEdgesRealized, satisfiesAt_edgeBetween_iff, ih]
 
-theorem eval_k3Minor_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_k3Minor_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt k3Minor G rho ↔ G.HasK3MinorBySets := by
+    SatisfiesAt k3Minor G rho ↔ G.HasK3MinorBySets := by
   simp [k3Minor, minorModelUsing, branchSetsConnectedUsing,
     SimpleGraph.HasK3MinorBySets, SimpleGraph.IsMinorModelBySets,
-    SimpleGraph.BranchSetsConnected, Formula.true_, Semantics.EvalAt, X, Y, Z, P, Q,
-    Assignment.updateSO, eval_colorClassesPairwiseDisjoint_iff,
-    eval_branchSetConnectedUsing_iff, eval_minorEdgeConstraints_iff]
+    SimpleGraph.BranchSetsConnected, Formula.true_, Semantics.SatisfiesAt, X, Y, Z, P, Q,
+    Assignment.updateSO, satisfiesAt_colorClassesPairwiseDisjoint_iff,
+    satisfiesAt_branchSetConnectedUsing_iff, satisfiesAt_minorEdgeConstraints_iff]
   constructor
   · rintro ⟨S, T, U, hdisj, ⟨⟨hSnon, hSconn⟩, ⟨hTnon, hTconn⟩, hUnon, hUconn⟩, hedges⟩
     exact ⟨S, T, U, hdisj, ⟨hSnon, hSconn, hTnon, hTconn, hUnon, hUconn⟩, hedges⟩
   · rintro ⟨S, T, U, hdisj, ⟨hSnon, hSconn, hTnon, hTconn, hUnon, hUconn⟩, hedges⟩
     exact ⟨S, T, U, hdisj, ⟨⟨hSnon, hSconn⟩, ⟨hTnon, hTconn⟩, hUnon, hUconn⟩, hedges⟩
 
-theorem eval_completeGraphMinor_three_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_completeGraphMinor_three_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt (completeGraphMinor 3) G rho ↔ G.HasK3MinorBySets := by
-  simpa [← k3Minor_eq_completeGraphMinor_three] using eval_k3Minor_iff G rho
+    SatisfiesAt (completeGraphMinor 3) G rho ↔ G.HasK3MinorBySets := by
+  simpa [← k3Minor_eq_completeGraphMinor_three] using satisfiesAt_k3Minor_iff G rho
 
 theorem clique_no_freeFO (X : SOVar) (a : FOVar) :
     Not (Formula.FreeFO (clique X) a) := by
@@ -744,28 +754,47 @@ theorem edgeSet_not_singleton_incident {V : Type} (G : SimpleGraph V)
         simpa using (SimpleGraph.mem_edgeSet (G := G) (v := a) (w := b)).mp hedge
       exact (G.ne_of_adj hadj) hab
 
-theorem eval_isLoop_false {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_isLoop_false {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (e : EdgeFOVar) :
-    ¬ EvalAt (isLoop e) G rho := by
-  rw [show EvalAt (isLoop e) G rho ↔
-      ∃ v : V, v ∈ (rho.efo e : Sym2 V) ∧
-        ∀ w : V, w ∈ (rho.efo e : Sym2 V) -> w = v by
-    simp [isLoop, Semantics.EvalAt, y, z, Assignment.updateFO]]
-  exact edgeSet_not_singleton_incident G (rho.efo e)
+    ¬ SatisfiesAt (isLoop e) G rho := by
+  cases hedge : rho.efo e with
+  | none =>
+      simp [isLoop, Semantics.SatisfiesAt, hedge, y, z, Assignment.updateFO]
+  | some edge =>
+      rw [show SatisfiesAt (isLoop e) G rho ↔
+          ∃ v : V, v ∈ (edge : Sym2 V) ∧
+            ∀ w : V, w ∈ (edge : Sym2 V) -> v = w by
+        simp [isLoop, Semantics.SatisfiesAt, hedge, y, z, Assignment.updateFO]]
+      intro h
+      apply edgeSet_not_singleton_incident G edge
+      rcases h with ⟨v, hv, hall⟩
+      exact ⟨v, hv, fun w hw => (hall w hw).symm⟩
 
-theorem eval_uniqueIncEdgeIn_iff {V : Type} (G : SimpleGraph V)
-    (rho : Assignment V G.edgeSet) (v : FOVar) (M : EdgeSOVar) :
-    EvalAt (uniqueIncEdgeIn v M) G rho ↔
-      ∃! e : G.edgeSet, e ∈ rho.eso M ∧ rho.fo v ∈ (e : Sym2 V) := by
-  simp [uniqueIncEdgeIn, Semantics.EvalAt, ExistsUnique, e0, e1, Assignment.updateEdgeFO,
-    and_assoc]
+theorem satisfiesAt_uniqueIncEdgeIn_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (v : FOVar) (M : EdgeSOVar) {vertex : V}
+    (hfo : rho.fo v = some vertex) :
+    SatisfiesAt (uniqueIncEdgeIn v M) G rho ↔
+      ∃ e : G.edgeSet, e ∈ rho.eso M ∧ vertex ∈ (e : Sym2 V) ∧
+        ∀ e' : G.edgeSet, e' ∈ rho.eso M -> vertex ∈ (e' : Sym2 V) -> e = e' := by
+  simp [uniqueIncEdgeIn, Semantics.SatisfiesAt, e0, e1, Assignment.updateEdgeFO,
+    hfo, Subtype.ext_iff]
 
-theorem eval_perfectMatching_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_perfectMatching_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (M : EdgeSOVar) :
-    EvalAt (perfectMatching M) G rho ↔ G.HasPerfectMatching (rho.eso M) := by
-  simp [perfectMatching, SimpleGraph.HasPerfectMatching, Semantics.EvalAt,
-    eval_isLoop_false, eval_uniqueIncEdgeIn_iff, x, e0, Assignment.updateFO,
-    Assignment.updateEdgeFO]
+    SatisfiesAt (perfectMatching M) G rho ↔ G.HasPerfectMatching (rho.eso M) := by
+  simp [perfectMatching, SimpleGraph.HasPerfectMatching, Semantics.SatisfiesAt,
+    satisfiesAt_isLoop_false, x, e0, Assignment.updateFO, Assignment.updateEdgeFO]
+  constructor
+  · intro h vertex
+    rcases (satisfiesAt_uniqueIncEdgeIn_iff G (rho.updateFO x vertex) x M (vertex := vertex) (by simp)).mp (h vertex) with
+      ⟨edge, hedge_mem, hvertex_mem, huniq⟩
+    exact ⟨edge, ⟨hedge_mem, hvertex_mem⟩,
+      fun edge' hedge' => (huniq edge' hedge'.1 hedge'.2).symm⟩
+  · intro h vertex
+    rcases h vertex with ⟨edge, ⟨hedge_mem, hvertex_mem⟩, huniq⟩
+    exact (satisfiesAt_uniqueIncEdgeIn_iff G (rho.updateFO x vertex) x M (vertex := vertex) (by simp)).mpr
+      ⟨edge, hedge_mem, hvertex_mem, fun edge' hedge'_mem hvertex'_mem =>
+        (huniq edge' ⟨hedge'_mem, hvertex'_mem⟩).symm⟩
 
 /-- "Exactly two edges in `M` are incident to vertex variable `v`." -/
 def exactlyTwoIncEdgesIn (v : FOVar) (M : EdgeSOVar) : Formula :=
@@ -802,60 +831,84 @@ def hamiltonian : Formula :=
   existsEdgeSO E0
     (conj (everyVertexExactlyTwoIncEdgesIn E0) (edgeSetConnected E0))
 
-theorem eval_exactlyTwoIncEdgesIn_iff {V : Type} (G : SimpleGraph V)
-    (rho : Assignment V G.edgeSet) (v : FOVar) (M : EdgeSOVar) :
-    EvalAt (exactlyTwoIncEdgesIn v M) G rho ↔
-      G.HasExactlyTwoIncidentEdgesIn (rho.eso M) (rho.fo v) := by
-  simp [exactlyTwoIncEdgesIn, SimpleGraph.HasExactlyTwoIncidentEdgesIn, Semantics.EvalAt,
-    e0, e1, e2, Assignment.updateEdgeFO]
+theorem satisfiesAt_exactlyTwoIncEdgesIn_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (v : FOVar) (M : EdgeSOVar) {vertex : V}
+    (hfo : rho.fo v = some vertex) :
+    SatisfiesAt (exactlyTwoIncEdgesIn v M) G rho ↔
+      ∃ e₀ e₁ : G.edgeSet,
+        e₀ ∈ rho.eso M ∧ e₁ ∈ rho.eso M ∧
+        vertex ∈ (e₀ : Sym2 V) ∧ vertex ∈ (e₁ : Sym2 V) ∧ e₀ ≠ e₁ ∧
+        ∀ e : G.edgeSet, e ∈ rho.eso M -> vertex ∈ (e : Sym2 V) -> e₀ = e ∨ e₁ = e := by
+  simp [exactlyTwoIncEdgesIn, Semantics.SatisfiesAt, e0, e1, e2,
+    Assignment.updateEdgeFO, hfo, Subtype.ext_iff]
+  constructor
+  · rintro ⟨edge0, hedge0_mem, edge1, hedge1_mem, hvertex0, hvertex1, hne, huniq⟩
+    exact ⟨edge0, hedge0_mem, edge1, hedge1_mem, hvertex0, hvertex1,
+      fun h => hne h.symm, huniq⟩
+  · rintro ⟨edge0, hedge0_mem, edge1, hedge1_mem, hvertex0, hvertex1, hne, huniq⟩
+    exact ⟨edge0, hedge0_mem, edge1, hedge1_mem, hvertex0, hvertex1,
+      fun h => hne h.symm, huniq⟩
 
-theorem eval_everyVertexExactlyTwoIncEdgesIn_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_everyVertexExactlyTwoIncEdgesIn_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (M : EdgeSOVar) :
-    EvalAt (everyVertexExactlyTwoIncEdgesIn M) G rho ↔
+    SatisfiesAt (everyVertexExactlyTwoIncEdgesIn M) G rho ↔
       ∀ v : V, G.HasExactlyTwoIncidentEdgesIn (rho.eso M) v := by
-  simp [everyVertexExactlyTwoIncEdgesIn, Semantics.EvalAt, x, Assignment.updateFO,
-    eval_exactlyTwoIncEdgesIn_iff]
+  simp [everyVertexExactlyTwoIncEdgesIn, Semantics.SatisfiesAt, x, Assignment.updateFO]
+  constructor
+  · intro h vertex
+    rcases (satisfiesAt_exactlyTwoIncEdgesIn_iff G (rho.updateFO x vertex) x M (vertex := vertex) (by simp)).mp
+        (h vertex) with
+      ⟨edge0, edge1, hedge0_mem, hedge1_mem, hvertex0, hvertex1, hne, huniq⟩
+    exact ⟨edge0, edge1, hedge0_mem, hedge1_mem, hvertex0, hvertex1, hne,
+      fun edge hedge_mem hvertex =>
+        (huniq edge hedge_mem hvertex).elim (fun h => Or.inl h.symm) (fun h => Or.inr h.symm)⟩
+  · intro h vertex
+    rcases h vertex with ⟨edge0, edge1, hedge0_mem, hedge1_mem, hvertex0, hvertex1, hne, huniq⟩
+    exact (satisfiesAt_exactlyTwoIncEdgesIn_iff G (rho.updateFO x vertex) x M (vertex := vertex) (by simp)).mpr
+      ⟨edge0, edge1, hedge0_mem, hedge1_mem, hvertex0, hvertex1, hne,
+        fun edge hedge_mem hvertex =>
+          (huniq edge hedge_mem hvertex).elim (fun h => Or.inl h.symm) (fun h => Or.inr h.symm)⟩
 
-theorem eval_crossingEdgeIn_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_crossingEdgeIn_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (M : EdgeSOVar) (X Y : SOVar) :
-    EvalAt (crossingEdgeIn M X Y) G rho ↔
+    SatisfiesAt (crossingEdgeIn M X Y) G rho ↔
       G.HasCrossingEdgeIn (rho.eso M) (rho.so X) (rho.so Y) := by
-  simp [crossingEdgeIn, SimpleGraph.HasCrossingEdgeIn, Semantics.EvalAt, e0, x, y,
+  simp [crossingEdgeIn, SimpleGraph.HasCrossingEdgeIn, Semantics.SatisfiesAt, e0, x, y,
     Assignment.updateEdgeFO, Assignment.updateFO]
 
-theorem eval_edgeSetConnected_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_edgeSetConnected_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (M : EdgeSOVar) :
-    EvalAt (edgeSetConnected M) G rho ↔
+    SatisfiesAt (edgeSetConnected M) G rho ↔
       G.EdgeSetConnectedSpanning (rho.eso M) := by
   simp [edgeSetConnected, nontrivialPartition, nonemptySet, coverAll, disjointSets,
     SimpleGraph.EdgeSetConnectedSpanning, SimpleGraph.IsNontrivialPartition, Set.Nonempty,
-    Semantics.EvalAt, X, Y, x, Assignment.updateSO, Assignment.updateFO,
-    eval_crossingEdgeIn_iff]
+    Semantics.SatisfiesAt, X, Y, x, Assignment.updateSO, Assignment.updateFO,
+    satisfiesAt_crossingEdgeIn_iff]
 
-theorem eval_hamiltonian_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_hamiltonian_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt hamiltonian G rho ↔ G.HasHamiltonianCycleByEdges := by
-  simp [hamiltonian, SimpleGraph.HasHamiltonianCycleByEdges, Semantics.EvalAt, E0,
-    Assignment.updateEdgeSO, eval_everyVertexExactlyTwoIncEdgesIn_iff,
-    eval_edgeSetConnected_iff]
+    SatisfiesAt hamiltonian G rho ↔ G.HasHamiltonianCycleByEdges := by
+  simp [hamiltonian, SimpleGraph.HasHamiltonianCycleByEdges, Semantics.SatisfiesAt, E0,
+    Assignment.updateEdgeSO, satisfiesAt_everyVertexExactlyTwoIncEdgesIn_iff,
+    satisfiesAt_edgeSetConnected_iff]
 
 def vertexCover (X : SOVar) : Formula :=
   forallEdgeFO e0 (existsFO x (conj (inSet x X) (inc x e0)))
 
-theorem eval_vertexCover_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_vertexCover_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
-    EvalAt (vertexCover X) G rho ↔ G.IsVertexCover (rho.so X) := by
-  simp [vertexCover, SimpleGraph.IsVertexCover, Semantics.EvalAt, x, e0,
+    SatisfiesAt (vertexCover X) G rho ↔ G.IsVertexCover (rho.so X) := by
+  simp [vertexCover, SimpleGraph.IsVertexCover, Semantics.SatisfiesAt, x, e0,
     Assignment.updateFO, Assignment.updateEdgeFO]
 
 def bipartite : Formula :=
   existsSO X (forallEdgeFO e0 (existsFO x (existsFO y
     (conj (inSet x X) (conj (neg (inSet y X)) (conj (inc x e0) (inc y e0)))))))
 
-theorem eval_bipartite_iff {V : Type} (G : SimpleGraph V)
+theorem satisfiesAt_bipartite_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt bipartite G rho ↔ G.IsBipartiteByEdges := by
-  simp [bipartite, SimpleGraph.IsBipartiteByEdges, Semantics.EvalAt, X, e0, x, y,
+    SatisfiesAt bipartite G rho ↔ G.IsBipartiteByEdges := by
+  simp [bipartite, SimpleGraph.IsBipartiteByEdges, Semantics.SatisfiesAt, X, e0, x, y,
     Assignment.updateSO, Assignment.updateFO, Assignment.updateEdgeFO]
 
 /-- A two-vertex type for smoke-test examples. -/
@@ -871,19 +924,16 @@ def twoEdge : twoGraph.edgeSet :=
   ⟨s(Two.left, Two.right), by simp [twoGraph]⟩
 
 def allTrueAssignment : Assignment Two twoGraph.edgeSet where
-  fo := fun _ => Two.left
+  fo := fun _ => some Two.left
   so := fun _ => Set.univ
-  efo := fun _ => twoEdge
+  efo := fun _ => some twoEdge
   eso := fun _ => Set.univ
 
-example : EvalAt Formula.true_ twoGraph allTrueAssignment := by
-  exact evalAt_true twoGraph allTrueAssignment
+example : SatisfiesAt Formula.true_ twoGraph allTrueAssignment := by
+  exact satisfiesAt_true twoGraph allTrueAssignment
 
-example : Eval Formula.true_ twoGraph := by
-  exact eval_true twoGraph
-
-example : EvalAt (forallFO x (inSet x X)) twoGraph allTrueAssignment := by
-  simp [Semantics.EvalAt, allTrueAssignment, x, X]
+example : SatisfiesAt (forallFO x (inSet x X)) twoGraph allTrueAssignment := by
+  simp [Semantics.SatisfiesAt, allTrueAssignment, x, X]
 
 end Examples
 
