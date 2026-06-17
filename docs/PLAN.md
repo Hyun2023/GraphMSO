@@ -261,36 +261,36 @@ Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
 
 완료:
 
-- tree decomposition 구조를 정의했다. 구현: `GraphMSO/decomp.lean`의
-  `TreeDecomposition G`.
-  - decomposition node type `Node`.
-  - decomposition tree `tree : SimpleGraph Node`.
-  - tree condition `isTree : tree.IsTree`.
-  - bag : `Node -> Finset V`.
-  - vertex coverage: `vertex_mem`.
-  - edge coverage: `edge_mem`.
-  - running intersection property: 각 `v : V`에 대해
-    `tree.induce {t : Node | v ∈ bag t}`가 connected.
-- bag membership helper를 정의했다. 구현: `bagsContaining`, `bagsContainingTree`,
-  `bagsContainingTree_connected`.
-- width bound API를 정의했다. 구현: `bagWidth`, `WidthAtMost`,
-  `HasTreewidthAtMost`.
+- decomposition tree와 tree decomposition predicate를 정의했다. 구현:
+  `GraphMSO/decomp.lean`의 `DecompositionTree V`, `TreeDecomposition G T`.
+  - tree node constructor: `DecompositionTree.node bag arity child`.
+  - bag type: `Set V`.
+  - finite bag condition: `T.BagsFinite`.
+  - vertex coverage: `T.ContainsVertex v`.
+  - edge coverage: `T.ContainsEdge u v`.
+  - running intersection property: 각 `v : V`에 대해 recursive certificate
+    `T.RunningIntersectionAt v`.
+- tree recursion helper와 inductive predicate를 정의했다. 구현: `rootBag`, `arity`,
+  `child`, `ContainsVertex`, `ContainsEdge`, `AllBags`, `BagsFinite`,
+  `RunningIntersection`, `WidthAtMost`.
+- treewidth bound API를 정의했다. 구현: `HasTreewidthAtMost`.
 - finite graph에 대한 one-bag decomposition 예제를 추가했다. 구현:
-  `singleBag`, `singleBag_widthAtMost_card`, `hasTreewidthAtMost_card`.
+  `singleBag`, `singleBag_decomposition`, `singleBag_widthAtMost_card`,
+  `hasTreewidthAtMost_card`.
 - `lake build`가 통과한다.
 
 남은 작업:
 
-- 필요한 경우 finite node set 위에서 실제 `width`를 maximum bag size로 계산하는 API를
-  추가한다. 현재는 `D.WidthAtMost k` 형태의 bound predicate를 우선 사용한다.
+- 필요한 경우 실제 `width`를 maximum bag size로 계산하는 API를 추가한다.
+  현재는 `T.WidthAtMost k` 형태의 bound predicate를 우선 사용한다.
 - 대표적인 작은 그래프(path, cycle 등)의 decomposition 예제를 추가한다.
 - nice tree decomposition을 정의하거나 기존 decomposition을 nice form으로 변환하는 정리를 검토한다.
 - mathlib의 graph/tree/path/connectivity API를 최대한 재사용한다.
 
 완료 기준:
 
-- `TreeDecomposition G`와 `width <= k`를 표현할 수 있다. 완료:
-  `TreeDecomposition G`, `D.WidthAtMost k`, `HasTreewidthAtMost G k`.
+- `TreeDecomposition G T`와 `width <= k`를 표현할 수 있다. 완료:
+  `TreeDecomposition G T`, `T.WidthAtMost k`, `HasTreewidthAtMost G k`.
 - 대표적인 작은 그래프의 decomposition 예제가 컴파일된다. 부분 완료:
   finite graph의 `singleBag` decomposition은 컴파일되며, 더 구체적인 작은 그래프 예제는 남았다.
 

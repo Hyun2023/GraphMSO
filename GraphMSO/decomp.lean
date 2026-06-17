@@ -1,5 +1,5 @@
-import Mathlib.Combinatorics.SimpleGraph.Acyclic
-import Mathlib.Data.Finset.Card
+import Mathlib.Combinatorics.SimpleGraph.Basic
+import Mathlib.Data.Set.Card
 import Mathlib.Data.Fintype.Basic
 
 namespace GraphMSO
@@ -7,88 +7,145 @@ namespace GraphMSO
 universe u
 
 /--
-A tree decomposition of a graph `G`.
+An inductive rooted tree whose nodes carry bags of graph vertices.
 
-The decomposition tree is represented as a `SimpleGraph` on the node type `Node`.
-Each node carries a finite bag of vertices of `G`.
+A leaf is represented as `node bag 0 ...`, so there is only one constructor and
+no duplicate leaf/nonleaf encoding.
 -/
-structure TreeDecomposition {V : Type u} (G : SimpleGraph V) where
-  /-- Nodes of the decomposition tree. -/
-  Node : Type u
-  /-- The tree structure on decomposition nodes. -/
-  tree : SimpleGraph Node
-  /-- The decomposition graph is a tree. -/
-  isTree : tree.IsTree
-  /-- The bag attached to each decomposition node. -/
-  bag : Node -> Finset V
-  /-- Every graph vertex appears in some bag. -/
-  vertex_mem : forall v : V, Exists fun t : Node => Membership.mem (bag t) v
-  /-- Every graph edge has both endpoints together in some bag. -/
-  edge_mem :
-    forall {u v : V}, G.Adj u v ->
-      Exists fun t : Node => Membership.mem (bag t) u /\ Membership.mem (bag t) v
-  /-- For each graph vertex, the nodes whose bags contain it form a connected subtree. -/
-  running_intersection :
-    forall v : V, (tree.induce {t : Node | Membership.mem (bag t) v}).Connected
+inductive DecompositionTree (V : Type u) : Type u where
+  | node (bag : Set V) (arity : Nat) (child : Fin arity -> DecompositionTree V) :
+      DecompositionTree V
+
+namespace DecompositionTree
+
+variable {V : Type u}
+
+/-- The bag attached to the root. -/
+def rootBag : DecompositionTree V -> Set V
+  | .node bag _ _ => bag
+
+/-- The number of children of the root. -/
+def arity : DecompositionTree V -> Nat
+  | .node _ arity _ => arity
+
+/-- The `i`th child subtree. -/
+def child : (T : DecompositionTree V) -> Fin (arity T) -> DecompositionTree V
+  | .node _ _ child, i => child i
+
+/-- A one-node tree. -/
+def leaf (bag : Set V) : DecompositionTree V :=
+  .node bag 0 (fun i => Fin.elim0 i)
+
+/-- The tree contains `v` in at least one bag. -/
+inductive ContainsVertex : DecompositionTree V -> V -> Prop
+  | root (bag : Set V) arity child v (hv : v ∈ bag) :
+      ContainsVertex (DecompositionTree.node bag arity child) v
+  | child (bag : Set V) arity child v (i : Fin arity)
+      (hchild : ContainsVertex (child i) v) :
+      ContainsVertex (DecompositionTree.node bag arity child) v
+
+/-- The tree contains `u` and `v` together in at least one bag. -/
+inductive ContainsEdge : DecompositionTree V -> V -> V -> Prop
+  | root (bag : Set V) arity child u v (hu : u ∈ bag) (hv : v ∈ bag) :
+      ContainsEdge (DecompositionTree.node bag arity child) u v
+  | child (bag : Set V) arity child u v (i : Fin arity)
+      (hchild : ContainsEdge (child i) u v) :
+      ContainsEdge (DecompositionTree.node bag arity child) u v
+
+/-- Every bag in the tree satisfies `P`. -/
+inductive AllBags (P : Set V -> Prop) : DecompositionTree V -> Prop
+  | node (bag : Set V) arity child (hroot : P bag)
+      (hchild : forall i : Fin arity, AllBags P (child i)) :
+      AllBags P (DecompositionTree.node bag arity child)
+
+/-- Every bag in the tree is finite. -/
+def BagsFinite (T : DecompositionTree V) : Prop :=
+  T.AllBags Set.Finite
+
+/--
+For one graph vertex `v`, the bags containing `v` form a connected rooted subtree.
+
+Inductively, every child satisfies the property; if the root bag contains `v`,
+then every child branch containing `v` starts with a child root bag containing
+`v`; and if the root bag does not contain `v`, then at most one child branch can
+contain `v`.
+-/
+inductive RunningIntersectionAt : DecompositionTree V -> V -> Prop
+  | node (bag : Set V) arity child v
+      (hchild : forall i : Fin arity, RunningIntersectionAt (child i) v)
+      (hroot : v ∈ bag ->
+        forall i : Fin arity, ContainsVertex (child i) v -> v ∈ rootBag (child i))
+      (hunique : v ∉ bag ->
+        forall i j : Fin arity, ContainsVertex (child i) v -> ContainsVertex (child j) v ->
+          i = j) :
+      RunningIntersectionAt (DecompositionTree.node bag arity child) v
+
+/-- The running-intersection property for all graph vertices. -/
+def RunningIntersection (T : DecompositionTree V) : Prop :=
+  forall v : V, T.RunningIntersectionAt v
+
+/--
+`T.WidthAtMost k` means that every bag of `T` has at most `k + 1` vertices.
+This is the usual `width(T) <= k` condition, phrased without taking a maximum.
+-/
+def WidthAtMost (T : DecompositionTree V) (k : Nat) : Prop :=
+  T.AllBags (fun bag => bag.ncard <= k + 1)
+
+end DecompositionTree
+
+/--
+`TreeDecomposition G T` means that the inductive tree `T` is a valid tree
+decomposition of the graph `G`.
+-/
+inductive TreeDecomposition {V : Type u} (G : SimpleGraph V) : DecompositionTree V -> Prop where
+  | mk (T : DecompositionTree V)
+      (finite_bags : T.BagsFinite)
+      (vertex_mem : forall v : V, T.ContainsVertex v)
+      (edge_mem : forall {u v : V}, G.Adj u v -> T.ContainsEdge u v)
+      (running_intersection : T.RunningIntersection) :
+      TreeDecomposition G T
 
 namespace TreeDecomposition
 
 variable {V : Type u} {G : SimpleGraph V}
 
-/-- The decomposition-tree nodes whose bags contain the graph vertex `v`. -/
-def bagsContaining (D : TreeDecomposition G) (v : V) : Set D.Node :=
-  {t : D.Node | Membership.mem (D.bag t) v}
-
-/-- The induced subtree on the bags containing `v`. -/
-def bagsContainingTree (D : TreeDecomposition G) (v : V) : SimpleGraph (D.bagsContaining v) :=
-  D.tree.induce (D.bagsContaining v)
-
-theorem bagsContainingTree_connected (D : TreeDecomposition G) (v : V) :
-    (D.bagsContainingTree v).Connected := by
-  simpa [bagsContainingTree, bagsContaining] using D.running_intersection v
-
-/-- The local width contribution of one bag, namely `|bag| - 1`. -/
-def bagWidth (D : TreeDecomposition G) (t : D.Node) : Nat :=
-  (D.bag t).card - 1
-
-/--
-`D.WidthAtMost k` means that every bag has at most `k + 1` vertices.
-This is the usual `width(D) <= k` condition, phrased without taking a maximum.
--/
-def WidthAtMost (D : TreeDecomposition G) (k : Nat) : Prop :=
-  forall t : D.Node, (D.bag t).card <= k + 1
-
 /-- The graph `G` admits a tree decomposition of width at most `k`. -/
 def HasTreewidthAtMost (G : SimpleGraph V) (k : Nat) : Prop :=
-  Exists fun D : TreeDecomposition G => D.WidthAtMost k
+  Exists fun T : DecompositionTree V => TreeDecomposition G T ∧ T.WidthAtMost k
 
-/-- A one-node decomposition whose only bag contains all vertices of a finite graph. -/
-def singleBag (G : SimpleGraph V) [Fintype V] : TreeDecomposition G where
-  Node := PUnit
-  tree := SimpleGraph.emptyGraph PUnit
-  isTree := by
-    exact SimpleGraph.IsTree.of_subsingleton
-  bag := fun _ => Finset.univ
-  vertex_mem := by
-    intro v
-    exact Exists.intro PUnit.unit (by simp)
-  edge_mem := by
-    intro u v _
-    exact Exists.intro PUnit.unit (by simp)
-  running_intersection := by
-    intro v
-    haveI : Nonempty {t : PUnit | Membership.mem (Finset.univ : Finset V) v} :=
-      Nonempty.intro (Subtype.mk PUnit.unit (by simp))
-    exact SimpleGraph.Connected.of_subsingleton
+/-- A one-node decomposition tree whose only bag contains all vertices of a finite graph. -/
+def singleBag (_G : SimpleGraph V) [Fintype V] : DecompositionTree V :=
+  DecompositionTree.leaf Set.univ
+
+/-- The one-bag tree is a valid decomposition of any finite graph. -/
+theorem singleBag_decomposition (G : SimpleGraph V) [Fintype V] :
+    TreeDecomposition G (singleBag G) := by
+  exact TreeDecomposition.mk (singleBag G)
+    (DecompositionTree.AllBags.node (bag := Set.univ) (arity := 0)
+      (child := fun i => Fin.elim0 i) (by simp) (fun i => Fin.elim0 i))
+    (by
+      intro v
+      exact DecompositionTree.ContainsVertex.root Set.univ 0 (fun i => Fin.elim0 i) v
+        (by simp))
+    (by
+      intro u v _
+      exact DecompositionTree.ContainsEdge.root Set.univ 0 (fun i => Fin.elim0 i) u v
+        (by simp) (by simp))
+    (by
+      intro v
+      exact DecompositionTree.RunningIntersectionAt.node Set.univ 0 (fun i => Fin.elim0 i) v
+        (fun i => Fin.elim0 i)
+        (by intro _ i; exact Fin.elim0 i)
+        (by intro _ i; exact Fin.elim0 i))
 
 theorem singleBag_widthAtMost_card (G : SimpleGraph V) [Fintype V] :
     (singleBag G).WidthAtMost (Fintype.card V) := by
-  intro t
-  simp [singleBag]
+  exact DecompositionTree.AllBags.node (bag := Set.univ) (arity := 0)
+    (child := fun i => Fin.elim0 i) (by simp) (fun i => Fin.elim0 i)
 
 theorem hasTreewidthAtMost_card (G : SimpleGraph V) [Fintype V] :
     HasTreewidthAtMost G (Fintype.card V) :=
-  Exists.intro (singleBag G) (singleBag_widthAtMost_card G)
+  Exists.intro (singleBag G) ⟨singleBag_decomposition G, singleBag_widthAtMost_card G⟩
 
 end TreeDecomposition
 
