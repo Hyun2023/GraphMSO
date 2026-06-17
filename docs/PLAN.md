@@ -259,22 +259,40 @@ model checker가 필요하다. 핵심 기준은 다음과 같다.
 
 Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
 
+완료:
+
+- tree decomposition 구조를 정의했다. 구현: `GraphMSO/decomp.lean`의
+  `TreeDecomposition G`.
+  - decomposition node type `Node`.
+  - decomposition tree `tree : SimpleGraph Node`.
+  - tree condition `isTree : tree.IsTree`.
+  - bag : `Node -> Finset V`.
+  - vertex coverage: `vertex_mem`.
+  - edge coverage: `edge_mem`.
+  - running intersection property: 각 `v : V`에 대해
+    `tree.induce {t : Node | v ∈ bag t}`가 connected.
+- bag membership helper를 정의했다. 구현: `bagsContaining`, `bagsContainingTree`,
+  `bagsContainingTree_connected`.
+- width bound API를 정의했다. 구현: `bagWidth`, `WidthAtMost`,
+  `HasTreewidthAtMost`.
+- finite graph에 대한 one-bag decomposition 예제를 추가했다. 구현:
+  `singleBag`, `singleBag_widthAtMost_card`, `hasTreewidthAtMost_card`.
+- `lake build`가 통과한다.
+
 남은 작업:
 
-- tree decomposition 구조를 정의한다.
-  - decomposition tree.
-  - bag : node -> Finset V 또는 Set V.
-  - vertex coverage.
-  - edge coverage.
-  - running intersection property.
-- width와 treewidth bound를 정의한다.
+- 필요한 경우 finite node set 위에서 실제 `width`를 maximum bag size로 계산하는 API를
+  추가한다. 현재는 `D.WidthAtMost k` 형태의 bound predicate를 우선 사용한다.
+- 대표적인 작은 그래프(path, cycle 등)의 decomposition 예제를 추가한다.
 - nice tree decomposition을 정의하거나 기존 decomposition을 nice form으로 변환하는 정리를 검토한다.
 - mathlib의 graph/tree/path/connectivity API를 최대한 재사용한다.
 
 완료 기준:
 
-- `TreeDecomposition G`와 `width <= k`를 표현할 수 있다.
-- 대표적인 작은 그래프의 decomposition 예제가 컴파일된다.
+- `TreeDecomposition G`와 `width <= k`를 표현할 수 있다. 완료:
+  `TreeDecomposition G`, `D.WidthAtMost k`, `HasTreewidthAtMost G k`.
+- 대표적인 작은 그래프의 decomposition 예제가 컴파일된다. 부분 완료:
+  finite graph의 `singleBag` decomposition은 컴파일되며, 더 구체적인 작은 그래프 예제는 남았다.
 
 ## 6단계: bounded treewidth 위 MSO model checking
 
@@ -338,6 +356,6 @@ Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
 1. finite executable evaluator와 `SatisfiesAt` correctness theorem을 만든다.
 2. 닫힌 공식용 executable wrapper와 `Satisfies` correctness theorem을 만든다.
 3. 필요하면 finite evaluator용 computable free-variable support를 추가한다.
-4. tree decomposition과 treewidth API를 설계한다.
+4. tree decomposition 예제를 확장하고, 필요하면 finite-node `width` API를 추가한다.
 5. nice decomposition 위 model checking dynamic programming을 형식화한다.
 6. Courcelle theorem statement를 약한 형태부터 세운다.
