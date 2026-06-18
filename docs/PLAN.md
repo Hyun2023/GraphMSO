@@ -164,25 +164,30 @@ substitution, alpha-equivalence 정리는 formula normalization이나 user-facin
 
 - 목표: clique MSO 공식과 mathlib의 clique 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `Examples.clique`와 `Examples.eval_clique_iff`.
-- 목표: independent set MSO 공식과 `SimpleGraph` 술어를 연결한다. 구현:
-  `GraphMSO/Examples.lean`의 `SimpleGraph.IsIndependent`, `Examples.independent`,
-  `Examples.eval_independent_iff`.
+- 목표: independent set MSO 공식과 mathlib의 `SimpleGraph.IsIndepSet`를 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `Examples.independent`와 `Examples.eval_independent_iff`.
+  (기존 local `SimpleGraph.IsIndependent`는 제거했다.)
 - 목표: dominating set MSO 공식과 `SimpleGraph` 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `SimpleGraph.IsDominating`, `Examples.dominating`,
   `Examples.eval_dominating_iff`.
-- 목표: vertex cover MSO2 공식과 edge 기반 `SimpleGraph` 술어를 연결한다. 구현:
-  `GraphMSO/Examples.lean`의 `SimpleGraph.IsVertexCover`, `Examples.vertexCover`,
-  `Examples.eval_vertexCover_iff`.
-- 목표: bipartite MSO2 공식과 edge 기반 `SimpleGraph` 술어를 연결한다. 구현:
-  `GraphMSO/Examples.lean`의 `SimpleGraph.IsBipartiteByEdges`, `Examples.bipartite`,
-  `Examples.eval_bipartite_iff`.
+- 목표: vertex cover MSO2 공식과 mathlib의 `SimpleGraph.IsVertexCover`를 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `Examples.vertexCover`, `Examples.eval_vertexCover_iff`,
+  그리고 edge 기반 특성화 보조정리 `SimpleGraph.isVertexCover_iff_forall_edge`.
+  (동명의 local 중복 정의는 제거했다.)
+- 목표: bipartite MSO2 공식과 mathlib의 `SimpleGraph.IsBipartite`를 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `Examples.bipartite`, `Examples.eval_bipartite_iff`,
+  그리고 edge 기반 특성화 보조정리 `SimpleGraph.isBipartite_iff_forall_edge`.
+  (기존 local `SimpleGraph.IsBipartiteByEdges`는 제거했다.)
 
 남은 작업:
 
 - mathlib에 이미 있는 정의와 프로젝트-local 정의를 구분하고 이름을 정리한다.
+  (independent/vertex cover/bipartite는 mathlib 정의로 연결 완료. dominating은 mathlib에
+  대응이 없어 local `SimpleGraph.IsDominating`를 유지한다.)
 - fixed `k` coloring, connectedness, disconnectedness 공식을 추가한다.
 - MSO2가 필요한 spanning tree, Hamiltonian cycle, minor 관련 인코딩을 추가한다.
-- `perfectMatching` 공식의 `SimpleGraph.HasPerfectMatching` 정확성 정리를 추가한다.
+- `perfectMatching` 공식을 mathlib `SimpleGraph.Subgraph.IsPerfectMatching`와 연결하는
+  정확성 정리를 추가하고, 현재 미사용인 local 정의 `SimpleGraph.HasPerfectMatching`를 제거한다.
 
 완료 기준:
 
