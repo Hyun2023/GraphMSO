@@ -1,31 +1,67 @@
 import Mathlib.Combinatorics.SimpleGraph.Clique
+import Mathlib.Combinatorics.SimpleGraph.VertexCover
+import Mathlib.Combinatorics.SimpleGraph.Bipartite
 import GraphMSO.Semantics
 
 namespace SimpleGraph
 
 variable {V : Type} (G : SimpleGraph V)
 
-/-- A vertex set is independent if no two distinct vertices in it are adjacent. -/
-def IsIndependent (S : Set V) : Prop :=
-  ∀ u v : V, u ∈ S -> v ∈ S -> u ≠ v -> ¬ G.Adj u v
-
 /-- A vertex set dominates the graph if every vertex is in it or adjacent to one of it. -/
 def IsDominating (S : Set V) : Prop :=
   ∀ v : V, v ∈ S ∨ ∃ u : V, u ∈ S ∧ G.Adj u v
 
-/-- A vertex set covers all edges if every edge has an endpoint in it. -/
-def IsVertexCover (S : Set V) : Prop :=
-  ∀ e : G.edgeSet, ∃ v : V, v ∈ S ∧ v ∈ (e : Sym2 V)
-
-/-- Edge-based bipartiteness, phrased to match the MSO2 formula directly. -/
-def IsBipartiteByEdges : Prop :=
-  ∃ S : Set V,
-    ∀ e : G.edgeSet, ∃ u v : V,
-      u ∈ S ∧ v ∉ S ∧ u ∈ (e : Sym2 V) ∧ v ∈ (e : Sym2 V)
-
 /-- A perfect matching is an edge set incident to each vertex at exactly one edge. -/
 def HasPerfectMatching (M : Set G.edgeSet) : Prop :=
   ∀ v : V, ∃! e : G.edgeSet, e ∈ M ∧ v ∈ (e : Sym2 V)
+
+/-- A set covers all edges (`IsVertexCover`) iff, ranging over `G.edgeSet`, every
+edge has an endpoint in it. This bridges the adjacency-based mathlib definition and
+the incidence view used by MSO2 edge quantifiers. -/
+theorem isVertexCover_iff_forall_edge (S : Set V) :
+    G.IsVertexCover S ↔ ∀ e : G.edgeSet, ∃ v : V, v ∈ S ∧ v ∈ (e : Sym2 V) := by
+  unfold SimpleGraph.IsVertexCover
+  constructor
+  · rintro h ⟨e, he⟩
+    induction e using Sym2.ind with
+    | _ a b =>
+      rcases h (G.mem_edgeSet.mp he) with ha | hb
+      · exact ⟨a, ha, Sym2.mem_iff.mpr (Or.inl rfl)⟩
+      · exact ⟨b, hb, Sym2.mem_iff.mpr (Or.inr rfl)⟩
+  · intro h v w hvw
+    obtain ⟨u, huS, hu⟩ := h ⟨s(v, w), G.mem_edgeSet.mpr hvw⟩
+    rcases Sym2.mem_iff.mp hu with rfl | rfl
+    · exact Or.inl huS
+    · exact Or.inr huS
+
+/-- A graph is bipartite (`IsBipartite`) iff there is a set `S` of vertices such that,
+ranging over `G.edgeSet`, every edge has one endpoint in `S` and one outside it. The
+witnessing parts are `S` and its complement. -/
+theorem isBipartite_iff_forall_edge :
+    G.IsBipartite ↔
+      ∃ S : Set V, ∀ e : G.edgeSet, ∃ u v : V,
+        u ∈ S ∧ v ∉ S ∧ u ∈ (e : Sym2 V) ∧ v ∈ (e : Sym2 V) := by
+  rw [SimpleGraph.isBipartite_iff_exists_isBipartiteWith]
+  constructor
+  · rintro ⟨s, t, hdisj, hadj⟩
+    refine ⟨s, ?_⟩
+    rintro ⟨e, he⟩
+    induction e using Sym2.ind with
+    | _ a b =>
+      rcases hadj (G.mem_edgeSet.mp he) with ⟨ha, hb⟩ | ⟨ha, hb⟩
+      · exact ⟨a, b, ha, Set.disjoint_right.mp hdisj hb,
+          Sym2.mem_iff.mpr (Or.inl rfl), Sym2.mem_iff.mpr (Or.inr rfl)⟩
+      · exact ⟨b, a, hb, Set.disjoint_right.mp hdisj ha,
+          Sym2.mem_iff.mpr (Or.inr rfl), Sym2.mem_iff.mpr (Or.inl rfl)⟩
+  · rintro ⟨S, h⟩
+    refine ⟨S, Sᶜ, disjoint_compl_right, ?_⟩
+    intro v w hvw
+    obtain ⟨u, u', huS, hu'notS, hu, hu'⟩ := h ⟨s(v, w), G.mem_edgeSet.mpr hvw⟩
+    rcases Sym2.mem_iff.mp hu with rfl | rfl <;> rcases Sym2.mem_iff.mp hu' with rfl | rfl
+    · exact absurd huS hu'notS
+    · exact Or.inl ⟨huS, hu'notS⟩
+    · exact Or.inr ⟨hu'notS, huS⟩
+    · exact absurd huS hu'notS
 
 end SimpleGraph
 
@@ -83,16 +119,16 @@ theorem eval_clique_iff {V : Type} (G : SimpleGraph V)
 
 theorem eval_independent_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
-    EvalAt (independent X) G rho ↔ G.IsIndependent (rho.so X) := by
+    EvalAt (independent X) G rho ↔ G.IsIndepSet (rho.so X) := by
   classical
-  simp [independent, SimpleGraph.IsIndependent, Formula.forallFOs, Semantics.EvalAt, x, y,
-    Assignment.updateFO]
+  simp [independent, SimpleGraph.isIndepSet_iff, Set.Pairwise, Formula.forallFOs,
+    Semantics.EvalAt, x, y, Assignment.updateFO]
   constructor
-  · intro h u v hSu hSv hne hAdj
+  · intro h u hSu v hSv hne hAdj
     exact hne (h u v hSu hSv hAdj)
   · intro h u v hSu hSv hAdj
     by_contra hne
-    exact h u v hSu hSv hne hAdj
+    exact h hSu hSv hne hAdj
 
 theorem eval_dominating_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
@@ -143,8 +179,9 @@ def vertexCover (X : SOVar) : Formula :=
 theorem eval_vertexCover_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
     EvalAt (vertexCover X) G rho ↔ G.IsVertexCover (rho.so X) := by
-  simp [vertexCover, SimpleGraph.IsVertexCover, Semantics.EvalAt, x, e0,
-    Assignment.updateFO, Assignment.updateEdgeFO]
+  rw [G.isVertexCover_iff_forall_edge]
+  simp only [vertexCover, Semantics.EvalAt, x, e0, Assignment.updateFO, Assignment.updateEdgeFO,
+    if_true]
 
 def bipartite : Formula :=
   existsSO X (forallEdgeFO e0 (existsFO x (existsFO y
@@ -152,8 +189,9 @@ def bipartite : Formula :=
 
 theorem eval_bipartite_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    EvalAt bipartite G rho ↔ G.IsBipartiteByEdges := by
-  simp [bipartite, SimpleGraph.IsBipartiteByEdges, Semantics.EvalAt, X, e0, x, y,
+    EvalAt bipartite G rho ↔ G.IsBipartite := by
+  rw [G.isBipartite_iff_forall_edge]
+  simp [bipartite, Semantics.EvalAt, X, e0, x, y,
     Assignment.updateSO, Assignment.updateFO, Assignment.updateEdgeFO]
 
 /-- A two-vertex type for smoke-test examples. -/
