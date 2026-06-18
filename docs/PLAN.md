@@ -42,7 +42,8 @@ compatibility layer는 유지하지 않는다.
     예제 공식이 있다.
   - 자유 변수가 있는 공식의 정확성 정리는 `EvalAt`으로 서술한다.
   - `eval_clique_iff`, `eval_independent_iff`, `eval_dominating_iff`,
-    `eval_vertexCover_iff`, `eval_bipartite_iff`가 `SimpleGraph` 위에서 컴파일된다.
+    `eval_vertexCover_iff`, `eval_bipartite_iff`, `eval_perfectMatching_iff`가
+    `SimpleGraph` 위에서 컴파일된다.
 
 ## 빌드 원칙
 
@@ -178,6 +179,13 @@ substitution, alpha-equivalence 정리는 formula normalization이나 user-facin
   `GraphMSO/Examples.lean`의 `Examples.bipartite`, `Examples.eval_bipartite_iff`,
   그리고 edge 기반 특성화 보조정리 `SimpleGraph.isBipartite_iff_forall_edge`.
   (기존 local `SimpleGraph.IsBipartiteByEdges`는 제거했다.)
+- 목표: perfect matching MSO2 공식과 mathlib의 `SimpleGraph.Subgraph.IsPerfectMatching`를
+  연결한다. 구현: `GraphMSO/Examples.lean`의 `Examples.perfectMatching`와
+  `Examples.eval_perfectMatching_iff`. 간선 집합이 만드는 spanning subgraph 구성
+  `SimpleGraph.spanningSubgraphOfEdges`와 그 특성화 보조정리
+  `SimpleGraph.isPerfectMatching_spanningSubgraphOfEdges_iff`, 그리고 `isLoop`가 `G.edgeSet`에서
+  거짓임을 보이는 보조정리 `Examples.evalAt_isLoop_false`를 사용한다.
+  (미사용 local 정의 `SimpleGraph.HasPerfectMatching`는 제거했다.)
 
 남은 작업:
 
@@ -186,8 +194,6 @@ substitution, alpha-equivalence 정리는 formula normalization이나 user-facin
   대응이 없어 local `SimpleGraph.IsDominating`를 유지한다.)
 - fixed `k` coloring, connectedness, disconnectedness 공식을 추가한다.
 - MSO2가 필요한 spanning tree, Hamiltonian cycle, minor 관련 인코딩을 추가한다.
-- `perfectMatching` 공식을 mathlib `SimpleGraph.Subgraph.IsPerfectMatching`와 연결하는
-  정확성 정리를 추가하고, 현재 미사용인 local 정의 `SimpleGraph.HasPerfectMatching`를 제거한다.
 
 완료 기준:
 

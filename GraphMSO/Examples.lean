@@ -1,6 +1,7 @@
 import Mathlib.Combinatorics.SimpleGraph.Clique
 import Mathlib.Combinatorics.SimpleGraph.VertexCover
 import Mathlib.Combinatorics.SimpleGraph.Bipartite
+import Mathlib.Combinatorics.SimpleGraph.Matching
 import GraphMSO.Semantics
 
 namespace SimpleGraph
@@ -10,10 +11,6 @@ variable {V : Type} (G : SimpleGraph V)
 /-- A vertex set dominates the graph if every vertex is in it or adjacent to one of it. -/
 def IsDominating (S : Set V) : Prop :=
   ∀ v : V, v ∈ S ∨ ∃ u : V, u ∈ S ∧ G.Adj u v
-
-/-- A perfect matching is an edge set incident to each vertex at exactly one edge. -/
-def HasPerfectMatching (M : Set G.edgeSet) : Prop :=
-  ∀ v : V, ∃! e : G.edgeSet, e ∈ M ∧ v ∈ (e : Sym2 V)
 
 /-- A set covers all edges (`IsVertexCover`) iff, ranging over `G.edgeSet`, every
 edge has an endpoint in it. This bridges the adjacency-based mathlib definition and
@@ -62,6 +59,54 @@ theorem isBipartite_iff_forall_edge :
     · exact Or.inl ⟨huS, hu'notS⟩
     · exact Or.inr ⟨hu'notS, huS⟩
     · exact absurd huS hu'notS
+
+/-- The spanning subgraph of `G` whose edges are exactly the set `S ⊆ G.edgeSet`:
+every vertex is kept, and `v, w` are adjacent precisely when the edge `s(v, w)`
+belongs to `S`. -/
+def spanningSubgraphOfEdges (S : Set G.edgeSet) : G.Subgraph where
+  verts := Set.univ
+  Adj v w := s(v, w) ∈ Subtype.val '' S
+  adj_sub := by
+    rintro v w ⟨e, -, he⟩
+    exact G.mem_edgeSet.mp (he ▸ e.2)
+  edge_vert := by intro v w _; exact Set.mem_univ v
+  symm := by
+    intro v w h
+    rwa [Sym2.eq_swap]
+
+@[simp]
+theorem spanningSubgraphOfEdges_adj (S : Set G.edgeSet) (v w : V) :
+    (G.spanningSubgraphOfEdges S).Adj v w ↔ s(v, w) ∈ Subtype.val '' S :=
+  Iff.rfl
+
+/-- The spanning subgraph carved out by an edge set `S` is a perfect matching iff,
+ranging over `G.edgeSet`, every vertex is incident to exactly one edge of `S`. This
+bridges mathlib's subgraph-based `IsPerfectMatching` and the incidence view used by
+the MSO2 perfect-matching formula. -/
+theorem isPerfectMatching_spanningSubgraphOfEdges_iff (S : Set G.edgeSet) :
+    (G.spanningSubgraphOfEdges S).IsPerfectMatching ↔
+      ∀ v : V, ∃! e : G.edgeSet, e ∈ S ∧ v ∈ (e : Sym2 V) := by
+  rw [Subgraph.isPerfectMatching_iff]
+  refine forall_congr' fun v => ?_
+  simp only [spanningSubgraphOfEdges_adj]
+  constructor
+  · rintro ⟨w, hw, huniq⟩
+    obtain ⟨e, heS, he⟩ := hw
+    have hve : v ∈ (e : Sym2 V) := by rw [he]; exact Sym2.mem_iff.mpr (Or.inl rfl)
+    refine ⟨e, ⟨heS, hve⟩, ?_⟩
+    rintro e' ⟨he'S, hve'⟩
+    have hspec : s(v, Sym2.Mem.other hve') = (e' : Sym2 V) := Sym2.other_spec hve'
+    have hwoth : Sym2.Mem.other hve' = w := huniq _ ⟨e', he'S, hspec.symm⟩
+    apply Subtype.ext
+    rw [← hspec, hwoth, he]
+  · rintro ⟨e, ⟨heS, hve⟩, huniq⟩
+    have hspec : s(v, Sym2.Mem.other hve) = (e : Sym2 V) := Sym2.other_spec hve
+    refine ⟨Sym2.Mem.other hve, ⟨e, heS, hspec.symm⟩, ?_⟩
+    rintro w' ⟨e', he'S, he'⟩
+    have hve' : v ∈ (e' : Sym2 V) := by rw [he']; exact Sym2.mem_iff.mpr (Or.inl rfl)
+    have hee : e' = e := huniq e' ⟨he'S, hve'⟩
+    rw [hee] at he'
+    exact (Sym2.congr_right.mp (hspec.trans he')).symm
 
 end SimpleGraph
 
@@ -172,6 +217,26 @@ def uniqueIncEdgeIn (v : FOVar) (M : EdgeSOVar) : Formula :=
 def perfectMatching (M : EdgeSOVar) : Formula :=
   conj (forallEdgeFO e0 (impl (inEdgeSet e0 M) (neg (isLoop e0))))
        (forallFO x (uniqueIncEdgeIn x M))
+
+theorem evalAt_isLoop_false {V : Type} (e : EdgeFOVar) (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) : ¬ EvalAt (isLoop e) G rho := by
+  simp [isLoop, Semantics.EvalAt, y, z]
+  obtain ⟨ed, hed⟩ := rho.efo e
+  induction ed using Sym2.ind with
+  | _ a b =>
+    have hne : a ≠ b := (G.mem_edgeSet.mp hed).ne
+    intro x hx
+    rcases Sym2.mem_iff.mp hx with rfl | rfl
+    · exact ⟨b, Sym2.mem_iff.mpr (Or.inr rfl), fun h => hne h.symm⟩
+    · exact ⟨a, Sym2.mem_iff.mpr (Or.inl rfl), fun h => hne h⟩
+
+theorem eval_perfectMatching_iff {V : Type} (G : SimpleGraph V)
+    (rho : Assignment V G.edgeSet) (M : EdgeSOVar) :
+    EvalAt (perfectMatching M) G rho ↔
+      (G.spanningSubgraphOfEdges (rho.eso M)).IsPerfectMatching := by
+  rw [SimpleGraph.isPerfectMatching_spanningSubgraphOfEdges_iff]
+  simp [perfectMatching, uniqueIncEdgeIn, Semantics.EvalAt, x, e0, e1, evalAt_isLoop_false,
+    ExistsUnique, and_assoc, -Subtype.exists]
 
 def vertexCover (X : SOVar) : Formula :=
   forallEdgeFO e0 (existsFO x (conj (inSet x X) (inc x e0)))
