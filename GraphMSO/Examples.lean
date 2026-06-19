@@ -3,6 +3,7 @@ import Mathlib.Combinatorics.SimpleGraph.VertexCover
 import Mathlib.Combinatorics.SimpleGraph.Bipartite
 import Mathlib.Combinatorics.SimpleGraph.Matching
 import Mathlib.Combinatorics.SimpleGraph.Coloring
+import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import GraphMSO.Semantics
 
 namespace SimpleGraph
@@ -134,6 +135,49 @@ def IsDisconnectedByPartition : Prop :=
 /-- Connectivity, defined as the negation of the partition-based disconnectedness. -/
 def IsConnectedByPartition : Prop :=
   ¬ G.IsDisconnectedByPartition
+
+/-- The partition-based disconnectedness coincides with the failure of mathlib's
+`Preconnected` (no path between some pair of vertices). The witnessing cut is the set
+of vertices reachable from one endpoint and its complement. -/
+theorem isDisconnectedByPartition_iff_not_preconnected :
+    G.IsDisconnectedByPartition ↔ ¬ G.Preconnected := by
+  constructor
+  · rintro ⟨S, T, ⟨hSne, hTne, hcover, hdisj⟩, hno⟩ hpre
+    obtain ⟨u, huS⟩ := hSne
+    obtain ⟨v, hvT⟩ := hTne
+    have hclosed : ∀ {a b : V}, a ∈ S → G.Adj a b → b ∈ S := by
+      intro a b ha hab
+      rcases hcover b with hbS | hbT
+      · exact hbS
+      · exact absurd hab (hno a b ha hbT)
+    have closure : ∀ {a b : V}, G.Walk a b → a ∈ S → b ∈ S := by
+      intro a b p
+      induction p with
+      | nil => exact fun h => h
+      | cons hadj _ ih => exact fun h => ih (hclosed h hadj)
+    obtain ⟨p⟩ := hpre u v
+    exact hdisj v (closure p huS) hvT
+  · intro hnpre
+    simp only [SimpleGraph.Preconnected, not_forall] at hnpre
+    obtain ⟨u, v, huv⟩ := hnpre
+    refine ⟨{w | G.Reachable u w}, {w | ¬ G.Reachable u w},
+      ⟨⟨u, ?_⟩, ⟨v, ?_⟩, ?_, ?_⟩, ?_⟩
+    · exact SimpleGraph.Reachable.refl u
+    · exact huv
+    · intro w
+      by_cases h : G.Reachable u w
+      · exact Or.inl h
+      · exact Or.inr h
+    · intro w hwS hwT
+      exact (hwT : ¬ G.Reachable u w) hwS
+    · intro a b haS hbT hab
+      exact (hbT : ¬ G.Reachable u b) ((haS : G.Reachable u a).trans hab.reachable)
+
+/-- Partition-based connectivity coincides with mathlib's `Preconnected`. (For nonempty
+vertex types this is `Connected`; the empty graph is vacuously `Preconnected`.) -/
+theorem isConnectedByPartition_iff_preconnected :
+    G.IsConnectedByPartition ↔ G.Preconnected := by
+  simp only [IsConnectedByPartition, isDisconnectedByPartition_iff_not_preconnected, not_not]
 
 /-- The edge set `F` has an edge crossing from `S` to `T`. -/
 def HasCrossingEdgeIn (F : Set G.edgeSet) (S T : Set V) : Prop :=
@@ -561,7 +605,8 @@ theorem satisfiesAt_dominating_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_disconnected_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    SatisfiesAt disconnected G rho ↔ G.IsDisconnectedByPartition := by
+    SatisfiesAt disconnected G rho ↔ ¬ G.Preconnected := by
+  rw [← G.isDisconnectedByPartition_iff_not_preconnected]
   simp [disconnected, nontrivialPartition, nonemptySet, coverAll, disjointSets, noEdgesBetween,
     SimpleGraph.IsDisconnectedByPartition, SimpleGraph.IsNontrivialPartition,
     SimpleGraph.HasNoEdgesBetween,
@@ -570,8 +615,8 @@ theorem satisfiesAt_disconnected_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_connected_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    SatisfiesAt connected G rho ↔ G.IsConnectedByPartition := by
-  simpa [connected, SimpleGraph.IsConnectedByPartition, Semantics.SatisfiesAt]
+    SatisfiesAt connected G rho ↔ G.Preconnected := by
+  simpa [connected, Semantics.SatisfiesAt, not_not]
     using not_congr (satisfiesAt_disconnected_iff G rho)
 
 theorem satisfiesAt_inSomeColor_iff {V : Type} (G : SimpleGraph V)

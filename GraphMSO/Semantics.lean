@@ -174,6 +174,86 @@ def AgreeOnFree (rho : Assignment V E) (phi : Formula) (sigma : Assignment V E) 
   (∀ e, Formula.FreeEdgeFO phi e -> rho.efo e = sigma.efo e) ∧
   (∀ E_var, Formula.FreeEdgeSO phi E_var -> rho.eso E_var = sigma.eso E_var)
 
+/-- `AgreeOnFree` is antitone in the formula's free variables: agreeing on a formula
+whose free variables contain those of `phi` implies agreeing on `phi`. -/
+theorem AgreeOnFree.mono {rho sigma : Assignment V E} {phi psi : Formula}
+    (hfo : ∀ x, Formula.FreeFO phi x -> Formula.FreeFO psi x)
+    (hso : ∀ X, Formula.FreeSO phi X -> Formula.FreeSO psi X)
+    (hefo : ∀ e, Formula.FreeEdgeFO phi e -> Formula.FreeEdgeFO psi e)
+    (heso : ∀ E, Formula.FreeEdgeSO phi E -> Formula.FreeEdgeSO psi E)
+    (h : rho.AgreeOnFree psi sigma) : rho.AgreeOnFree phi sigma :=
+  ⟨fun x hx => h.1 x (hfo x hx), fun X hX => h.2.1 X (hso X hX),
+   fun e he => h.2.2.1 e (hefo e he), fun E hE => h.2.2.2 E (heso E hE)⟩
+
+/-- Updating both assignments at the same first-order variable preserves agreement on
+the body of a quantifier. -/
+theorem AgreeOnFree.updateFO {rho sigma : Assignment V E} {x : FOVar} {phi : Formula}
+    (hfo : ∀ y, y ≠ x -> Formula.FreeFO phi y -> rho.fo y = sigma.fo y)
+    (hso : ∀ X, Formula.FreeSO phi X -> rho.so X = sigma.so X)
+    (hefo : ∀ e, Formula.FreeEdgeFO phi e -> rho.efo e = sigma.efo e)
+    (heso : ∀ E, Formula.FreeEdgeSO phi E -> rho.eso E = sigma.eso E)
+    (v : V) :
+    (rho.updateFO x v).AgreeOnFree phi (sigma.updateFO x v) := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · intro y hy
+    by_cases hyx : y = x
+    · subst y; simp
+    · rw [rho.updateFO_other v hyx, sigma.updateFO_other v hyx]; exact hfo y hyx hy
+  · intro Y hY; simpa using hso Y hY
+  · intro e he; simpa using hefo e he
+  · intro E hE; simpa using heso E hE
+
+/-- Updating both assignments at the same second-order variable preserves agreement. -/
+theorem AgreeOnFree.updateSO {rho sigma : Assignment V E} {X : SOVar} {phi : Formula}
+    (hfo : ∀ x, Formula.FreeFO phi x -> rho.fo x = sigma.fo x)
+    (hso : ∀ Y, Y ≠ X -> Formula.FreeSO phi Y -> rho.so Y = sigma.so Y)
+    (hefo : ∀ e, Formula.FreeEdgeFO phi e -> rho.efo e = sigma.efo e)
+    (heso : ∀ E, Formula.FreeEdgeSO phi E -> rho.eso E = sigma.eso E)
+    (S : Set V) :
+    (rho.updateSO X S).AgreeOnFree phi (sigma.updateSO X S) := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · intro x hx; simpa using hfo x hx
+  · intro Y hY
+    by_cases hYX : Y = X
+    · subst Y; simp
+    · rw [rho.updateSO_other S hYX, sigma.updateSO_other S hYX]; exact hso Y hYX hY
+  · intro e he; simpa using hefo e he
+  · intro E hE; simpa using heso E hE
+
+/-- Updating both assignments at the same first-order edge variable preserves agreement. -/
+theorem AgreeOnFree.updateEdgeFO {rho sigma : Assignment V E} {e : EdgeFOVar} {phi : Formula}
+    (hfo : ∀ x, Formula.FreeFO phi x -> rho.fo x = sigma.fo x)
+    (hso : ∀ X, Formula.FreeSO phi X -> rho.so X = sigma.so X)
+    (hefo : ∀ e', e' ≠ e -> Formula.FreeEdgeFO phi e' -> rho.efo e' = sigma.efo e')
+    (heso : ∀ E, Formula.FreeEdgeSO phi E -> rho.eso E = sigma.eso E)
+    (val : E) :
+    (rho.updateEdgeFO e val).AgreeOnFree phi (sigma.updateEdgeFO e val) := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · intro x hx; simpa using hfo x hx
+  · intro X hX; simpa using hso X hX
+  · intro e' he'
+    by_cases hee : e' = e
+    · subst e'; simp
+    · rw [rho.updateEdgeFO_other val hee, sigma.updateEdgeFO_other val hee]; exact hefo e' hee he'
+  · intro E hE; simpa using heso E hE
+
+/-- Updating both assignments at the same second-order edge variable preserves agreement. -/
+theorem AgreeOnFree.updateEdgeSO {rho sigma : Assignment V E} {E_var : EdgeSOVar} {phi : Formula}
+    (hfo : ∀ x, Formula.FreeFO phi x -> rho.fo x = sigma.fo x)
+    (hso : ∀ X, Formula.FreeSO phi X -> rho.so X = sigma.so X)
+    (hefo : ∀ e, Formula.FreeEdgeFO phi e -> rho.efo e = sigma.efo e)
+    (heso : ∀ E', E' ≠ E_var -> Formula.FreeEdgeSO phi E' -> rho.eso E' = sigma.eso E')
+    (S : Set E) :
+    (rho.updateEdgeSO E_var S).AgreeOnFree phi (sigma.updateEdgeSO E_var S) := by
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · intro x hx; simpa using hfo x hx
+  · intro X hX; simpa using hso X hX
+  · intro e he; simpa using hefo e he
+  · intro E' hE'
+    by_cases hEE : E' = E_var
+    · subst E'; simp
+    · rw [rho.updateEdgeSO_other S hEE, sigma.updateEdgeSO_other S hEE]; exact heso E' hEE hE'
+
 end Assignment
 
 namespace Semantics
@@ -299,6 +379,117 @@ theorem satisfiesAt_forallFOs_cons (G : SimpleGraph V) (rho : Assignment V G.edg
     SatisfiesAt (Formula.forallFOs (x :: xs) phi) G rho ↔
       ∀ v : V, SatisfiesAt (Formula.forallFOs xs phi) G (rho.updateFO x v) := by
   rfl
+
+/-- `SatisfiesAt` depends only on the values assigned to the free variables of the
+formula: assignments agreeing on all free variables satisfy the same instances. -/
+theorem satisfiesAt_ext_on_free {G : SimpleGraph V} (phi : Formula) :
+    ∀ (rho sigma : Assignment V G.edgeSet), rho.AgreeOnFree phi sigma ->
+      (SatisfiesAt phi G rho ↔ SatisfiesAt phi G sigma) := by
+  induction phi with
+  | false_ => intro rho sigma _; exact Iff.rfl
+  | equal x y =>
+      intro rho sigma h
+      simp only [SatisfiesAt, h.1 x (Or.inl rfl), h.1 y (Or.inr rfl)]
+  | edge x y =>
+      intro rho sigma h
+      simp only [SatisfiesAt, h.1 x (Or.inl rfl), h.1 y (Or.inr rfl)]
+  | inSet x X =>
+      intro rho sigma h
+      simp only [SatisfiesAt, h.1 x rfl, h.2.1 X rfl]
+  | equalEdge e₁ e₂ =>
+      intro rho sigma h
+      simp only [SatisfiesAt, h.2.2.1 e₁ (Or.inl rfl), h.2.2.1 e₂ (Or.inr rfl)]
+  | inc x e =>
+      intro rho sigma h
+      simp only [SatisfiesAt, h.1 x rfl, h.2.2.1 e rfl]
+  | inEdgeSet e E_var =>
+      intro rho sigma h
+      simp only [SatisfiesAt, h.2.2.1 e rfl, h.2.2.2 E_var rfl]
+  | neg phi ih =>
+      intro rho sigma h
+      exact not_congr (ih rho sigma h)
+  | conj phi psi ihPhi ihPsi =>
+      intro rho sigma h
+      simp only [satisfiesAt_conj,
+        ihPhi rho sigma (h.mono (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl)),
+        ihPsi rho sigma (h.mono (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr))]
+  | disj phi psi ihPhi ihPsi =>
+      intro rho sigma h
+      simp only [satisfiesAt_disj,
+        ihPhi rho sigma (h.mono (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl)),
+        ihPsi rho sigma (h.mono (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr))]
+  | impl phi psi ihPhi ihPsi =>
+      intro rho sigma h
+      simp only [satisfiesAt_impl,
+        ihPhi rho sigma (h.mono (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl)),
+        ihPsi rho sigma (h.mono (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr))]
+  | biimpl phi psi ihPhi ihPsi =>
+      intro rho sigma h
+      simp only [satisfiesAt_biimpl,
+        ihPhi rho sigma (h.mono (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl) (fun _ => Or.inl)),
+        ihPsi rho sigma (h.mono (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr) (fun _ => Or.inr))]
+  | existsFO x phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact exists_congr fun v => ih _ _
+        (Assignment.AgreeOnFree.updateFO (fun y hyx hy => h.1 y ⟨hyx, hy⟩) h.2.1 h.2.2.1 h.2.2.2 v)
+  | forallFO x phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact forall_congr' fun v => ih _ _
+        (Assignment.AgreeOnFree.updateFO (fun y hyx hy => h.1 y ⟨hyx, hy⟩) h.2.1 h.2.2.1 h.2.2.2 v)
+  | existsSO X phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact exists_congr fun S => ih _ _
+        (Assignment.AgreeOnFree.updateSO (X := X) (phi := phi) h.1
+          (fun Y hYX hY => h.2.1 Y ⟨hYX, hY⟩) h.2.2.1 h.2.2.2 S)
+  | forallSO X phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact forall_congr' fun S => ih _ _
+        (Assignment.AgreeOnFree.updateSO (X := X) (phi := phi) h.1
+          (fun Y hYX hY => h.2.1 Y ⟨hYX, hY⟩) h.2.2.1 h.2.2.2 S)
+  | existsEdgeFO e phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact exists_congr fun val => ih _ _
+        (Assignment.AgreeOnFree.updateEdgeFO (e := e) (phi := phi) h.1 h.2.1
+          (fun e' hee he' => h.2.2.1 e' ⟨hee, he'⟩) h.2.2.2 val)
+  | forallEdgeFO e phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact forall_congr' fun val => ih _ _
+        (Assignment.AgreeOnFree.updateEdgeFO (e := e) (phi := phi) h.1 h.2.1
+          (fun e' hee he' => h.2.2.1 e' ⟨hee, he'⟩) h.2.2.2 val)
+  | existsEdgeSO E_var phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact exists_congr fun S => ih _ _
+        (Assignment.AgreeOnFree.updateEdgeSO (E_var := E_var) (phi := phi) h.1 h.2.1 h.2.2.1
+          (fun E' hEE hE' => h.2.2.2 E' ⟨hEE, hE'⟩) S)
+  | forallEdgeSO E_var phi ih =>
+      intro rho sigma h
+      simp only [SatisfiesAt]
+      exact forall_congr' fun S => ih _ _
+        (Assignment.AgreeOnFree.updateEdgeSO (E_var := E_var) (phi := phi) h.1 h.2.1 h.2.2.1
+          (fun E' hEE hE' => h.2.2.2 E' ⟨hEE, hE'⟩) S)
+
+/-- A closed formula's satisfaction is independent of the chosen assignment. -/
+theorem satisfiesAt_closed_independent {G : SimpleGraph V} {phi : Formula} (hclosed : phi.Closed)
+    (rho sigma : Assignment V G.edgeSet) :
+    SatisfiesAt phi G rho ↔ SatisfiesAt phi G sigma :=
+  satisfiesAt_ext_on_free phi rho sigma
+    ⟨fun x hx => absurd hx (hclosed.1 x), fun X hX => absurd hX (hclosed.2.1 X),
+     fun e he => absurd he (hclosed.2.2.1 e), fun E_var hE => absurd hE (hclosed.2.2.2 E_var)⟩
+
+/-- For a closed formula, graph satisfaction is equivalent to `SatisfiesAt` under any
+assignment, not just the empty one. -/
+theorem satisfies_iff_satisfiesAt {G : SimpleGraph V} {phi : Formula} (hclosed : phi.Closed)
+    (rho : Assignment V G.edgeSet) :
+    Satisfies G phi ↔ SatisfiesAt phi G rho := by
+  rw [satisfies_iff_satisfiesAt_of_closed hclosed]
+  exact satisfiesAt_closed_independent hclosed _ rho
 
 end Semantics
 
