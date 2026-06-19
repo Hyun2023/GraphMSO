@@ -1,0 +1,861 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem*{fact}{Fact}
+\newtheorem*{remark}{Remark}
+
+\newcommand{\MSO}{\ensuremath{\mathrm{MSO}}}
+\newcommand{\MSOtwo}{\ensuremath{\mathrm{MSO}_2}}
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\Nodes}{N}
+\newcommand{\Bags}{\mathrm{BAGS}}
+\newcommand{\adh}{\mathrm{adh}}
+\newcommand{\cone}{\mathrm{cone}}
+\newcommand{\topnode}{\mathrm{top}}
+\newcommand{\child}{\mathrm{child}}
+\newcommand{\parent}{\mathrm{parent}}
+\newcommand{\rootnode}{\mathrm{root}}
+\newcommand{\legal}{\mathrm{legal}}
+\newcommand{\vtx}{\mathrm{vtx}}
+\newcommand{\set}{\mathrm{set}}
+\newcommand{\edge}{\mathrm{edge}}
+\newcommand{\eq}{\mathrm{eq}}
+\newcommand{\cont}{\mathrm{cont}}
+\newcommand{\emptysetf}{\mathrm{empty}}
+\newcommand{\subsetf}{\mathrm{subset}}
+\newcommand{\nonempty}{\mathrm{nonempty}}
+\newcommand{\conn}{\mathrm{connected}}
+\newcommand{\dang}{\mathrm{dangle}}
+\newcommand{\Lab}{\mathrm{Lab}}
+\newcommand{\Aut}{\mathcal{A}}
+\newcommand{\calT}{\mathcal{T}}
+\newcommand{\calC}{\mathcal{C}}
+\newcommand{\calL}{\mathcal{L}}
+\newcommand{\pow}{\mathcal{P}}
+\newcommand{\tuple}[1]{\overline{#1}}
+\newcommand{\st}{\;:\;}
+
+\title{Expanded Notes on Courcelle's Theorem via Tree-Decomposition Encodings}
+\author{Organized from \texttt{lecture\_note.pdf}; omitted proofs filled in}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+These notes reorganize the lecture note \texttt{lecture\_note.pdf} in proof order.
+The main line is the standard route: encode a bounded-width, colored tree-decomposition as a finite-alphabet tree, interpret graph \MSO{} in tree \MSO{},
+and use the equivalence between \MSO{}-definability and regular tree languages.
+All lemmas that were stated as straightforward, omitted, or left as exercises in
+the lecture note are expanded here.
+\end{abstract}
+
+\tableofcontents
+
+\section{Courcelle's theorem}
+
+Let graphs be finite simple graphs unless stated otherwise.  The graph vocabulary
+for \MSO{} in the first part is \(\tau=\{\edge\}\), where \(\edge(x,y)\) is the
+adjacency relation.  The \MSOtwo{} corollary is recovered by passing to the
+incidence graph.
+
+\begin{theorem}[Courcelle's theorem]
+For every \(\omega\in\mathbb N\), there exists an algorithm which, on input a
+graph \(G\), a binary tree-decomposition \((T,\beta)\) of \(G\) of width at most
+\(\omega\), and an \MSO{} sentence \(\varphi\) over \(\{\edge\}\), decides whether
+\(G\models\varphi\) in time
+\[
+  f(\omega,\operatorname{qr}(\varphi))\cdot |V(G)|.
+\]
+\end{theorem}
+
+The proof below constructs a finite alphabet \(\Sigma_\omega\), translates the
+input into a \(\Sigma_\omega\)-tree, translates \(\varphi\) into a tree \MSO{}
+sentence, and then runs the finite tree automaton corresponding to that tree
+sentence.
+
+\begin{theorem}[Computing treewidth]
+There is an algorithm which, given a graph \(G\) and \(\omega\in\mathbb N\),
+either outputs a tree-decomposition of width at most \(2\omega+1\), or correctly
+decides that the treewidth of \(G\) is greater than \(\omega\), in time
+\(2^{O(\omega)}|V(G)|\).
+\end{theorem}
+
+\begin{corollary}
+There is an algorithm which, given a graph \(G\) of treewidth at most \(\omega\)
+and an \MSO{} sentence \(\varphi\) over \(\{\edge\}\), decides whether
+\(G\models\varphi\) in time \(f(\omega,\operatorname{qr}(\varphi))|V(G)|\).
+\end{corollary}
+
+\begin{proof}
+Use the treewidth approximation theorem to obtain a decomposition whose width is
+bounded by a function of \(\omega\).  If desired, convert it to a binary or nice
+binary tree-decomposition with only a linear blow-up.  Apply Theorem~1 with the
+new width bound.  Since \(\omega\) is a parameter, changing the width bound only
+changes the computable parameter function \(f\).
+\end{proof}
+
+\begin{corollary}[\MSOtwo{} properties]
+Let \(\mathcal G\) be an \MSOtwo{}-definable graph property.  On every class of
+graphs of treewidth at most \(\omega\), membership in \(\mathcal G\) can be
+decided in time \(f(\omega,\mathcal G)|V(G)|\).
+\end{corollary}
+
+\begin{proof}
+Let \(\psi\) be an \MSOtwo{} sentence over the incidence vocabulary
+\(\{\operatorname{inc},V,E\}\) defining \(\mathcal G\).  Given a graph \(G\), form
+its incidence graph \(I(G)\), whose vertices are \(V(G)\sqcup E(G)\), with an edge
+between \(v\in V(G)\) and \(e\in E(G)\) exactly when \(v\) is an endpoint of
+\(e\).  If \((T,\beta)\) has width \(\omega\), then \(I(G)\) has width bounded by a
+function of \(\omega\): for every edge \(e=uv\), choose a bag containing \(u,v\)
+and attach a new leaf bag \(\{u,v,e\}\).  The old bags cover the original
+vertices; the new leaf bags cover incidence edges; and the bags containing every
+old vertex remain connected after attaching leaves to nodes that already contain
+that vertex.  Hence the width is at most \(\max(\omega,2)\).
+
+Translate \(\psi\) into an ordinary graph \MSO{} sentence \(\psi'\) over
+\(\{\edge\}\) on \(I(G)\).  In the incidence graph,
+\[
+  \operatorname{edg}(z) \defeq \exists x\,\operatorname{inc}(x,z),
+  \qquad
+  \operatorname{vtx}(z) \defeq \neg \operatorname{edg}(z)
+\]
+can be expressed using only the adjacency relation of \(I(G)\).  Replace
+membership in the edge sort by \(\operatorname{edg}\), membership in the vertex
+sort by \(\operatorname{vtx}\), and replace \(\operatorname{inc}(x,e)\) by
+\(\edge(x,e)\) in \(I(G)\).  The translation is truth-preserving:
+\(G\models\psi\) iff \(I(G)\models\psi'\).  Applying Corollary~3 to \(I(G)\)
+proves the claim.
+\end{proof}
+
+\section{Encoding a colored decomposition as a \texorpdfstring{\(\Sigma\)}{Sigma}-tree}
+
+Fix a rooted binary tree-decomposition \((T,\beta)\) of a graph \(G\) of width at
+most \(\omega\).  The set of nodes of \(T\) is denoted by \(N(T)\).  If \(t\) is
+not the root, \(p(t)\) denotes its parent.  Define
+\[
+  \adh(t) \defeq
+  \begin{cases}
+    \emptyset, & t \text{ is the root},\\
+    \beta(t)\cap\beta(p(t)), & \text{otherwise},
+  \end{cases}
+\]
+and let \(\cone(t)\) be the union of the bags in the subtree rooted at \(t\).
+
+\begin{fact}[Bag-injective coloring]
+There is a coloring \(c:V(G)\to C_\omega\defeq\{0,\ldots,\omega\}\) such that no
+bag contains two vertices of the same color.
+\end{fact}
+
+\begin{proof}
+The interval of nodes containing a fixed vertex is connected.  Process vertices
+in any order compatible with a topmost occurrence in the rooted tree.  When a
+vertex \(v\) is colored, choose a bag containing \(v\).  At most \(\omega\) other
+vertices in that bag already forbid colors, because the bag has size at most
+\(\omega+1\).  Thus one of the \(\omega+1\) colors is available.  The connectedness
+of bags containing each vertex ensures that this greedy choice is consistent on
+all bags containing \(v\).  Equivalently, the intersection graph of the bags has
+clique number at most \(\omega+1\) and is chordal, hence \((\omega+1)\)-colorable.
+\end{proof}
+
+\subsection{Rooted graphs and gluing}
+
+\begin{definition}
+A \(k\)-rooted graph is a triple \((H,R,\iota)\) where \(H\) is a graph,
+\(R\subseteq V(H)\) is the root or boundary, and \(\iota\) is a partial injective
+map from \(V(H)\) to \([k]\) whose domain contains \(R\).  When \(\iota(v)=i\), we
+say that \(v\) has label \(i\).
+\end{definition}
+
+Given \(k\)-rooted graphs \((H_1,R_1,\iota_1)\) and \((H_2,R_2,\iota_2)\), the
+partial gluing
+\[
+  (H_1,R_1,\iota_1)\oplus_k(H_2,R_2,\iota_2)
+\]
+is defined when the labelled rooted graph induced by \(R_2\) is label-preserving
+isomorphic to the induced labelled subgraph of \(H_1\) on vertices with the same
+labels.  Then we take the disjoint union and identify every \(v\in R_2\) with
+the unique vertex \(v'\in V(H_1)\) satisfying \(\iota_1(v')=\iota_2(v)\).  The root
+and labelling of the result are inherited from the first graph.
+
+For a node \(t\), define the \emph{node graph}
+\[
+  (H_t,R_t,\iota_t)
+  \defeq (G[\beta(t)],\adh(t),c|_{\beta(t)}).
+\]
+The \emph{cone graph} at \(t\) is
+\[
+  (G_t,R_t,\iota_t) \defeq (G[\cone(t)],\adh(t),c|_{\adh(t)}),
+\]
+where only the adhesion is kept as the external root for the cone.
+
+\begin{lemma}[Cone gluing]
+Let \(t\) be an internal node with children \(t_1,t_2\).  If
+\((G_i,R_i,\iota_i)\) is the cone graph of \(t_i\), then
+\[
+  (G_t,R_t,\iota_t)
+  = (H_t,R_t,\iota_t)\oplus (G_1,R_1,\iota_1)\oplus (G_2,R_2,\iota_2).
+\]
+\end{lemma}
+
+\begin{proof}
+For each child \(t_i\), the root \(R_i=\adh(t_i)=\beta(t_i)\cap\beta(t)\) is a
+subset of \(\beta(t)\).  Because the coloring is injective on \(\beta(t)\), every
+label appearing in \(R_i\) identifies a unique vertex of \(H_t\).  The induced
+subgraph on \(R_i\) inside the child cone is the same as the induced subgraph on
+that same vertex set inside \(H_t\), since both are induced subgraphs of the
+original graph \(G\).  Therefore the first gluing is defined, and the same
+argument applies to the second child.
+
+The vertices in the resulting graph are exactly
+\[
+  \beta(t)\cup\cone(t_1)\cup\cone(t_2)=\cone(t).
+\]
+The gluing identifies precisely those vertices that lie in the adhesions between
+\(t\) and its children, which are exactly the vertices shared by the corresponding
+parts of the tree-decomposition.  It creates no new edges; it only takes the
+union of the edges already present in the induced graphs.  Since every edge of
+\(G[\cone(t)]\) is covered by some bag in the subtree of \(t\), it appears in
+one of the three pieces.  Conversely every edge in a piece is an edge of
+\(G[\cone(t)]\).  Thus the glued graph is exactly \(G_t\), with root \(R_t\) and
+external labels inherited from \(H_t\), as claimed.
+\end{proof}
+
+\subsection{The alphabet and legal trees}
+
+Let
+\[
+  \Sigma_\omega \defeq
+  \{(H,R): V(H)\subseteq C_\omega,\ R\subseteq V(H)\}.
+\]
+A letter is a rooted graph on a subset of the fixed color set \(C_\omega\); the
+identity map is the implicit labelling.  The set \(\Sigma_\omega\) is finite.
+
+The encoding \((T,\rho)\) of \((G,c,(T,\beta))\) labels each node \(t\) by the
+rooted graph obtained from \((H_t,R_t,\iota_t)\) after renaming every vertex
+\(v\in\beta(t)\) to its color \(c(v)\).  Since colors are injective on bags, this
+renaming is well-defined and loses no information inside a single bag.
+
+\begin{definition}
+A \(\Sigma_\omega\)-tree \((T,\rho)\) is \emph{legal} if for every node \(x\) with
+parent \(y\), writing \(\rho(x)=(H_x,R_x)\) and \(\rho(y)=(H_y,R_y)\), we have
+\[
+  R_x\subseteq V(H_y)
+  \quad\text{and}\quad
+  H_x[R_x]=H_y[R_x].
+\]
+\end{definition}
+
+\begin{lemma}
+There is an \MSO{} sentence \(\varphi_{\legal}\) over the tree vocabulary
+\(\tau_\Sigma=\{\child_1,\child_2\}\cup\{P_a:a\in\Sigma_\omega\}\) such that
+\((T,\rho)\models\varphi_{\legal}\) iff \((T,\rho)\) is legal.
+\end{lemma}
+
+\begin{proof}
+For letters \(a=(H_a,R_a)\) and \(b=(H_b,R_b)\), write
+\(\operatorname{Comp}(a,b)\) when a child labelled \(a\) is compatible with a
+parent labelled \(b\), namely
+\[
+  R_a\subseteq V(H_b)\quad\text{and}\quad H_a[R_a]=H_b[R_a].
+\]
+This is a finite relation on \(\Sigma_\omega\).  Define
+\[
+  \parent(y,x) \defeq \child_1(y,x)\vee \child_2(y,x)
+\]
+and
+\[
+  \varphi_{\operatorname{loc}}(x,y)
+  \defeq
+  \parent(y,x)\wedge
+  \bigvee_{\operatorname{Comp}(a,b)}(P_a(x)\wedge P_b(y)).
+\]
+Finally set
+\[
+  \varphi_{\legal}
+  \defeq
+  \forall x\,\bigl(\rootnode(x)\vee \exists y\,\varphi_{\operatorname{loc}}(x,y)\bigr),
+\]
+where \(\rootnode(x)\) abbreviates \(\neg\exists y\,\parent(y,x)\).  Since every
+node carries exactly one letter, the finite disjunction says exactly that the
+letter of a non-root node is compatible with the letter of its parent.  This is
+precisely legality.
+\end{proof}
+
+\subsection{Decoding a legal tree}
+
+Suppose \((T,\rho)\) is legal.  If \(\rho(t)=(H,R)\), define a concrete rooted
+graph \((H_t,R_t,\iota_t)\) by replacing each color \(i\in V(H)\) by a formal
+vertex \(v(t,i)\), taking \(R_t=\{v(t,i):i\in R\}\), and setting
+\(\iota_t(v(t,i))=i\).
+
+Define rooted graphs \((\bar G_t,\bar R_t,\bar\iota_t)\) bottom-up.  At a leaf,
+\((\bar G_t,\bar R_t,\bar\iota_t)=(H_t,R_t,\iota_t|_{R_t})\).  If \(t\) has
+children \(t_1,t_2\), glue
+\[
+  (H_t,R_t,\iota_t)\oplus(\bar G_{t_1},\bar R_{t_1},\bar\iota_{t_1})
+  \oplus(\bar G_{t_2},\bar R_{t_2},\bar\iota_{t_2})
+\]
+and then forget labels outside \(R_t\).
+
+\begin{lemma}
+If \((T,\rho)\) is legal, then \((\bar G_t,\bar R_t,\bar\iota_t)\) is well-defined
+for every node \(t\).  Moreover, the domain of \(\bar\iota_t\) is exactly
+\(\bar R_t\).
+\end{lemma}
+
+\begin{proof}
+Proceed by induction from leaves to the root.  The statement is immediate for a
+leaf.  Let \(t\) be an internal node and assume the statement for each child
+\(t_i\).  By induction, the child cone has external labels exactly on
+\(\bar R_{t_i}\).  Legality says that the rooted graph induced by this labelled
+root agrees with the subgraph of the parent letter on the same labels.  Hence
+\((H_t,R_t,\iota_t)\oplus(\bar G_{t_i},\bar R_{t_i},\bar\iota_{t_i})\) is defined.
+After gluing the first child, the copy of \(H_t\) and its labels are unchanged,
+so the same argument glues the second child.  Finally, by definition of the cone
+root at \(t\), all labels outside \(R_t\) are forgotten.  Therefore the remaining
+labelling is defined exactly on \(\bar R_t\).
+\end{proof}
+
+The decoding of a legal \((T,\rho)\) is the triple \((G,c,(T,\beta))\) defined as
+follows.  If \(r\) is the root, set \(G=\bar G_r\).  A vertex represented by
+\(v(t,i)\) receives color \(i\).  Finally, put a decoded vertex \(v\) in
+\(\beta(t)\) when \(v\) has a representative \(v(t,i)\) for some \(i\in C_\omega\).
+
+\begin{lemma}
+If \((T,\rho)\) is legal, its decoding \((G,c,(T,\beta))\) is well-defined.
+\end{lemma}
+
+\begin{proof}
+By Lemma~7, the graph at the root is well-defined.  Since the root has no parent,
+its external root is empty, so it is an ordinary graph.  The color of a decoded
+vertex is well-defined because vertices are identified only when their labels
+agree; thus two representatives of the same decoded vertex have the same color.
+
+It remains to check that \((T,\beta)\) is a tree-decomposition of \(G\).  Every
+vertex of \(G\) is created as some \(v(t,i)\), hence appears in \(\beta(t)\).  No
+edge is created by gluing; every edge of \(G\) comes from a node graph \(H_t\), so
+both endpoints occur in \(\beta(t)\).  For connectedness, fix a decoded vertex
+\(v\), represented with color \(i\), and let
+\[
+  U_v\defeq\{t\in N(T): v\in\beta(t)\}.
+\]
+Suppose \(U_v\) is disconnected.  Choose two nodes in distinct components of
+\(T[U_v]\) at minimum tree distance, and let \(t\) be the topmost node of one of
+these components not containing the other.  The representative at \(t\) can be
+identified with a representative outside that component only through the root
+\(R_t\), so legality gives a representative of the same color in the parent of
+\(t\).  That parent is then also in \(U_v\), contradicting the choice of \(t\) as
+topmost in its component.  Thus \(U_v\) is connected.
+\end{proof}
+
+\begin{lemma}
+A \(\Sigma_\omega\)-tree \((T,\rho)\) is legal iff it is the encoding of some
+\((\omega+1)\)-colored graph with a binary tree-decomposition of width at most
+\(\omega\).  Moreover, in the forward direction the witnessing triple is the
+decoding of \((T,\rho)\).
+\end{lemma}
+
+\begin{proof}
+If \((T,\rho)\) is an encoding, legality follows directly from the definition of
+adhesion: the child root is exactly the intersection with the parent bag, and
+both induced graphs are induced subgraphs of the same graph \(G\) on that
+intersection.
+
+Conversely, assume \((T,\rho)\) is legal and decode it as \((G,c,(T,\beta))\).
+Lemma~8 shows that this is a valid tree-decomposition.  Each bag has at most
+\(\omega+1\) vertices, because each letter uses vertices from the fixed color set
+\(C_\omega\).  The coloring is injective on each bag, since a letter contains at
+most one vertex of each color.  Finally, for a node \(t\), the node graph of the
+decoded decomposition is exactly the letter \(\rho(t)\): the vertices in
+\(\beta(t)\) are the formal vertices \(v(t,i)\) appearing in the letter, their
+colors are the corresponding \(i\)'s, the root is the adhesion encoded by
+\(R_t\), and the edge relation is the one recorded in \(H_t\).  Thus re-encoding
+the decoded triple returns \((T,\rho)\).
+\end{proof}
+
+\section{Combinatorial properties of defining tuples}
+
+For a vertex \(v\in V(G)\), let
+\[
+  \Bags(v)\defeq \{t\in N(T): v\in \beta(t)\}.
+\]
+The \emph{defining pair} of \(v\) is \((\Bags(v),c(v))\).  Because
+\((T,\beta)\) is a tree-decomposition, \(\Bags(v)\) is a nonempty connected set
+of tree nodes.
+
+For a nonempty connected node set \(U\), let \(\topnode(U)\) be the unique node
+of \(U\) closest to the root.  A node \(x\notin U\) is a \emph{dangle} of \(U\)
+if its parent lies in \(U\).
+
+\begin{lemma}[Defining pairs]
+Let \((T,\beta)\) be a binary tree-decomposition of \(G\) of width at most
+\(\omega\), and let \(c:V(G)\to C_\omega\) be injective on every bag.  For
+\(U\subseteq N(T)\) and \(i\in C_\omega\), the pair \((U,i)\) is the defining pair
+of some vertex of \(G\) iff the following conditions hold.
+\begin{enumerate}[label=(\roman*)]
+  \item \(U\) is nonempty and connected in \(T\).
+  \item For every \(t\in U\), the bag \(\beta(t)\) contains a vertex of color \(i\).
+  \item For every \(t\in U\setminus\{\topnode(U)\}\), the adhesion \(\adh(t)\)
+    contains a vertex of color \(i\).
+  \item The adhesion \(\adh(\topnode(U))\) contains no vertex of color \(i\).
+  \item If \(x\notin U\) and the parent of \(x\) lies in \(U\), then \(\adh(x)\)
+    contains no vertex of color \(i\).
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+First suppose \((U,i)=(\Bags(v),c(v))\).  Then \(U\) is nonempty and connected by
+the running-intersection condition of the tree-decomposition, and every bag in
+\(U\) contains the color-\(i\) vertex \(v\).  If
+\(t\in U\setminus\{\topnode(U)\}\), then the parent of \(t\) also lies on the
+connected set \(U\), so \(v\in \beta(t)\cap\beta(p(t))=\adh(t)\).  If
+\(v\in\adh(\topnode(U))\), then the parent of \(\topnode(U)\) would also contain
+\(v\), contradicting the choice of the topmost node.  Finally, if a dangle
+\(x\notin U\) had a color-\(i\) vertex in \(\adh(x)\), that vertex and \(v\) would
+both lie in \(\beta(p(x))\) and have the same color.  Bag-injectivity gives that
+this vertex is \(v\), whence \(x\in\Bags(v)=U\), a contradiction.
+
+Conversely, assume (i)--(v).  For each \(t\in U\), let \(v_t\) be the unique
+color-\(i\) vertex in \(\beta(t)\).  Uniqueness follows from bag-injectivity.  If
+\(t\in U\setminus\{\topnode(U)\}\), condition (iii) gives a color-\(i\) vertex in
+\(\beta(t)\cap\beta(p(t))\), so \(v_t=v_{p(t)}\).  Since \(U\) is connected, all
+vertices \(v_t\) are a single vertex \(v\).  Thus \(U\subseteq\Bags(v)\).
+
+If \(\Bags(v)\) had a node outside \(U\), the connected set \(\Bags(v)\) would
+cross the boundary of \(U\).  It can cross upward only through the parent of
+\(\topnode(U)\), which would put \(v\) in \(\adh(\topnode(U))\), contradicting
+(iv).  It can cross downward only through a dangle \(x\notin U\) whose parent is
+in \(U\), which would put \(v\) in \(\adh(x)\), contradicting (v).  Hence
+\(\Bags(v)=U\) and \(c(v)=i\).
+\end{proof}
+
+\begin{lemma}[Distinct defining pairs]
+If \(u\ne v\), then the defining pairs of \(u\) and \(v\) are distinct.  Moreover,
+if \(c(u)=c(v)\), then \(\Bags(u)\cap\Bags(v)=\emptyset\); in particular, \(u\)
+and \(v\) are non-adjacent.
+\end{lemma}
+
+\begin{proof}
+If two distinct vertices had the same defining pair \((U,i)\), choose any
+\(t\in U\).  Both vertices would lie in \(\beta(t)\) and have color \(i\),
+contradicting bag-injectivity.  Thus their defining pairs are distinct.
+
+Now assume \(c(u)=c(v)=i\).  If \(t\in\Bags(u)\cap\Bags(v)\), then both vertices
+lie in \(\beta(t)\) with color \(i\), again contradicting bag-injectivity.  Hence
+\(\Bags(u)\cap\Bags(v)=\emptyset\).  If \(uv\) were an edge, the edge-covering
+axiom of the tree-decomposition would give a bag containing both \(u\) and \(v\),
+which is impossible.  Therefore \(u\) and \(v\) are non-adjacent.
+\end{proof}
+
+\begin{lemma}[Edges from common bags]
+For vertices \(u,v\in V(G)\), the edge \(uv\) belongs to \(G\) iff there exists a
+node \(t\in\Bags(u)\cap\Bags(v)\) such that the colors \(c(u),c(v)\) are adjacent
+in the node graph \(H_t\).
+\end{lemma}
+
+\begin{proof}
+If \(uv\in E(G)\), then some bag \(\beta(t)\) contains both endpoints.  Hence
+\(t\in\Bags(u)\cap\Bags(v)\), and the induced node graph \(H_t=G[\beta(t)]\)
+contains the edge between the two color representatives \(c(u)\) and \(c(v)\).
+
+Conversely, if such a node \(t\) exists, the letter \(H_t\) records an edge
+between the unique vertices of colors \(c(u)\) and \(c(v)\) in \(\beta(t)\).  Since
+\(H_t\) is an induced subgraph of \(G\), that edge is an edge of \(G\).  Those
+unique vertices are exactly \(u\) and \(v\), because \(t\in\Bags(u)\cap\Bags(v)\).
+\end{proof}
+
+A vertex is represented on a \(\Sigma\)-tree by a tuple of node sets rather than
+by a color parameter.  The \emph{defining tuple} of a vertex \(v\) is
+\(\tuple U^v=(U^v_0,\ldots,U^v_\omega)\), where
+\[
+  U^v_i =
+  \begin{cases}
+    \Bags(v), & i=c(v),\\
+    \emptyset, & i\ne c(v).
+  \end{cases}
+\]
+For a vertex set \(S\subseteq V(G)\), its defining tuple \(\tuple U^S\) is given by
+\[
+  U^S_i = \bigcup_{v\in S,\ c(v)=i}\Bags(v).
+\]
+The unions are disjoint by Lemma~11.
+
+\begin{lemma}[Defining tuples of vertex sets]
+A tuple \((U_0,\ldots,U_\omega)\) is the defining tuple of a vertex set \(S\subseteq V(G)\) iff,
+for each color \(i\), the set \(U_i\) can be partitioned into nonempty pieces
+\((U_{i,a})_{a\in A_i}\) such that each pair \((U_{i,a},i)\) satisfies the five
+conditions of Lemma~10.
+\end{lemma}
+
+\begin{proof}
+If \(\tuple U\) is the defining tuple of \(S\), then for each color \(i\), the
+pieces are \(\Bags(v)\) for vertices \(v\in S\) with color \(i\).  Lemma~10 shows
+that every piece satisfies the five conditions, and Lemma~11 shows that pieces of
+the same color are disjoint.
+
+Conversely, suppose such partitions are given.  By Lemma~10, each piece
+\((U_{i,a},i)\) is the defining pair of a unique vertex \(v_{i,a}\) of color
+\(i\).  Let
+\[
+  S\defeq\{v_{i,a}:0\le i\le\omega,\ a\in A_i\}.
+\]
+For each \(i\), the union of \(\Bags(v_{i,a})\) over \(a\in A_i\) is exactly the partition union \(U_i\).  Therefore
+\(\tuple U\) is the defining tuple of \(S\).
+\end{proof}
+
+\section{Converting graph \texorpdfstring{\(\MSO\)}{MSO} to tree \texorpdfstring{\(\MSO\)}{MSO}}
+
+All formulas in this section are over
+\(\tau_\Sigma=\{\child_1,\child_2\}\cup\{P_a:a\in\Sigma_\omega\}\).  Since
+\(\Sigma_\omega\) is finite, every disjunction over a subset of \(\Sigma_\omega\)
+is a finite \MSO{} formula.
+
+\subsection{Basic tree formulas}
+
+Use the following standard abbreviations:
+\[
+  \parent(y,x) \defeq \child_1(y,x)\vee\child_2(y,x),
+  \qquad
+  \rootnode(x) \defeq \neg\exists y\,\parent(y,x).
+\]
+Set inclusion, emptiness, and nonemptiness are expressed by
+\[
+  \subsetf(X,Y)\defeq \forall x(x\in X\to x\in Y),\quad
+  \emptysetf(X)\defeq \forall x\,x\notin X,
+\]
+\[
+  \nonempty(X)\defeq \exists x\,x\in X.
+\]
+Let \(\operatorname{Adj}_T(x,y)\) abbreviate
+\(\parent(x,y)\vee\parent(y,x)\).  A set \(X\) is connected if it is nonempty and
+no nontrivial partition of \(X\) has no tree edge across it:
+\[
+\begin{aligned}
+  \conn(X) \defeq{}& \nonempty(X)\wedge \\
+  &\forall Y\Bigl(
+    \subsetf(Y,X)\wedge\nonempty(Y)\wedge\exists z(z\in X\wedge z\notin Y)
+    \to \\
+  &\qquad\qquad \exists u\exists v\,
+    (u\in Y\wedge v\in X\wedge v\notin Y\wedge \operatorname{Adj}_T(u,v))
+  \Bigr).
+\end{aligned}
+\]
+For connected \(X\), the top node is the unique node of \(X\) whose parent is not
+in \(X\):
+\[
+\begin{aligned}
+  \topnode(x,X) \defeq{}& x\in X\wedge \conn(X)\wedge
+  \bigl(\rootnode(x)\vee \exists p(\parent(p,x)\wedge p\notin X)\bigr),\\
+  \dang(x,X) \defeq{}& x\notin X\wedge \exists p(\parent(p,x)\wedge p\in X).
+\end{aligned}
+\]
+In a rooted tree, a nonempty connected set has exactly one node satisfying
+\(\topnode(x,X)\).
+
+For a color \(i\in C_\omega\), define finite letter sets
+\[
+  \Sigma_i\defeq\{(H,R):i\in V(H)\},\qquad
+  \Sigma_i^R\defeq\{(H,R):i\in R\}.
+\]
+For colors \(i,j\), define
+\[
+  \Sigma_{ij}^E\defeq\{(H,R): ij\in E(H)\}.
+\]
+Let
+\[
+  A_i(x)\defeq \bigvee_{a\in\Sigma_i} P_a(x),\quad
+  R_i(x)\defeq \bigvee_{a\in\Sigma_i^R} P_a(x),\quad
+  E_{ij}(x)\defeq \bigvee_{a\in\Sigma_{ij}^E} P_a(x).
+\]
+
+\subsection{Recognizing vertices and vertex sets}
+
+Define
+\[
+\begin{aligned}
+  \varphi_{\vtx,i}(Z) \defeq{}&
+  \varphi_{\legal}\wedge \conn(Z)\\
+  &\wedge\ \forall x(x\in Z\to A_i(x))\\
+  &\wedge\ \forall x((x\in Z\wedge\neg\topnode(x,Z))\to R_i(x))\\
+  &\wedge\ \forall x(\topnode(x,Z)\to \neg R_i(x))\\
+  &\wedge\ \forall x(\dang(x,Z)\to \neg R_i(x)).
+\end{aligned}
+\]
+
+\begin{lemma}
+For every \(i\in C_\omega\), the formula \(\varphi_{\vtx,i}(Z)\) holds in a
+\(\Sigma\)-tree \((T,\rho)\) with parameter \(U\subseteq N(T)\) iff \((T,\rho)\) is
+legal and \((U,i)\) is the defining pair of a vertex of the decoded graph.
+\end{lemma}
+
+\begin{proof}
+The conjunct \(\varphi_{\legal}\) gives legality.  The remaining conjuncts are a
+literal \MSO{} translation of the five conditions in Lemma~10: connectedness of
+\(U\); existence of color \(i\) in every bag of \(U\); existence of color \(i\) in
+each non-top adhesion; absence of color \(i\) in the top adhesion; and absence of
+color \(i\) in every dangling child adhesion.  Therefore, by Lemma~10, the
+formula holds exactly for defining pairs.
+\end{proof}
+
+For a tuple \(\tuple Z=(Z_0,\ldots,Z_\omega)\), define
+\[
+  \varphi_{\vtx}(\tuple Z)
+  \defeq
+  \bigvee_{i=0}^{\omega}
+  \left(
+    \varphi_{\vtx,i}(Z_i)\wedge
+    \bigwedge_{j\ne i}\emptysetf(Z_j)
+  \right).
+\]
+
+\begin{lemma}
+There is an \MSO{} formula \(\varphi_{\vtx}(\tuple Z)\) with \(\omega+1\) free set
+variables such that \((T,\rho)\models\varphi_{\vtx}(\tuple U)\) iff \((T,\rho)\) is legal and \(\tuple U\) is
+the defining tuple of a vertex in the decoded graph.
+\end{lemma}
+
+\begin{proof}
+If \(\tuple U\) is the defining tuple of a vertex \(v\) of color \(i\), then
+\(U_i=\Bags(v)\) and all other coordinates are empty, so the \(i\)-th disjunct
+holds by Lemma~14.  Conversely, if the formula holds, some coordinate \(U_i\) is
+a defining pair of a color-\(i\) vertex and all other coordinates are empty;
+therefore \(\tuple U\) is exactly that vertex's defining tuple.
+\end{proof}
+
+Define
+\[
+  \varphi_{\set}(\tuple Z)
+  \defeq
+  \varphi_{\legal}\wedge
+  \bigwedge_{i=0}^{\omega}
+  \forall x\left(
+    x\in Z_i\to
+    \exists Y\bigl(\subsetf(Y,Z_i)\wedge x\in Y\wedge\varphi_{\vtx,i}(Y)\bigr)
+  \right).
+\]
+
+\begin{lemma}
+There is an \MSO{} formula \(\varphi_{\set}(\tuple Z)\) with \(\omega+1\) free set
+variables such that \((T,\rho)\models\varphi_{\set}(\tuple U)\) iff \((T,\rho)\) is
+legal and \(\tuple U\) is the defining tuple of a vertex subset of the decoded
+graph.
+\end{lemma}
+
+\begin{proof}
+Assume \(\tuple U\) is the defining tuple of a set \(S\).  If
+\(x\in U_i\), then \(x\in\Bags(v)\) for a unique vertex \(v\in S\) of color \(i\);
+using \(Y=\Bags(v)\) satisfies the displayed formula by Lemma~14.
+
+Conversely, suppose \(\varphi_{\set}(\tuple U)\) holds.  For every node
+\(x\in U_i\), choose a set \(Y_x\subseteq U_i\) containing \(x\) with
+\(\varphi_{\vtx,i}(Y_x)\).  By Lemma~14, each \((Y_x,i)\) is the defining pair of
+a color-\(i\) vertex.  Distinct color-\(i\) vertices have disjoint bags by
+Lemma~11; hence the distinct sets among the \(Y_x\)'s form a partition of
+\(U_i\) into pieces satisfying Lemma~10.  Lemma~13 then gives a vertex set whose
+defining tuple is \(\tuple U\).
+\end{proof}
+
+\subsection{Recognizing graph atomic formulas}
+
+For two tuples \(\tuple X=(X_0,\ldots,X_\omega)\) and \(\tuple Y=(Y_0,\ldots,Y_\omega)\), define
+\[
+\begin{aligned}
+  \varphi_{\edge}(\tuple X,\tuple Y)\defeq{}&
+  \varphi_{\vtx}(\tuple X)\wedge\varphi_{\vtx}(\tuple Y)\\
+  &\wedge\bigvee_{i,j=0}^{\omega}
+  \exists t\bigl(t\in X_i\wedge t\in Y_j\wedge E_{ij}(t)\bigr).
+\end{aligned}
+\]
+
+\begin{lemma}
+The formula \(\varphi_{\edge}(\tuple X,\tuple Y)\) holds on defining tuples
+\(\tuple U^u,\tuple U^v\) iff \(uv\) is an edge in the decoded graph.
+\end{lemma}
+
+\begin{proof}
+The first two conjuncts ensure that \(\tuple X\) and \(\tuple Y\) define vertices,
+say \(u\) and \(v\).  If the last conjunct holds for colors \(i=c(u)\) and
+\(j=c(v)\), then there is a node \(t\in\Bags(u)\cap\Bags(v)\) whose letter records
+an edge between colors \(i,j\).  Lemma~12 implies \(uv\in E(G)\).  Conversely, if
+\(uv\in E(G)\), Lemma~12 gives such a node \(t\), so the formula holds.
+\end{proof}
+
+Define set equality by
+\[
+  X=Y \quad\text{as an abbreviation for}\quad
+  \forall z(z\in X\leftrightarrow z\in Y),
+\]
+and put
+\[
+  \varphi_{\eq}(\tuple X,\tuple Y)
+  \defeq
+  \varphi_{\vtx}(\tuple X)\wedge\varphi_{\vtx}(\tuple Y)
+  \wedge\bigwedge_{i=0}^{\omega} X_i=Y_i.
+\]
+
+\begin{lemma}
+The formula \(\varphi_{\eq}(\tuple X,\tuple Y)\) holds on defining tuples
+\(\tuple U^u,\tuple U^v\) iff \(u=v\) in the decoded graph.
+\end{lemma}
+
+\begin{proof}
+If \(u=v\), the defining tuples are identical.  Conversely, if the tuples are
+coordinatewise equal, then the nonempty coordinate and the corresponding bag set
+are the same for both vertices.  Thus the defining pairs are equal.  By
+Lemma~11, distinct vertices have distinct defining pairs, so \(u=v\).
+\end{proof}
+
+For containment, define
+\[
+\begin{aligned}
+  \varphi_{\cont}(\tuple X,\tuple Y)\defeq{}&
+  \varphi_{\vtx}(\tuple X)\wedge\varphi_{\set}(\tuple Y)\\
+  &\wedge\bigvee_{i=0}^{\omega}
+  \bigl(\nonempty(X_i)\wedge\subsetf(X_i,Y_i)\bigr).
+\end{aligned}
+\]
+
+\begin{lemma}
+The formula \(\varphi_{\cont}(\tuple X,\tuple Y)\) holds iff \(\tuple X\) is the
+defining tuple of a vertex \(v\), \(\tuple Y\) is the defining tuple of a vertex
+set \(S\), and \(v\in S\).
+\end{lemma}
+
+\begin{proof}
+Let \(i=c(v)\).  If \(v\in S\), then \(X_i=\Bags(v)\) is one of the pieces whose
+union forms \(Y_i\), so \(X_i\subseteq Y_i\), and the formula holds.
+
+Conversely, suppose the formula holds.  Then for the unique nonempty coordinate
+\(X_i=\Bags(v)\), we have \(X_i\subseteq Y_i\).  Since \(\tuple Y\) defines a set
+\(S\), the coordinate \(Y_i\) is the disjoint union of \(\Bags(w)\) over
+\(w\in S\) of color \(i\).  The connected set \(\Bags(v)\) is contained in this
+disjoint union and is itself a defining pair.  By Lemma~11, it cannot intersect
+any different color-\(i\) defining pair.  Hence one of the pieces is
+\(\Bags(v)\), so \(v\in S\).
+\end{proof}
+
+\subsection{The formula translation}
+
+Let \(\theta\) be an \MSO{} formula over the graph vocabulary
+\(\{\edge\}\).  Each first-order graph variable \(x\) is represented by a tuple of
+set variables
+\[
+  \tuple Z_x=(Z^x_0,\ldots,Z^x_\omega),
+\]
+and each monadic set variable \(X\) is represented by
+\[
+  \tuple Z_X=(Z^X_0,\ldots,Z^X_\omega).
+\]
+Define the translation \(\theta^\star\) recursively:
+\begin{align*}
+  (x=y)^\star &\defeq \varphi_{\eq}(\tuple Z_x,\tuple Z_y),\\
+  (\edge(x,y))^\star &\defeq \varphi_{\edge}(\tuple Z_x,\tuple Z_y),\\
+  (x\in X)^\star &\defeq \varphi_{\cont}(\tuple Z_x,\tuple Z_X),
+\end{align*}
+and commute the translation with Boolean connectives.  Existential quantifiers
+are translated by
+\[
+  (\exists x\,\psi)^\star
+  \defeq
+  \exists Z^x_0\cdots\exists Z^x_\omega
+  \bigl(\varphi_{\vtx}(\tuple Z_x)\wedge \psi^\star\bigr),
+\]
+\[
+  (\exists X\,\psi)^\star
+  \defeq
+  \exists Z^X_0\cdots\exists Z^X_\omega
+  \bigl(\varphi_{\set}(\tuple Z_X)\wedge \psi^\star\bigr).
+\]
+Universal quantifiers are handled by the identity \(\forall q\,\psi\equiv
+\neg\exists q\,\neg\psi\).  For a sentence \(\varphi\), define
+\[
+  \varphi_{\mathrm{tree}}\defeq \varphi_{\legal}\wedge\varphi^\star.
+\]
+
+\paragraph{Correctness of the translation.}
+Let \((T,\rho)\) be the encoding of \((G,c,(T,\beta))\).  If a graph assignment sends every
+individual variable to a vertex and every set variable to a vertex set, let the
+corresponding tree assignment send each variable to the defining tuple of that
+object.  A structural induction on \(\theta\), using Lemmas~15--19 for the atomic
+cases and the displayed clauses for quantifiers, gives
+\[
+  G\models\theta
+  \quad\Longleftrightarrow\quad
+  (T,\rho)\models\theta^\star
+\]
+under corresponding assignments.  In particular, for every graph \MSO{} sentence
+\(\varphi\),
+\[
+  G\models\varphi
+  \quad\Longleftrightarrow\quad
+  (T,\rho)\models\varphi_{\mathrm{tree}}.
+\]
+
+\section{Completing the proof of Courcelle's theorem}
+
+\begin{proof}[Proof of Theorem~1]
+Fix \(\omega\), a graph \(G\), a binary tree-decomposition \((T,\beta)\) of width
+at most \(\omega\), and an \MSO{} sentence \(\varphi\) over \(\{\edge\}\).  Choose a
+bag-injective coloring \(c:V(G)\to C_\omega\).  Construct the encoding
+\((T,\rho)\) over the finite alphabet \(\Sigma_\omega\); this is linear in the
+number of nodes of the decomposition because every bag has bounded size.
+
+Translate \(\varphi\) to the tree sentence \(\varphi_{\mathrm{tree}}
+=\varphi_{\legal}\wedge\varphi^\star\).  The size of this sentence depends only
+on \(\omega\) and \(\varphi\), because all alphabet disjunctions are over the
+finite set \(\Sigma_\omega\).  By the correctness of the translation,
+\[
+  G\models\varphi
+  \quad\Longleftrightarrow\quad
+  (T,\rho)\models\varphi_{\mathrm{tree}}.
+\]
+
+Use the standard theorem that \MSO{}-definable languages of finite labelled
+binary trees are exactly regular tree languages.  Thus there is a deterministic
+bottom-up finite tree automaton \(\Aut\), depending only on \(\omega\) and
+\(\varphi\), which accepts exactly the \(\Sigma_\omega\)-trees satisfying
+\(\varphi_{\mathrm{tree}}\).  Running \(\Aut\) on \((T,\rho)\) is linear in
+\(|N(T)|\), hence linear in \(|V(G)|\) after the usual linear-size normalization
+of the decomposition.  Accept iff \(\Aut\) accepts.  The displayed equivalence
+proves correctness, and the automaton size and translation cost are absorbed
+into \(f(\omega,\operatorname{qr}(\varphi))\).
+\end{proof}
+
+\begin{remark}
+The only external ingredient in the last paragraph is the regularity theorem for
+\MSO{} on finite labelled binary trees.  All graph-specific work is contained in
+the encoding, decoding, and interpretation lemmas proved above.
+\end{remark}
+
+\begin{thebibliography}{9}
+
+\bibitem{Courcelle1990}
+Bruno Courcelle.
+\newblock The monadic second-order logic of graphs. I. Recognizable sets of
+finite graphs.
+\newblock \emph{Information and Computation}, 85(1):12--75, 1990.
+
+\bibitem{Korhonen2022}
+Tuukka Korhonen.
+\newblock A single-exponential time 2-approximation algorithm for treewidth.
+\newblock In \emph{2021 IEEE 62nd Annual Symposium on Foundations of Computer
+Science (FOCS)}, pages 184--192, 2022.
+
+\bibitem{Bojanczyk2015}
+Mikolaj Bojanczyk.
+\newblock Interactive lecture note: Interpreting a graph in its tree decomposition.
+\newblock 2015.
+
+\end{thebibliography}
+
+\end{document}
