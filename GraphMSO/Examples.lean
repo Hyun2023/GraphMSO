@@ -2,6 +2,7 @@ import Mathlib.Combinatorics.SimpleGraph.Clique
 import Mathlib.Combinatorics.SimpleGraph.VertexCover
 import Mathlib.Combinatorics.SimpleGraph.Bipartite
 import Mathlib.Combinatorics.SimpleGraph.Matching
+import Mathlib.Combinatorics.SimpleGraph.Coloring
 import GraphMSO.Semantics
 
 namespace SimpleGraph
@@ -230,6 +231,84 @@ def IsMinorModelBySets (branchSets : List (Set V)) (edgePairs : List (Set V × S
 /-- The graph has a `K_3` minor, represented by three branch sets. -/
 def HasK3MinorBySets : Prop :=
   ∃ S T U : Set V, G.IsMinorModelBySets [S, T, U] [(S, T), (S, U), (T, U)]
+
+theorem isInSomeColor_iff (v : V) (colors : List (Set V)) :
+    IsInSomeColor v colors ↔ ∃ S ∈ colors, v ∈ S := by
+  induction colors with
+  | nil => simp [IsInSomeColor]
+  | cons S Ss ih => simp [IsInSomeColor, ih]
+
+theorem colorClassesIndependent_iff (colors : List (Set V)) :
+    G.ColorClassesIndependent colors ↔ ∀ S ∈ colors, G.IsIndepSet S := by
+  induction colors with
+  | nil => simp [ColorClassesIndependent]
+  | cons S Ss ih => simp [ColorClassesIndependent, ih]
+
+theorem colorClassDisjointFrom_iff (S : Set V) (colors : List (Set V)) :
+    ColorClassDisjointFrom S colors ↔ ∀ T ∈ colors, ColorClassesDisjoint S T := by
+  induction colors with
+  | nil => simp [ColorClassDisjointFrom]
+  | cons T Ts ih => simp [ColorClassDisjointFrom, ih]
+
+theorem colorClassesPairwiseDisjoint_iff (colors : List (Set V)) :
+    ColorClassesPairwiseDisjoint colors ↔ colors.Pairwise ColorClassesDisjoint := by
+  induction colors with
+  | nil => simp [ColorClassesPairwiseDisjoint]
+  | cons S Ss ih =>
+    simp [ColorClassesPairwiseDisjoint, List.pairwise_cons, colorClassDisjointFrom_iff, ih]
+
+/-- A vertex coloring represented by a list of `k` color classes (covering, pairwise
+disjoint, each independent) is exactly mathlib's `Colorable k`. Empty color classes
+correspond to unused colors. -/
+theorem hasColoringBySetsOfSize_iff_colorable (k : ℕ) :
+    G.HasColoringBySetsOfSize k ↔ G.Colorable k := by
+  constructor
+  · rintro ⟨colors, hlen, hcover, _, hind⟩
+    classical
+    subst hlen
+    have cov : ∀ v, ∃ i : Fin colors.length, v ∈ colors.get i := by
+      intro v
+      obtain ⟨S, hS, hvS⟩ := (isInSomeColor_iff v colors).mp (hcover v)
+      obtain ⟨i, hi⟩ := List.get_of_mem hS
+      exact ⟨i, by rw [hi]; exact hvS⟩
+    refine ⟨Coloring.mk (fun v => Classical.choose (cov v)) ?_⟩
+    intro a b hab heq
+    have ha := Classical.choose_spec (cov a)
+    have hb := Classical.choose_spec (cov b)
+    rw [show Classical.choose (cov a) = Classical.choose (cov b) from heq] at ha
+    have hindi : G.IsIndepSet (colors.get (Classical.choose (cov b))) :=
+      (colorClassesIndependent_iff G colors).mp hind _ (colors.get_mem _)
+    exact (G.isIndepSet_iff.mp hindi) ha hb (G.ne_of_adj hab) hab
+  · rintro ⟨C⟩
+    refine ⟨(List.finRange k).map (fun i => {v | C v = i}), ?_, ?_, ?_, ?_⟩
+    · simp
+    · intro v
+      rw [isInSomeColor_iff]
+      exact ⟨{w | C w = C v}, List.mem_map.mpr ⟨C v, List.mem_finRange _, rfl⟩, rfl⟩
+    · rw [colorClassesPairwiseDisjoint_iff, List.pairwise_map]
+      refine (List.nodup_finRange k).imp ?_
+      intro i j hij v hvi hvj
+      have e1 : C v = i := hvi
+      have e2 : C v = j := hvj
+      exact hij (e1.symm.trans e2)
+    · rw [colorClassesIndependent_iff]
+      intro S hS
+      rw [List.mem_map] at hS
+      obtain ⟨i, _, rfl⟩ := hS
+      rw [G.isIndepSet_iff]
+      intro u hu w hw _ hadj
+      exact C.valid hadj ((show C u = i from hu).trans (show C w = i from hw).symm)
+
+/-- Three-colorability by sets coincides with mathlib's `Colorable 3`. -/
+theorem isThreeColorableBySets_iff_colorable :
+    G.IsThreeColorableBySets ↔ G.Colorable 3 := by
+  rw [← hasColoringBySetsOfSize_iff_colorable]
+  constructor
+  · rintro ⟨S, T, U, h⟩
+    exact ⟨[S, T, U], rfl, h⟩
+  · rintro ⟨colors, hlen, h⟩
+    obtain ⟨S, T, U, rfl⟩ := List.length_eq_three.mp hlen
+    exact ⟨S, T, U, h⟩
 
 end SimpleGraph
 
@@ -679,8 +758,8 @@ theorem satisfiesAt_existsSOs_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_kColorable_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (k : Nat) :
-    SatisfiesAt (kColorable k) G rho ↔ G.HasColoringBySetsOfSize k := by
-  rw [kColorable, satisfiesAt_existsSOs_iff]
+    SatisfiesAt (kColorable k) G rho ↔ G.Colorable k := by
+  rw [← G.hasColoringBySetsOfSize_iff_colorable, kColorable, satisfiesAt_existsSOs_iff]
   constructor
   · rintro ⟨sets, hlen, hEval⟩
     have hmap :
@@ -704,13 +783,14 @@ theorem satisfiesAt_kColorable_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_threeColorable_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    SatisfiesAt threeColorable G rho ↔ G.IsThreeColorableBySets := by
+    SatisfiesAt threeColorable G rho ↔ G.Colorable 3 := by
+  rw [← G.isThreeColorableBySets_iff_colorable]
   simp [threeColorable, SimpleGraph.IsThreeColorableBySets, Semantics.SatisfiesAt,
     satisfiesAt_coloring_iff, X, Y, Z, Assignment.updateSO]
 
 theorem satisfiesAt_kColorable_three_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    SatisfiesAt (kColorable 3) G rho ↔ G.IsThreeColorableBySets := by
+    SatisfiesAt (kColorable 3) G rho ↔ G.Colorable 3 := by
   simpa [← threeColorable_eq_kColorable_three] using satisfiesAt_threeColorable_iff G rho
 
 theorem satisfiesAt_edgeBetween_iff {V : Type} (G : SimpleGraph V)
