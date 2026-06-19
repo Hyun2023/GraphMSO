@@ -1,31 +1,113 @@
 import Mathlib.Combinatorics.SimpleGraph.Clique
+import Mathlib.Combinatorics.SimpleGraph.VertexCover
+import Mathlib.Combinatorics.SimpleGraph.Bipartite
+import Mathlib.Combinatorics.SimpleGraph.Matching
+import Mathlib.Combinatorics.SimpleGraph.Coloring
 import GraphMSO.Semantics
 
 namespace SimpleGraph
 
 variable {V : Type} (G : SimpleGraph V)
 
-/-- A vertex set is independent if no two distinct vertices in it are adjacent. -/
-def IsIndependent (S : Set V) : Prop :=
-  ∀ u v : V, u ∈ S -> v ∈ S -> u ≠ v -> ¬ G.Adj u v
-
 /-- A vertex set dominates the graph if every vertex is in it or adjacent to one of it. -/
 def IsDominating (S : Set V) : Prop :=
   ∀ v : V, v ∈ S ∨ ∃ u : V, u ∈ S ∧ G.Adj u v
 
-/-- A vertex set covers all edges if every edge has an endpoint in it. -/
-def IsVertexCover (S : Set V) : Prop :=
-  ∀ e : G.edgeSet, ∃ v : V, v ∈ S ∧ v ∈ (e : Sym2 V)
+/-- A set covers all edges (`IsVertexCover`) iff, ranging over `G.edgeSet`, every
+edge has an endpoint in it. This bridges the adjacency-based mathlib definition and
+the incidence view used by MSO2 edge quantifiers. -/
+theorem isVertexCover_iff_forall_edge (S : Set V) :
+    G.IsVertexCover S ↔ ∀ e : G.edgeSet, ∃ v : V, v ∈ S ∧ v ∈ (e : Sym2 V) := by
+  unfold SimpleGraph.IsVertexCover
+  constructor
+  · rintro h ⟨e, he⟩
+    induction e using Sym2.ind with
+    | _ a b =>
+      rcases h (G.mem_edgeSet.mp he) with ha | hb
+      · exact ⟨a, ha, Sym2.mem_iff.mpr (Or.inl rfl)⟩
+      · exact ⟨b, hb, Sym2.mem_iff.mpr (Or.inr rfl)⟩
+  · intro h v w hvw
+    obtain ⟨u, huS, hu⟩ := h ⟨s(v, w), G.mem_edgeSet.mpr hvw⟩
+    rcases Sym2.mem_iff.mp hu with rfl | rfl
+    · exact Or.inl huS
+    · exact Or.inr huS
 
-/-- Edge-based bipartiteness, phrased to match the MSO2 formula directly. -/
-def IsBipartiteByEdges : Prop :=
-  ∃ S : Set V,
-    ∀ e : G.edgeSet, ∃ u v : V,
-      u ∈ S ∧ v ∉ S ∧ u ∈ (e : Sym2 V) ∧ v ∈ (e : Sym2 V)
+/-- A graph is bipartite (`IsBipartite`) iff there is a set `S` of vertices such that,
+ranging over `G.edgeSet`, every edge has one endpoint in `S` and one outside it. The
+witnessing parts are `S` and its complement. -/
+theorem isBipartite_iff_forall_edge :
+    G.IsBipartite ↔
+      ∃ S : Set V, ∀ e : G.edgeSet, ∃ u v : V,
+        u ∈ S ∧ v ∉ S ∧ u ∈ (e : Sym2 V) ∧ v ∈ (e : Sym2 V) := by
+  rw [SimpleGraph.isBipartite_iff_exists_isBipartiteWith]
+  constructor
+  · rintro ⟨s, t, hdisj, hadj⟩
+    refine ⟨s, ?_⟩
+    rintro ⟨e, he⟩
+    induction e using Sym2.ind with
+    | _ a b =>
+      rcases hadj (G.mem_edgeSet.mp he) with ⟨ha, hb⟩ | ⟨ha, hb⟩
+      · exact ⟨a, b, ha, Set.disjoint_right.mp hdisj hb,
+          Sym2.mem_iff.mpr (Or.inl rfl), Sym2.mem_iff.mpr (Or.inr rfl)⟩
+      · exact ⟨b, a, hb, Set.disjoint_right.mp hdisj ha,
+          Sym2.mem_iff.mpr (Or.inr rfl), Sym2.mem_iff.mpr (Or.inl rfl)⟩
+  · rintro ⟨S, h⟩
+    refine ⟨S, Sᶜ, disjoint_compl_right, ?_⟩
+    intro v w hvw
+    obtain ⟨u, u', huS, hu'notS, hu, hu'⟩ := h ⟨s(v, w), G.mem_edgeSet.mpr hvw⟩
+    rcases Sym2.mem_iff.mp hu with rfl | rfl <;> rcases Sym2.mem_iff.mp hu' with rfl | rfl
+    · exact absurd huS hu'notS
+    · exact Or.inl ⟨huS, hu'notS⟩
+    · exact Or.inr ⟨hu'notS, huS⟩
+    · exact absurd huS hu'notS
 
-/-- A perfect matching is an edge set incident to each vertex at exactly one edge. -/
-def HasPerfectMatching (M : Set G.edgeSet) : Prop :=
-  ∀ v : V, ∃! e : G.edgeSet, e ∈ M ∧ v ∈ (e : Sym2 V)
+/-- The spanning subgraph of `G` whose edges are exactly the set `S ⊆ G.edgeSet`:
+every vertex is kept, and `v, w` are adjacent precisely when the edge `s(v, w)`
+belongs to `S`. -/
+def spanningSubgraphOfEdges (S : Set G.edgeSet) : G.Subgraph where
+  verts := Set.univ
+  Adj v w := s(v, w) ∈ Subtype.val '' S
+  adj_sub := by
+    rintro v w ⟨e, -, he⟩
+    exact G.mem_edgeSet.mp (he ▸ e.2)
+  edge_vert := by intro v w _; exact Set.mem_univ v
+  symm := by
+    intro v w h
+    rwa [Sym2.eq_swap]
+
+@[simp]
+theorem spanningSubgraphOfEdges_adj (S : Set G.edgeSet) (v w : V) :
+    (G.spanningSubgraphOfEdges S).Adj v w ↔ s(v, w) ∈ Subtype.val '' S :=
+  Iff.rfl
+
+/-- The spanning subgraph carved out by an edge set `S` is a perfect matching iff,
+ranging over `G.edgeSet`, every vertex is incident to exactly one edge of `S`. This
+bridges mathlib's subgraph-based `IsPerfectMatching` and the incidence view used by
+the MSO2 perfect-matching formula. -/
+theorem isPerfectMatching_spanningSubgraphOfEdges_iff (S : Set G.edgeSet) :
+    (G.spanningSubgraphOfEdges S).IsPerfectMatching ↔
+      ∀ v : V, ∃! e : G.edgeSet, e ∈ S ∧ v ∈ (e : Sym2 V) := by
+  rw [Subgraph.isPerfectMatching_iff]
+  refine forall_congr' fun v => ?_
+  simp only [spanningSubgraphOfEdges_adj]
+  constructor
+  · rintro ⟨w, hw, huniq⟩
+    obtain ⟨e, heS, he⟩ := hw
+    have hve : v ∈ (e : Sym2 V) := by rw [he]; exact Sym2.mem_iff.mpr (Or.inl rfl)
+    refine ⟨e, ⟨heS, hve⟩, ?_⟩
+    rintro e' ⟨he'S, hve'⟩
+    have hspec : s(v, Sym2.Mem.other hve') = (e' : Sym2 V) := Sym2.other_spec hve'
+    have hwoth : Sym2.Mem.other hve' = w := huniq _ ⟨e', he'S, hspec.symm⟩
+    apply Subtype.ext
+    rw [← hspec, hwoth, he]
+  · rintro ⟨e, ⟨heS, hve⟩, huniq⟩
+    have hspec : s(v, Sym2.Mem.other hve) = (e : Sym2 V) := Sym2.other_spec hve
+    refine ⟨Sym2.Mem.other hve, ⟨e, heS, hspec.symm⟩, ?_⟩
+    rintro w' ⟨e', he'S, he'⟩
+    have hve' : v ∈ (e' : Sym2 V) := by rw [he']; exact Sym2.mem_iff.mpr (Or.inl rfl)
+    have hee : e' = e := huniq e' ⟨he'S, hve'⟩
+    rw [hee] at he'
+    exact (Sym2.congr_right.mp (hspec.trans he')).symm
 
 /-- The edge set `F` contains exactly two edges incident to `v`. -/
 def HasExactlyTwoIncidentEdgesIn (F : Set G.edgeSet) (v : V) : Prop :=
@@ -96,7 +178,7 @@ def ColorClassesPairwiseDisjoint : List (Set V) -> Prop
 /-- Every listed color class is independent. -/
 def ColorClassesIndependent (G : SimpleGraph V) : List (Set V) -> Prop
   | [] => True
-  | S :: Ss => G.IsIndependent S ∧ ColorClassesIndependent G Ss
+  | S :: Ss => G.IsIndepSet S ∧ ColorClassesIndependent G Ss
 
 /-- A coloring is a partition of the vertex set into independent color classes. -/
 def IsColoringBySets (colors : List (Set V)) : Prop :=
@@ -149,6 +231,84 @@ def IsMinorModelBySets (branchSets : List (Set V)) (edgePairs : List (Set V × S
 /-- The graph has a `K_3` minor, represented by three branch sets. -/
 def HasK3MinorBySets : Prop :=
   ∃ S T U : Set V, G.IsMinorModelBySets [S, T, U] [(S, T), (S, U), (T, U)]
+
+theorem isInSomeColor_iff (v : V) (colors : List (Set V)) :
+    IsInSomeColor v colors ↔ ∃ S ∈ colors, v ∈ S := by
+  induction colors with
+  | nil => simp [IsInSomeColor]
+  | cons S Ss ih => simp [IsInSomeColor, ih]
+
+theorem colorClassesIndependent_iff (colors : List (Set V)) :
+    G.ColorClassesIndependent colors ↔ ∀ S ∈ colors, G.IsIndepSet S := by
+  induction colors with
+  | nil => simp [ColorClassesIndependent]
+  | cons S Ss ih => simp [ColorClassesIndependent, ih]
+
+theorem colorClassDisjointFrom_iff (S : Set V) (colors : List (Set V)) :
+    ColorClassDisjointFrom S colors ↔ ∀ T ∈ colors, ColorClassesDisjoint S T := by
+  induction colors with
+  | nil => simp [ColorClassDisjointFrom]
+  | cons T Ts ih => simp [ColorClassDisjointFrom, ih]
+
+theorem colorClassesPairwiseDisjoint_iff (colors : List (Set V)) :
+    ColorClassesPairwiseDisjoint colors ↔ colors.Pairwise ColorClassesDisjoint := by
+  induction colors with
+  | nil => simp [ColorClassesPairwiseDisjoint]
+  | cons S Ss ih =>
+    simp [ColorClassesPairwiseDisjoint, List.pairwise_cons, colorClassDisjointFrom_iff, ih]
+
+/-- A vertex coloring represented by a list of `k` color classes (covering, pairwise
+disjoint, each independent) is exactly mathlib's `Colorable k`. Empty color classes
+correspond to unused colors. -/
+theorem hasColoringBySetsOfSize_iff_colorable (k : ℕ) :
+    G.HasColoringBySetsOfSize k ↔ G.Colorable k := by
+  constructor
+  · rintro ⟨colors, hlen, hcover, _, hind⟩
+    classical
+    subst hlen
+    have cov : ∀ v, ∃ i : Fin colors.length, v ∈ colors.get i := by
+      intro v
+      obtain ⟨S, hS, hvS⟩ := (isInSomeColor_iff v colors).mp (hcover v)
+      obtain ⟨i, hi⟩ := List.get_of_mem hS
+      exact ⟨i, by rw [hi]; exact hvS⟩
+    refine ⟨Coloring.mk (fun v => Classical.choose (cov v)) ?_⟩
+    intro a b hab heq
+    have ha := Classical.choose_spec (cov a)
+    have hb := Classical.choose_spec (cov b)
+    rw [show Classical.choose (cov a) = Classical.choose (cov b) from heq] at ha
+    have hindi : G.IsIndepSet (colors.get (Classical.choose (cov b))) :=
+      (colorClassesIndependent_iff G colors).mp hind _ (colors.get_mem _)
+    exact (G.isIndepSet_iff.mp hindi) ha hb (G.ne_of_adj hab) hab
+  · rintro ⟨C⟩
+    refine ⟨(List.finRange k).map (fun i => {v | C v = i}), ?_, ?_, ?_, ?_⟩
+    · simp
+    · intro v
+      rw [isInSomeColor_iff]
+      exact ⟨{w | C w = C v}, List.mem_map.mpr ⟨C v, List.mem_finRange _, rfl⟩, rfl⟩
+    · rw [colorClassesPairwiseDisjoint_iff, List.pairwise_map]
+      refine (List.nodup_finRange k).imp ?_
+      intro i j hij v hvi hvj
+      have e1 : C v = i := hvi
+      have e2 : C v = j := hvj
+      exact hij (e1.symm.trans e2)
+    · rw [colorClassesIndependent_iff]
+      intro S hS
+      rw [List.mem_map] at hS
+      obtain ⟨i, _, rfl⟩ := hS
+      rw [G.isIndepSet_iff]
+      intro u hu w hw _ hadj
+      exact C.valid hadj ((show C u = i from hu).trans (show C w = i from hw).symm)
+
+/-- Three-colorability by sets coincides with mathlib's `Colorable 3`. -/
+theorem isThreeColorableBySets_iff_colorable :
+    G.IsThreeColorableBySets ↔ G.Colorable 3 := by
+  rw [← hasColoringBySetsOfSize_iff_colorable]
+  constructor
+  · rintro ⟨S, T, U, h⟩
+    exact ⟨[S, T, U], rfl, h⟩
+  · rintro ⟨colors, hlen, h⟩
+    obtain ⟨S, T, U, rfl⟩ := List.length_eq_three.mp hlen
+    exact ⟨S, T, U, h⟩
 
 end SimpleGraph
 
@@ -383,16 +543,16 @@ theorem satisfiesAt_clique_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_independent_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
-    SatisfiesAt (independent X) G rho ↔ G.IsIndependent (rho.so X) := by
+    SatisfiesAt (independent X) G rho ↔ G.IsIndepSet (rho.so X) := by
   classical
-  simp [independent, SimpleGraph.IsIndependent, Formula.forallFOs, Semantics.SatisfiesAt, x, y,
-    Assignment.updateFO, eq_comm]
+  simp [independent, SimpleGraph.isIndepSet_iff, Set.Pairwise, Formula.forallFOs,
+    Semantics.SatisfiesAt, x, y, Assignment.updateFO, eq_comm]
   constructor
-  · intro h u v hSu hSv hne hAdj
+  · intro h u hSu v hSv hne hAdj
     exact hne (h u v hSu hSv hAdj)
   · intro h u v hSu hSv hAdj
     by_contra hne
-    exact h u v hSu hSv hne hAdj
+    exact h hSu hSv hne hAdj
 
 theorem satisfiesAt_dominating_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
@@ -598,8 +758,8 @@ theorem satisfiesAt_existsSOs_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_kColorable_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (k : Nat) :
-    SatisfiesAt (kColorable k) G rho ↔ G.HasColoringBySetsOfSize k := by
-  rw [kColorable, satisfiesAt_existsSOs_iff]
+    SatisfiesAt (kColorable k) G rho ↔ G.Colorable k := by
+  rw [← G.hasColoringBySetsOfSize_iff_colorable, kColorable, satisfiesAt_existsSOs_iff]
   constructor
   · rintro ⟨sets, hlen, hEval⟩
     have hmap :
@@ -623,13 +783,14 @@ theorem satisfiesAt_kColorable_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_threeColorable_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    SatisfiesAt threeColorable G rho ↔ G.IsThreeColorableBySets := by
+    SatisfiesAt threeColorable G rho ↔ G.Colorable 3 := by
+  rw [← G.isThreeColorableBySets_iff_colorable]
   simp [threeColorable, SimpleGraph.IsThreeColorableBySets, Semantics.SatisfiesAt,
     satisfiesAt_coloring_iff, X, Y, Z, Assignment.updateSO]
 
 theorem satisfiesAt_kColorable_three_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    SatisfiesAt (kColorable 3) G rho ↔ G.IsThreeColorableBySets := by
+    SatisfiesAt (kColorable 3) G rho ↔ G.Colorable 3 := by
   simpa [← threeColorable_eq_kColorable_three] using satisfiesAt_threeColorable_iff G rho
 
 theorem satisfiesAt_edgeBetween_iff {V : Type} (G : SimpleGraph V)
@@ -781,8 +942,10 @@ theorem satisfiesAt_uniqueIncEdgeIn_iff {V : Type} (G : SimpleGraph V)
 
 theorem satisfiesAt_perfectMatching_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (M : EdgeSOVar) :
-    SatisfiesAt (perfectMatching M) G rho ↔ G.HasPerfectMatching (rho.eso M) := by
-  simp [perfectMatching, SimpleGraph.HasPerfectMatching, Semantics.SatisfiesAt,
+    SatisfiesAt (perfectMatching M) G rho ↔
+      (G.spanningSubgraphOfEdges (rho.eso M)).IsPerfectMatching := by
+  rw [SimpleGraph.isPerfectMatching_spanningSubgraphOfEdges_iff]
+  simp [perfectMatching, Semantics.SatisfiesAt,
     satisfiesAt_isLoop_false, x, e0, Assignment.updateFO, Assignment.updateEdgeFO]
   constructor
   · intro h vertex
@@ -898,8 +1061,8 @@ def vertexCover (X : SOVar) : Formula :=
 theorem satisfiesAt_vertexCover_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) (X : SOVar) :
     SatisfiesAt (vertexCover X) G rho ↔ G.IsVertexCover (rho.so X) := by
-  simp [vertexCover, SimpleGraph.IsVertexCover, Semantics.SatisfiesAt, x, e0,
-    Assignment.updateFO, Assignment.updateEdgeFO]
+  rw [G.isVertexCover_iff_forall_edge]
+  simp [vertexCover, Semantics.SatisfiesAt, x, e0, Assignment.updateFO, Assignment.updateEdgeFO]
 
 def bipartite : Formula :=
   existsSO X (forallEdgeFO e0 (existsFO x (existsFO y
@@ -907,8 +1070,9 @@ def bipartite : Formula :=
 
 theorem satisfiesAt_bipartite_iff {V : Type} (G : SimpleGraph V)
     (rho : Assignment V G.edgeSet) :
-    SatisfiesAt bipartite G rho ↔ G.IsBipartiteByEdges := by
-  simp [bipartite, SimpleGraph.IsBipartiteByEdges, Semantics.SatisfiesAt, X, e0, x, y,
+    SatisfiesAt bipartite G rho ↔ G.IsBipartite := by
+  rw [G.isBipartite_iff_forall_edge]
+  simp [bipartite, Semantics.SatisfiesAt, X, e0, x, y,
     Assignment.updateSO, Assignment.updateFO, Assignment.updateEdgeFO]
 
 /-- A two-vertex type for smoke-test examples. -/
