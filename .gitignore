@@ -5,3 +5,16 @@
 *.c
 *.o
 /CLAUDE.md
+
+# LaTeX
+*.log
+*.aux
+*.out
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.bbl
+*.pdf
+*.toc
+*.blg
+!/Courcelle/tree_decomp_and_tree_automata.pdf
