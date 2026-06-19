@@ -22,28 +22,28 @@ compatibility layer는 유지하지 않는다.
   - `Formula.FreeFO`, `Formula.FreeSO`, `Formula.FreeEdgeFO`, `Formula.FreeEdgeSO`,
     `Formula.Closed`가 있다.
 - `GraphMSO.Semantics`
-  - `Assignment V E`는 삭제하지 않고 유지한다.
+  - `Assignment V E` 하나가 free-variable 의미론과 닫힌 문장 의미론을 모두 담당한다.
+  - 정점 1차 변수와 간선 1차 변수는 `Option V`, `Option E`로 해석한다. 값이 없는
+    1차 변수는 원자식에서 false가 되며, 양화자는 update를 통해 값을 넣는다.
   - 정점 집합과 간선 집합 assignment는 별칭 없이 `Set V`, `Set E`로 표현한다.
   - `SimpleGraph V` 의미론에서는 edge sort를 `G.edgeSet`으로 특수화해
     `Assignment V G.edgeSet`을 사용한다.
-  - `Semantics.EvalAt : Formula -> (G : SimpleGraph V) -> Assignment V G.edgeSet -> Prop`가
-    실제 assignment-aware Tarski 의미론이다.
-  - `Semantics.Eval : Formula -> SimpleGraph V -> Prop`는 닫힌 공식용 graph-property
-    wrapper이다. 현재는 모든 assignment에서 참이라는 형태로 정의하며, 닫힌 공식에 대해서는
-    임의의 한 assignment에서의 `EvalAt`과 동치임을 증명했다. 단, edge sort가 비어 있을 때
-    vacuous truth가 생길 수 있으므로 Courcelle theorem statement에 쓰기 전에 교체해야 하는
-    임시 정의이다.
-  - `edge x y`는 `G.Adj (rho.fo x) (rho.fo y)`로, `inc x e`는
-    `rho.fo x ∈ (rho.efo e : Sym2 V)`로 해석한다.
+  - `Semantics.SatisfiesAt : Formula -> (G : SimpleGraph V) -> Assignment V G.edgeSet -> Prop`가
+    assignment-aware Tarski 의미론이다.
+  - `Semantics.Satisfies G phi`가 닫힌 공식용 graph satisfaction 계층이다. 현재 정의는
+    `phi.Closed`와 `SatisfiesAt phi G Assignment.empty`의 conjunction이다.
+  - `edge x y`는 두 정점 변수가 값 `u`, `v`로 배정되어 있고 `G.Adj u v`일 때 참이다.
+  - `inc x e`는 정점 변수 값 `v`와 간선 변수 값 `e : G.edgeSet`이 있고
+    `v ∈ (e : Sym2 V)`일 때 참이다.
 - `GraphMSO.Basic`
   - 삭제되었다. 각 모듈은 필요한 mathlib 모듈을 직접 import한다.
 - `GraphMSO.Examples`
-  - clique, independent set, dominating set, vertex cover, bipartite, perfect matching
-    예제 공식이 있다.
-  - 자유 변수가 있는 공식의 정확성 정리는 `EvalAt`으로 서술한다.
-  - `eval_clique_iff`, `eval_independent_iff`, `eval_dominating_iff`,
-    `eval_vertexCover_iff`, `eval_bipartite_iff`, `eval_perfectMatching_iff`가
-    `SimpleGraph` 위에서 컴파일된다.
+  - clique, independent set, dominating set, vertex cover, bipartite, perfect matching,
+    connectivity, coloring, minor, Hamiltonian cycle 예제 공식이 있다.
+  - 자유 변수가 있는 공식의 정확성 정리는 `SatisfiesAt`으로 서술한다.
+  - 대표 정리 이름은 `satisfiesAt_clique_iff`, `satisfiesAt_independent_iff`,
+    `satisfiesAt_dominating_iff`, `satisfiesAt_vertexCover_iff`,
+    `satisfiesAt_bipartite_iff`처럼 `SatisfiesAt` 기준으로 맞춘다.
 
 ## 빌드 원칙
 
@@ -61,15 +61,15 @@ lake build
 ## 설계 원칙
 
 - Courcelle theorem을 향한 주 경로는 mathlib `SimpleGraph V` 위에 둔다.
-- `Assignment V E`는 유지한다. `SimpleGraph` 위에서는 `E := G.edgeSet`으로 instantiate한다.
-- 정점 집합과 간선 집합은 `VSet`/`ESet` 별칭 없이 `Set V`, `Set G.edgeSet`을 직접 사용한다.
-- 자유 변수가 있는 공식은 `EvalAt phi G rho`로 다룬다.
-- 닫힌 문장 또는 graph property는 `Eval phi G` 또는 새 `Satisfies G phi` 계층으로 다루되,
-  현재 `forall rho, EvalAt phi G rho` 형태의 `Eval`은 임시 정의로 본다.
+- `Assignment V E`는 단일 환경 타입으로 유지한다. `SimpleGraph` 위에서는
+  `E := G.edgeSet`으로 instantiate한다.
+- 1차 변수는 비어 있을 수 있으므로 `Option`을 사용하고, 집합 변수는 항상 `Set` 값을 가진다.
+- 자유 변수가 있는 공식은 `SatisfiesAt phi G rho`로 다룬다.
+- 닫힌 문장 또는 graph property는 `Satisfies G phi`로 다룬다.
 - 유한성, 결정 가능성, treewidth bound는 그래프 구조체에 넣지 않고 필요한 정리에서
   `[Fintype V]`, `[DecidableEq V]`, `[DecidableRel G.Adj]`, tree decomposition 가정으로 둔다.
 - Courcelle formalization은 다음 층위를 분리한다.
-  - 순수 의미론: `EvalAt`, 닫힌 공식 만족 관계.
+  - 순수 의미론: `SatisfiesAt`, 닫힌 공식 만족 관계 `Satisfies`.
   - 유한 실행 의미론: finite evaluator와 correctness.
   - tree decomposition API: bags, width, nice decomposition.
   - 동적 계획법/automata 계층: decomposition 위 model checking.
@@ -82,23 +82,27 @@ lake build
 - 목표: MSO2 공식을 표현하는 핵심 문법을 둔다. 구현: `GraphMSO/Syntax.lean`의
   `inductive Formula`와 변수 별칭 `FOVar`, `SOVar`, `EdgeFOVar`, `EdgeSOVar`.
 - 목표: 변수 해석을 담는 assignment와 shadowing update API를 둔다. 구현:
-  `GraphMSO/Semantics.lean`의 `structure Assignment`, `Assignment.updateFO`,
-  `Assignment.updateSO`, `Assignment.updateEdgeFO`, `Assignment.updateEdgeSO` 및 관련 `[simp]` 정리.
+  `GraphMSO/Semantics.lean`의 `structure Assignment`, `Assignment.empty`,
+  `Assignment.updateFO`, `Assignment.updateSO`, `Assignment.updateEdgeFO`,
+  `Assignment.updateEdgeSO` 및 관련 `[simp]` 정리.
+- 목표: 빈 환경에서 닫힌 문장을 해석할 수 있게 한다. 구현: 1차 변수 field를
+  `Option`으로 두고, unassigned 원자식은 false가 되도록 `SatisfiesAt`을 정의한다.
 - 목표: mathlib `SimpleGraph V` 위에서 MSO2 Tarski 의미론을 정의한다. 구현:
-  `GraphMSO/Semantics.lean`의 `Semantics.EvalAt`, edge sort는 `G.edgeSet`.
+  `GraphMSO/Semantics.lean`의 `Semantics.SatisfiesAt`, edge sort는 `G.edgeSet`.
 - 목표: 닫힌 공식 또는 graph property용 wrapper를 둔다. 구현:
-  `GraphMSO/Semantics.lean`의 `Semantics.Eval`, 현재 정의는
-  `∀ rho, EvalAt phi G rho`.
-- 목표: MSO2의 incidence 원자식 `inc x e`를 `SimpleGraph` edge sort에 맞게 해석한다. 구현:
-  `Semantics.EvalAt`의 `Formula.inc` case에서 `rho.fo x ∈ (rho.efo e : Sym2 V)`로 해석.
-- 목표: `EvalAt`를 예제 증명에서 바로 펼칠 수 있게 기본 simp API를 둔다. 구현:
-  `GraphMSO/Semantics.lean`의 `evalAt_notEqual`, `evalAt_conj`, `evalAt_disj`,
-  `evalAt_impl`, `evalAt_biimpl`, `evalAt_existsFOs_*`, `evalAt_forallFOs_*`,
-  그리고 `Assignment.update*` 관련 `[simp]` 정리.
+  `GraphMSO/Semantics.lean`의 `Semantics.Satisfies`와
+  `Semantics.satisfies_iff_satisfiesAt_of_closed`.
+- 목표: MSO2의 incidence 원자식 `inc x e`를 `SimpleGraph` edge sort에 맞게 해석한다.
+  구현: `SatisfiesAt`의 `Formula.inc` case에서 배정된 정점 값이 배정된 edge subtype의
+  underlying `Sym2 V`에 속하는지 검사한다.
+- 목표: `SatisfiesAt`를 예제 증명에서 바로 펼칠 수 있게 기본 simp API를 둔다. 구현:
+  `GraphMSO/Semantics.lean`의 `satisfiesAt_conj`, `satisfiesAt_disj`,
+  `satisfiesAt_impl`, `satisfiesAt_biimpl`, `satisfiesAt_existsFOs_*`,
+  `satisfiesAt_forallFOs_*`, 그리고 `Assignment.update*` 관련 `[simp]` 정리.
 - 목표: 대표 MSO 공식이 손으로 쓴 `SimpleGraph` 술어와 맞는지 확인한다. 구현:
   `GraphMSO/Examples.lean`의 `clique`, `independent`, `dominating`, `vertexCover`,
-  `bipartite` 및 `eval_clique_iff`, `eval_independent_iff`, `eval_dominating_iff`,
-  `eval_vertexCover_iff`, `eval_bipartite_iff`.
+  `bipartite` 및 `satisfiesAt_clique_iff`, `satisfiesAt_independent_iff`,
+  `satisfiesAt_dominating_iff`, `satisfiesAt_vertexCover_iff`, `satisfiesAt_bipartite_iff`.
 - 목표: Courcelle theorem 경로에서 쓰지 않는 incidence graph compatibility layer를 제거한다.
   구현: `GraphMSO/Basic.lean` 삭제.
 - 목표: `GraphMSO.Basic`에 의존하던 별칭과 import를 제거하고 `Set`을 직접 사용한다. 구현:
@@ -107,15 +111,15 @@ lake build
 
 남은 작업:
 
-- `Eval`의 vacuous truth 문제를 피하는 닫힌 공식 만족 관계를 정한다.
-- `EvalAt` lemma 이름과 `[simp]` 전략을 정리한다.
+- 닫힌 공식 예제와 이후 Courcelle statement가 `Satisfies`를 직접 쓰도록 점진적으로 옮긴다.
 - edge quantifier helper에 대한 simp lemma를 추가한다.
+- 정리 이름과 statement가 `SatisfiesAt`/`Satisfies` 계층을 일관되게 드러내는지 계속 정리한다.
 
 완료 기준:
 
 - 핵심 정의에 `sorry`가 없다.
 - `lake build`가 통과한다.
-- 대표 예제 공식이 `EvalAt`에서 직접 펼쳐져 증명 가능한 형태로 나온다.
+- 대표 예제 공식이 `SatisfiesAt`에서 직접 펼쳐져 증명 가능한 형태로 나온다.
 
 ## 2단계: 자유 변수, support, assignment independence
 
@@ -139,18 +143,15 @@ substitution, alpha-equivalence 정리는 formula normalization이나 user-facin
   `GraphMSO/Syntax.lean`의 `Formula.Closed`.
 - 목표: 실제 예제 공식이 닫혀 있음을 smoke test로 확인한다. 구현:
   `GraphMSO/Examples.lean`의 `Examples.hasNonemptyClique_closed`.
-- 목표: 두 assignment가 공식의 자유 변수에서 같다는 관계를 정의하고, `EvalAt`가 그 값들에만
-  의존함을 증명한다. 구현: `GraphMSO/Semantics.lean`의 `Assignment.AgreeOnFree`와
-  `Semantics.evalAt_ext_on_free`.
-- 목표: 닫힌 공식의 `EvalAt` 의미론이 assignment 선택과 무관함을 증명한다. 구현:
-  `GraphMSO/Semantics.lean`의 `Semantics.evalAt_closed_independent`.
-- 목표: 닫힌 공식에 대해 `Eval phi G`와 임의의 한 assignment에서의 `EvalAt phi G rho`를
-  연결한다. 구현: `GraphMSO/Semantics.lean`의 `Semantics.eval_iff_evalAt_of_closed`.
+- 목표: 두 assignment가 공식의 자유 변수에서 같다는 관계를 정의한다. 구현:
+  `GraphMSO/Semantics.lean`의 `Assignment.AgreeOnFree`.
 
 남은 작업:
 
+- `SatisfiesAt`가 자유 변수 값에만 의존한다는 `Assignment.AgreeOnFree` 기반 정리를 증명한다.
+- 닫힌 공식의 `SatisfiesAt` 의미론이 assignment 선택과 무관함을 증명한다.
 - 필요하면 `FreeFO`/`FreeSO`/`FreeEdgeFO`/`FreeEdgeSO`의 `Finset` 버전 또는 computable support를 추가한다.
-- 필요하면 `Satisfies G phi` 또는 notation 계층을 추가한다.
+- 필요하면 `Satisfies G phi`용 notation 계층을 추가한다.
 
 완료 기준:
 
@@ -159,51 +160,85 @@ substitution, alpha-equivalence 정리는 formula normalization이나 user-facin
 
 ## 3단계: `SimpleGraph` 그래프 술어와 MSO 명세 라이브러리
 
-목표는 손으로 쓴 `SimpleGraph` 술어와 MSO 공식 사이의 동치성을 Lean에서 증명하는 것이다.
+목표는 MSO 공식이 표준 graph-theoretic 의미와 같다는 것을 Lean에서 증명하는 것이다.
+가능하면 mathlib의 기존 `SimpleGraph` 정의를 직접 목표로 삼고, 프로젝트-local 술어는
+mathlib에 적절한 정의가 없거나 MSO2 edge-sort 표현과 맞추기 위한 wrapper로만 둔다.
+이 경우에도 local 술어 자체가 최종 의미가 되지 않도록, 나중에 mathlib 정의 또는
+문헌적으로 표준적인 정의와의 동치 정리를 추가한다.
 
 완료됨:
 
 - 목표: clique MSO 공식과 mathlib의 clique 술어를 연결한다. 구현:
-  `GraphMSO/Examples.lean`의 `Examples.clique`와 `Examples.eval_clique_iff`.
-- 목표: independent set MSO 공식과 mathlib의 `SimpleGraph.IsIndepSet`를 연결한다. 구현:
-  `GraphMSO/Examples.lean`의 `Examples.independent`와 `Examples.eval_independent_iff`.
-  (기존 local `SimpleGraph.IsIndependent`는 제거했다.)
-- 목표: dominating set MSO 공식과 `SimpleGraph` 술어를 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `Examples.clique`와 `Examples.satisfiesAt_clique_iff`.
+- 목표: independent set MSO 공식과 표준 independent-set 술어를 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsIndependent`, `Examples.independent`,
+  `Examples.satisfiesAt_independent_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: dominating set MSO 공식과 표준 dominating-set 술어를 연결한다. 구현:
   `GraphMSO/Examples.lean`의 `SimpleGraph.IsDominating`, `Examples.dominating`,
-  `Examples.eval_dominating_iff`.
-- 목표: vertex cover MSO2 공식과 mathlib의 `SimpleGraph.IsVertexCover`를 연결한다. 구현:
-  `GraphMSO/Examples.lean`의 `Examples.vertexCover`, `Examples.eval_vertexCover_iff`,
-  그리고 edge 기반 특성화 보조정리 `SimpleGraph.isVertexCover_iff_forall_edge`.
-  (동명의 local 중복 정의는 제거했다.)
-- 목표: bipartite MSO2 공식과 mathlib의 `SimpleGraph.IsBipartite`를 연결한다. 구현:
-  `GraphMSO/Examples.lean`의 `Examples.bipartite`, `Examples.eval_bipartite_iff`,
-  그리고 edge 기반 특성화 보조정리 `SimpleGraph.isBipartite_iff_forall_edge`.
-  (기존 local `SimpleGraph.IsBipartiteByEdges`는 제거했다.)
-- 목표: perfect matching MSO2 공식과 mathlib의 `SimpleGraph.Subgraph.IsPerfectMatching`를
-  연결한다. 구현: `GraphMSO/Examples.lean`의 `Examples.perfectMatching`와
-  `Examples.eval_perfectMatching_iff`. 간선 집합이 만드는 spanning subgraph 구성
-  `SimpleGraph.spanningSubgraphOfEdges`와 그 특성화 보조정리
-  `SimpleGraph.isPerfectMatching_spanningSubgraphOfEdges_iff`, 그리고 `isLoop`가 `G.edgeSet`에서
-  거짓임을 보이는 보조정리 `Examples.evalAt_isLoop_false`를 사용한다.
-  (미사용 local 정의 `SimpleGraph.HasPerfectMatching`는 제거했다.)
+  `Examples.satisfiesAt_dominating_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: vertex cover MSO2 공식과 표준 vertex-cover 술어를 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsVertexCover`, `Examples.vertexCover`,
+  `Examples.satisfiesAt_vertexCover_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: bipartite MSO2 공식과 표준 bipartite 술어를 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsBipartiteByEdges`, `Examples.bipartite`,
+  `Examples.satisfiesAt_bipartite_iff`. 남은 정리: mathlib에 해당 술어가 있으면 그것으로
+  대체하거나 local 정의와의 동치를 증명한다.
+- 목표: disconnectedness/connectivity 공식을 partition 기반 `SimpleGraph` 술어와 연결한다.
+  구현: `GraphMSO/Examples.lean`의 `SimpleGraph.IsDisconnectedByPartition`,
+  `SimpleGraph.IsConnectedByPartition`, `Examples.disconnected`, `Examples.connected`,
+  `Examples.satisfiesAt_disconnected_iff`, `Examples.satisfiesAt_connected_iff`.
+- 목표: fixed `k` coloring 공식을 color-class partition 기반 술어와 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsColoringBySets`, `Examples.coloring`,
+  `Examples.kColoring`, `Examples.satisfiesAt_coloring_iff`, `Examples.satisfiesAt_kColoring_iff`.
+- 목표: closed 3-colorability sentence를 추가하고 graph 술어와 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsThreeColorableBySets`,
+  `Examples.kColorable`, `Examples.threeColorable`,
+  `Examples.satisfiesAt_threeColorable_iff`, `Examples.satisfiesAt_kColorable_three_iff`.
+- 목표: 일반 `k`에 대해 closed `kColorable k`를 길이 `k`인 color-class list가
+  존재한다는 술어와 연결한다. 구현: `GraphMSO/Examples.lean`의
+  `SimpleGraph.HasColoringBySetsOfSize`, `Examples.satisfiesAt_kColorable_iff`.
+- 목표: Hamiltonian cycle MSO2 sentence를 edge-set 기반 술어와 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.HasHamiltonianCycleByEdges`,
+  `Examples.hamiltonian`, `Examples.satisfiesAt_hamiltonian_iff`.
+- 목표: fixed finite minor model 및 `K_t`-minor MSO2 sentence를 추가한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.IsMinorModelBySets`,
+  `SimpleGraph.HasK3MinorBySets`, `Examples.minorModelUsing`,
+  `Examples.completeGraphMinor`, `Examples.k3Minor`,
+  `Examples.satisfiesAt_k3Minor_iff`, `Examples.satisfiesAt_completeGraphMinor_three_iff`.
+- 목표: perfect matching MSO2 formula를 edge-set 기반 술어와 연결한다. 구현:
+  `GraphMSO/Examples.lean`의 `SimpleGraph.HasPerfectMatching`,
+  `Examples.perfectMatching`, `Examples.satisfiesAt_perfectMatching_iff`.
 
 남은 작업:
 
-- mathlib에 이미 있는 정의와 프로젝트-local 정의를 구분하고 이름을 정리한다.
-  (independent/vertex cover/bipartite는 mathlib 정의로 연결 완료. dominating은 mathlib에
-  대응이 없어 local `SimpleGraph.IsDominating`를 유지한다.)
-- fixed `k` coloring, connectedness, disconnectedness 공식을 추가한다.
-- MSO2가 필요한 spanning tree, Hamiltonian cycle, minor 관련 인코딩을 추가한다.
+- mathlib에 이미 있는 정의와 프로젝트-local 정의를 구분하고 이름을 정리한다. 이 작업은
+  Step 3의 local specification 라이브러리 완성 이후 별도 정리 단계로 미룬다.
+- 일반 fixed `H`-minor formula에 대해, partition 변수 freshness 조건 아래
+  `minorModelUsing`과 `SimpleGraph.IsMinorModelBySets`의 일반 correctness theorem을
+  추가한다. 현재는 `K_3` instance만 완전히 증명되어 있다.
+- project-local 술어가 필요한 경우 `Is...ByEdges`처럼 표현 방식이 드러나는 이름을 쓰고,
+  circular하게 보이지 않도록 표준 정의와의 comparison theorem을 둔다. 이 역시 mathlib
+  comparison 단계로 미룬다.
 
 완료 기준:
 
-- 주요 예제 공식마다 손으로 쓴 `SimpleGraph` 술어와의 iff 정리가 있다.
+- 주요 예제 공식마다 mathlib 또는 표준 graph-theoretic 술어와의 iff 정리가 있다.
+- project-local wrapper만 있는 경우, wrapper와 표준 정의 사이의 iff 정리가 있거나
+  mathlib에 적절한 정의가 없다는 이유가 문서화되어 있다.
 - theorem statement가 이후 Courcelle 명세에서 재사용 가능한 모양이다.
 
 ## 4단계: 유한 model checking 의미론
 
 Courcelle theorem으로 가려면, 순수 `Prop` 의미론과 별도로 유한 그래프에서 실행 가능한
-model checker가 필요하다.
+model checker가 필요하다. 핵심 기준은 다음과 같다.
+
+- 열린 공식 correctness는 `SatisfiesAt phi G rho`와 Boolean evaluator의 동치로 둔다.
+- 닫힌 공식 model checking은 `Satisfies G phi`와 연결한다.
+- evaluator의 assignment 타입도 `Assignment V G.edgeSet` 하나를 사용한다.
+- FO/eFO 값이 `none`인 원자식은 false가 되며, 양화자는 finite enumeration을 통해 값을 채운다.
 
 남은 작업:
 
@@ -211,44 +246,65 @@ model checker가 필요하다.
 - edge sort `G.edgeSet`의 finite enumeration을 mathlib API와 연결한다.
 - vertex set quantifier는 `Finset.powerset` 또는 finite `Set` enumeration과 연결한다.
 - edge set quantifier는 `G.edgeSet`의 powerset enumeration과 연결한다.
-- executable evaluator와 `EvalAt` 사이의 correctness theorem을 증명한다.
+- executable evaluator와 `SatisfiesAt` 사이의 correctness theorem을 증명한다.
+- 닫힌 공식용 executable wrapper와 `Satisfies` 사이의 correctness theorem을 증명한다.
 
 완료 기준:
 
 - 유한 `SimpleGraph`와 assignment에 대해 executable Boolean evaluator가 있다.
-- Boolean evaluator가 `EvalAt`과 동치임을 증명한다.
+- Boolean evaluator가 `SatisfiesAt`과 동치임을 증명한다.
+- 닫힌 공식 wrapper가 `Satisfies`와 연결된다.
 
 ## 5단계: tree decomposition과 treewidth
 
 Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
 
+완료:
+
+- decomposition tree와 tree decomposition predicate를 정의했다. 구현:
+  `GraphMSO/decomp.lean`의 `DecompositionTree V`, `TreeDecomposition G T`.
+  - tree node constructor: `DecompositionTree.node bag arity child`.
+  - bag type: `Set V`.
+  - finite bag condition: `T.BagsFinite`.
+  - vertex coverage: `T.ContainsVertex v`.
+  - edge coverage: `T.ContainsEdge u v`.
+  - running intersection property: 각 `v : V`에 대해 recursive certificate
+    `T.RunningIntersectionAt v`.
+- tree recursion helper와 inductive predicate를 정의했다. 구현: `rootBag`, `arity`,
+  `child`, `ContainsVertex`, `ContainsEdge`, `AllBags`, `BagsFinite`,
+  `RunningIntersection`, `WidthAtMost`.
+- treewidth bound API를 정의했다. 구현: `HasTreewidthAtMost`.
+- finite graph에 대한 one-bag decomposition 예제를 추가했다. 구현:
+  `singleBag`, `singleBag_decomposition`, `singleBag_widthAtMost_card`,
+  `hasTreewidthAtMost_card`.
+- `lake build`가 통과한다.
+
 남은 작업:
 
-- tree decomposition 구조를 정의한다.
-  - decomposition tree.
-  - bag : node -> Finset V 또는 Set V.
-  - vertex coverage.
-  - edge coverage.
-  - running intersection property.
-- width와 treewidth bound를 정의한다.
+- 필요한 경우 실제 `width`를 maximum bag size로 계산하는 API를 추가한다.
+  현재는 `T.WidthAtMost k` 형태의 bound predicate를 우선 사용한다.
+- 대표적인 작은 그래프(path, cycle 등)의 decomposition 예제를 추가한다.
 - nice tree decomposition을 정의하거나 기존 decomposition을 nice form으로 변환하는 정리를 검토한다.
 - mathlib의 graph/tree/path/connectivity API를 최대한 재사용한다.
 
 완료 기준:
 
-- `TreeDecomposition G`와 `width <= k`를 표현할 수 있다.
-- 대표적인 작은 그래프의 decomposition 예제가 컴파일된다.
+- `TreeDecomposition G T`와 `width <= k`를 표현할 수 있다. 완료:
+  `TreeDecomposition G T`, `T.WidthAtMost k`, `HasTreewidthAtMost G k`.
+- 대표적인 작은 그래프의 decomposition 예제가 컴파일된다. 부분 완료:
+  finite graph의 `singleBag` decomposition은 컴파일되며, 더 구체적인 작은 그래프 예제는 남았다.
 
 ## 6단계: bounded treewidth 위 MSO model checking
 
 남은 작업:
 
 - 공식의 quantifier rank 또는 상태 공간을 제한하는 measure를 정의한다.
-- bag type 위 partial assignment/state를 정의한다.
+- bag type 위 partial assignment/state를 정의한다. 여기서 partiality는 DP 상태가 bag 안의
+  변수만 들고 있다는 뜻이며, core 의미론의 `Assignment`와는 별도의 실행 상태이다.
 - nice tree decomposition node별 transition을 정의한다.
 - transition의 local soundness/completeness를 증명한다.
 - 전체 decomposition에 대한 dynamic-programming evaluator를 정의한다.
-- evaluator correctness를 `Eval` 또는 닫힌 공식 만족 관계와 연결한다.
+- evaluator correctness를 `SatisfiesAt` 또는 닫힌 공식 만족 관계 `Satisfies`와 연결한다.
 
 완료 기준:
 
@@ -277,7 +333,7 @@ Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
 
 - `simp` 보조정리를 정리한다.
   - assignment update.
-  - `EvalAt`/`Eval`의 파생 연결자.
+  - `SatisfiesAt`/`Satisfies`의 파생 연결자.
   - `Set` membership/subset/equality.
   - `SimpleGraph` 술어 unfolding.
   - 리스트 양화 helper.
@@ -289,12 +345,17 @@ Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
 
 ## 권장 작업 순서
 
-1. `Eval`의 임시 정의를 대체할 닫힌 공식 만족 관계를 정한다.
-2. `EvalAt`의 edge quantifier 및 파생 연결자 simp lemma를 보강한다.
-3. 닫힌 공식용 `Satisfies` 계층을 정의한다.
-4. 필요하면 finite evaluator용 computable free-variable support를 추가한다.
-5. `perfectMatching`, connectedness, fixed-colorability 정리까지 `SimpleGraph` 예제를 확장한다.
-6. finite executable evaluator와 correctness theorem을 만든다.
-7. tree decomposition과 treewidth API를 설계한다.
-8. nice decomposition 위 model checking dynamic programming을 형식화한다.
-9. Courcelle theorem statement를 약한 형태부터 세운다.
+완료됨:
+
+1. 닫힌 공식용 `Satisfies` 계층을 정의한다.
+2. 의미론을 `SatisfiesAt`/`Satisfies`로 통합하고 단일 `Assignment`를 사용한다.
+3. 예제 정리 statement와 이름을 `SatisfiesAt` 기준으로 정리한다.
+
+다음 작업:
+
+1. finite executable evaluator와 `SatisfiesAt` correctness theorem을 만든다.
+2. 닫힌 공식용 executable wrapper와 `Satisfies` correctness theorem을 만든다.
+3. 필요하면 finite evaluator용 computable free-variable support를 추가한다.
+4. tree decomposition 예제를 확장하고, 필요하면 finite-node `width` API를 추가한다.
+5. nice decomposition 위 model checking dynamic programming을 형식화한다.
+6. Courcelle theorem statement를 약한 형태부터 세운다.
