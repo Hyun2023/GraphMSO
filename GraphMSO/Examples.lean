@@ -197,6 +197,37 @@ def HasHamiltonianCycleByEdges : Prop :=
     (∀ v : V, G.HasExactlyTwoIncidentEdgesIn F v) ∧
     G.EdgeSetConnectedSpanning F
 
+/-- A finite, nonempty, preconnected graph in which every vertex has exactly two neighbours
+(i.e. a connected 2-regular graph) admits a Hamiltonian cycle: tracing the unique cycle through
+its single connected component visits every vertex exactly once. -/
+theorem exists_isHamiltonianCycle_of_ncard_neighborSet_eq_two_of_preconnected
+    [Fintype V] [DecidableEq V] [Nonempty V]
+    (h2reg : ∀ v, (G.neighborSet v).ncard = 2) (hpre : G.Preconnected) :
+    ∃ a, ∃ p : G.Walk a a, p.IsHamiltonianCycle := by
+  classical
+  have hcyc : G.IsCycles := fun v _ => h2reg v
+  obtain ⟨v⟩ := (inferInstance : Nonempty V)
+  have hn : (G.neighborSet v).Nonempty :=
+    Set.nonempty_of_ncard_ne_zero (by rw [h2reg v]; decide)
+  obtain ⟨q, hqc, hverts⟩ :=
+    hcyc.exists_cycle_toSubgraph_verts_eq_connectedComponentSupp (c := G.connectedComponentMk v)
+      ((ConnectedComponent.mem_supp_iff _ v).mpr rfl) hn
+  have hsupp : (G.connectedComponentMk v).supp = Set.univ := by
+    ext w
+    simp only [Set.mem_univ, iff_true, ConnectedComponent.mem_supp_iff, ConnectedComponent.eq]
+    exact hpre w v
+  rw [hsupp] at hverts
+  refine ⟨v, q, ?_⟩
+  rw [Walk.isHamiltonianCycle_iff_isCycle_and_support_count_tail_eq_one]
+  refine ⟨hqc, fun a => ?_⟩
+  have hmem : a ∈ q.support.tail := by
+    have ha : a ∈ q.support := (q.mem_verts_toSubgraph).mp (by rw [hverts]; exact Set.mem_univ a)
+    rw [Walk.support_eq_cons] at ha
+    rcases List.mem_cons.mp ha with rfl | h
+    · exact Walk.end_mem_tail_support hqc.not_nil
+    · exact h
+  exact List.count_eq_one_of_mem hqc.support_nodup hmem
+
 /-- The edge-set (2-factor) characterization of a Hamiltonian cycle coincides with the
 existence of a mathlib `Walk.IsHamiltonianCycle`, for a nonempty finite graph. -/
 theorem hasHamiltonianCycleByEdges_iff [Fintype V] [DecidableEq V] [Nonempty V] :
@@ -208,8 +239,8 @@ theorem hasHamiltonianCycleByEdges_iff [Fintype V] [DecidableEq V] [Nonempty V] 
     have hHadj : ∀ v w, H.Adj v w ↔ s(v, w) ∈ Subtype.val '' F := by
       intro v w
       rw [hH, Subgraph.spanningCoe_adj, spanningSubgraphOfEdges_adj]
-    have hcyc : H.IsCycles := by
-      intro v _
+    have h2reg : ∀ v, (H.neighborSet v).ncard = 2 := by
+      intro v
       obtain ⟨e₀, e₁, he₀F, he₁F, hve₀, hve₁, hne, huniq⟩ := hdeg v
       refine Set.ncard_eq_two.mpr ⟨Sym2.Mem.other hve₀, Sym2.Mem.other hve₁, ?_, ?_⟩
       · intro heq
@@ -245,31 +276,10 @@ theorem hasHamiltonianCycleByEdges_iff [Fintype V] [DecidableEq V] [Nonempty V] 
         · exact h
       have hee : (e : Sym2 V) = s(u, w) := by rw [← Sym2.other_spec hue, hwoth]
       exact hno u w huS hwT ((hHadj u w).mpr ⟨e, heF, hee⟩)
-    obtain ⟨v⟩ := (inferInstance : Nonempty V)
-    have hn : (H.neighborSet v).Nonempty := by
-      obtain ⟨e₀, _, he₀F, _, hve₀, _, _, _⟩ := hdeg v
-      exact ⟨Sym2.Mem.other hve₀,
-        (hHadj v (Sym2.Mem.other hve₀)).mpr ⟨e₀, he₀F, (Sym2.other_spec hve₀).symm⟩⟩
-    obtain ⟨q, hqc, hverts⟩ :=
-      hcyc.exists_cycle_toSubgraph_verts_eq_connectedComponentSupp (c := H.connectedComponentMk v)
-        ((ConnectedComponent.mem_supp_iff _ v).mpr rfl) hn
-    have hsupp : (H.connectedComponentMk v).supp = Set.univ := by
-      ext w
-      simp only [Set.mem_univ, iff_true, ConnectedComponent.mem_supp_iff, ConnectedComponent.eq]
-      exact hpre w v
-    rw [hsupp] at hverts
     have hle : H ≤ G := (G.spanningSubgraphOfEdges F).spanningCoe_le
-    refine ⟨v, q.mapLe hle, ?_⟩
-    rw [Walk.isHamiltonianCycle_iff_isCycle_and_support_count_tail_eq_one]
-    refine ⟨hqc.mapLe hle, fun a => ?_⟩
-    rw [Walk.support_mapLe_eq_support]
-    have hmem : a ∈ q.support.tail := by
-      have ha : a ∈ q.support := (q.mem_verts_toSubgraph).mp (by rw [hverts]; exact Set.mem_univ a)
-      rw [Walk.support_eq_cons] at ha
-      rcases List.mem_cons.mp ha with rfl | h
-      · exact Walk.end_mem_tail_support hqc.not_nil
-      · exact h
-    exact List.count_eq_one_of_mem hqc.support_nodup hmem
+    obtain ⟨a, p, hp⟩ :=
+      H.exists_isHamiltonianCycle_of_ncard_neighborSet_eq_two_of_preconnected h2reg hpre
+    exact ⟨a, p.mapLe hle, hp.map (Hom.ofLE hle) Function.bijective_id⟩
   · rintro ⟨a, p, hp⟩
     classical
     refine ⟨{e : G.edgeSet | (e : Sym2 V) ∈ p.edges}, ?_, ?_⟩
