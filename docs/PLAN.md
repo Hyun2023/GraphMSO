@@ -265,19 +265,41 @@ Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
   topmost 유일성 `IsTopmost.unique`. 보조 API: `mem_bags_nil`, `mem_bags_cons_iff`,
   `mem_bags_cons_fin`, `RunningIntersectionAt.node_inv`, `containsVertex_of_mem_bags`,
   ancestor-closedness 보조정리 `bags_prefixClosed`.
+- width `ω` decomposition의 bag-injective `(ω + 1)`-coloring 존재를 증명했다. 구현:
+  `exists_isBagColoring` (running intersection ∧ `BagsFinite` ∧ `WidthAtMost ω` ⇒ 모든 bag에서
+  injective인 `Fin (ω+1)` 색칠 존재)와 상대형 `exists_isBagColoring_extend` (root bag 색칠을
+  부분트리 전체로 확장). 보조정리: `exists_injOn_extend` (부분집합 injective 색칠을 더 큰 유한집합으로
+  확장), `isBagColoring_congr`, `AllBags.rootBag`.
 - `lake build`가 통과한다.
 
 남은 작업:
 
 - binary decomposition을 위한 arity ≤ 2 술어와 adhesion/cone 관련 보조정리를 추가한다.
-- `(ω + 1)`-coloring의 존재/구성 정리를 추가한다. 현재는 표현 `IsBagColoring`과
-  width 하한 방향(`widthAtMost_of_isBagColoring`)만 있고, width `ω` decomposition에서
-  rainbow coloring을 만드는 존재 정리는 남아 있다.
 - cycle 등 추가 작은 그래프 decomposition 예제를 더한다(path 예제 `pathP3Decomp`는 완료).
-- `toDecompositionTree`가 유효한 `TreeDecomposition G`임을(vertex/edge coverage, running
-  intersection) 보이는 다리 정리를 추가한다. 현재는 구조 변환과 root bag 보존만 있다. 이를
-  위해 `NiceTreeDecomposition`에 graph linkage(어느 그래프의 분해인지, edge coverage)를
-  부여하는 설계가 먼저 필요하다.
+- `toDecompositionTree`가 유효한 `TreeDecomposition G`임을 보이는 다리 정리. 현재는 구조 변환과
+  root bag 보존(`toDecompositionTree_rootBag`)만 있다. 분석 결과 `TreeDecomposition.mk`의 네 조건
+  상태는 다음과 같다:
+  - `BagsFinite`: 구조적으로 공짜(모든 bag이 `∅`에서 insert/forget으로 생성되어 유한). →
+    `toDecompositionTree_bagsFinite`로 바로 증명 가능(미구현).
+  - `vertex coverage`(`∀ v : V, ContainsVertex`): 자동 아님. introduce되지 않은 V의 정점이 있을 수
+    있어 spanning 가설이 필요(또는 covered-subtype로 제한).
+  - `edge coverage`: 현재 `NiceTreeDecomposition`이 그래프·간선을 전혀 담지 않아 서술조차 불가 →
+    아래 graph linkage 설계 필요.
+  - `running intersection`: **자동 아님(발견).** 현재 inductive는 잊은 정점의 재-introduce를 막지
+    않는다(`introduce`의 조건이 자식 root bag의 `v ∉ bag`일 뿐 서브트리 cone 전체가 아님). 반례:
+    `introduce ∅ v _ (forget ∅ v _ (introduce ∅ v _ leaf))`의 bag 수열이 `{v}, ∅, {v}, ∅`이라 v가
+    끊긴다. RI를 구조적으로 얻으려면 `introduce`에 `v ∉ cone(child)` 조건을 추가(타입 강화)해야 하고,
+    그러지 않으면 RI는 가설로 둔다. (RI 도구는 이미 있음: `isConnectedNodeSet_bags` 등.)
+- graph linkage 방식(**미결, 나중에 결정**): 두 안 모두 edge coverage는 구조적, RI·vertex
+  coverage(spanning)는 가설로 남는다.
+  - (C1) decode 방식: `decodedGraph T := {(u,v) | u ≠ v ∧ T.ContainsEdge u v}`(한 bag에 함께 든
+    쌍을 간선으로). 타입 변경 없이 일반 `DecompositionTree`에 적용되는 재사용 primitive이며 edge
+    coverage가 정의상 공짜. 단 분해 대상이 co-occurrence 최대 그래프로 고정(임의 sparse G 불가).
+    stage 5의 decode 방향과 일치. 정리 형태: `treeDecomposition_decodedGraph (BagsFinite)
+    (spanning) (RI) : TreeDecomposition T.decodedGraph T`.
+  - (C2) 명시적 per-node 간선 baking: 각 node가 bag 내 간선 집합을 들고 `G = ⋃ node 간선`. 임의의
+    sparse G 분해 가능, 강의노트 node-graph에 충실. 단 `NiceTreeDecomposition` 전면 재정의(+`Sym2`
+    invariant)와 `toDecompositionTree` 재작성 필요(분량 큼). 5단계 Σ_ω 인코딩과 직결.
 - `NiceTreeDecomposition`을 별도 inductive로 둘지 `DecompositionTree.IsNice` 술어로 둘지 설계를
   확정한다(전자는 correct-by-construction, 후자는 기존 `TreeDecomposition` API 재사용에 유리).
   현재 `NiceTreeDecomposition`은 `V : Type`로 고정되어 있어, 유지한다면 `DecompositionTree`처럼

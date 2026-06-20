@@ -431,6 +431,138 @@ theorem widthAtMost_of_isBagColoring {n : Nat} {T : DecompositionTree V}
     rw [WidthAtMost, allBags_node_iff]
     exact ⟨ncard_le_of_injOn_fin h.1, fun i => ih i (h.2 i)⟩
 
+/-- `AllBags P` yields `P` at the root bag. -/
+theorem AllBags.rootBag {P : Set V -> Prop} {T : DecompositionTree V} (h : AllBags P T) :
+    P T.rootBag := by
+  cases T with | node bag arity child => cases h with | node _ _ _ hroot _ => exact hroot
+
+/-- A bag-injective coloring only depends on the colors of vertices in the tree. -/
+theorem isBagColoring_congr {n : Nat} {f g : V -> Fin n} :
+    ∀ {T : DecompositionTree V}, T.IsBagColoring f ->
+      (∀ v, T.ContainsVertex v -> f v = g v) -> T.IsBagColoring g := by
+  intro T
+  induction T with
+  | node bag arity child ih =>
+    intro hf h
+    simp only [IsBagColoring, allBags_node_iff] at hf ⊢
+    obtain ⟨hbag, hch⟩ := hf
+    refine ⟨?_, fun i => ih i (hch i) (fun v hv => h v (.child _ _ _ _ i hv))⟩
+    intro x hx y hy hxy
+    apply hbag hx hy
+    rw [h x (.root _ _ _ _ hx), h y (.root _ _ _ _ hy)]
+    exact hxy
+
+/-- Extend a coloring injective on `t` to one injective on `t ∪ u`, as long as the
+palette `Fin k` is large enough to fit `t ∪ u`. -/
+theorem exists_injOn_extend {k : Nat} {c₀ : V -> Fin k} {t : Set V}
+    (ht : t.Finite) (hinj : Set.InjOn c₀ t) :
+    ∀ {u : Set V}, u.Finite -> Disjoint t u -> (t ∪ u).ncard ≤ k ->
+      ∃ c : V -> Fin k, Set.InjOn c (t ∪ u) ∧ Set.EqOn c c₀ t := by
+  classical
+  intro u hu
+  induction u, hu using Set.Finite.induction_on with
+  | empty =>
+    intro _ _
+    refine ⟨c₀, ?_, fun _ _ => rfl⟩
+    simpa using hinj
+  | @insert a u' ha hu' ih =>
+    intro hdisj hcard
+    have ha_t : a ∉ t := Set.disjoint_right.mp hdisj (Set.mem_insert a u')
+    have hfin' : (t ∪ u').Finite := ht.union hu'
+    have ha' : a ∉ t ∪ u' := by simp only [Set.mem_union, not_or]; exact ⟨ha_t, ha⟩
+    have hins : t ∪ insert a u' = insert a (t ∪ u') := Set.union_insert
+    have hcard' : (t ∪ u').ncard < k := by
+      have h1 : (insert a (t ∪ u')).ncard = (t ∪ u').ncard + 1 :=
+        Set.ncard_insert_of_notMem ha' hfin'
+      rw [hins, h1] at hcard; omega
+    obtain ⟨c', hc'inj, hc'eq⟩ := ih (hdisj.mono_right (Set.subset_insert a u')) (by
+      rw [hins] at hcard
+      exact le_trans (Set.ncard_le_ncard (Set.subset_insert a (t ∪ u')) (hfin'.insert a)) hcard)
+    obtain ⟨color, -, hcolor⟩ := Set.exists_mem_notMem_of_ncard_lt_ncard
+      (s := c' '' (t ∪ u')) (t := (Set.univ : Set (Fin k)))
+      (by
+        have hle : (c' '' (t ∪ u')).ncard ≤ (t ∪ u').ncard := Set.ncard_image_le hfin'
+        rw [Set.ncard_univ]
+        simp only [Nat.card_eq_fintype_card, Fintype.card_fin]
+        omega)
+    have heq : Set.EqOn (Function.update c' a color) c' (t ∪ u') := by
+      intro x hx
+      rw [Function.update_of_ne (ne_of_mem_of_not_mem hx ha')]
+    refine ⟨Function.update c' a color, ?_, ?_⟩
+    · rw [hins, Set.injOn_insert ha']
+      refine ⟨hc'inj.congr heq.symm, ?_⟩
+      rw [Function.update_self, Set.image_congr heq]
+      exact hcolor
+    · intro x hx
+      rw [Function.update_of_ne (ne_of_mem_of_not_mem hx ha_t)]
+      exact hc'eq hx
+
+/-- **Existence of a bag-injective coloring, relative form.** Given any injective
+coloring of the root bag, a width-`ω` decomposition with the running-intersection
+property extends it to a coloring injective on every bag. -/
+theorem exists_isBagColoring_extend {ω : Nat} :
+    ∀ {T : DecompositionTree V}, T.RunningIntersection -> T.BagsFinite -> T.WidthAtMost ω ->
+      ∀ {c₀ : V -> Fin (ω + 1)}, Set.InjOn c₀ T.rootBag ->
+        ∃ c : V -> Fin (ω + 1), T.IsBagColoring c ∧ Set.EqOn c c₀ T.rootBag := by
+  classical
+  intro T
+  induction T with
+  | node bag arity child ih =>
+    intro hRI hFin hW c₀ hc₀
+    simp only [WidthAtMost, BagsFinite, allBags_node_iff] at hW hFin
+    obtain ⟨hFinBag, hFinChild⟩ := hFin
+    obtain ⟨hWBag, hWChild⟩ := hW
+    -- For each child, build a bag-injective coloring agreeing with `c₀` on the overlap.
+    have key : ∀ i, ∃ c_i : V -> Fin (ω + 1),
+        (child i).IsBagColoring c_i ∧ Set.EqOn c_i c₀ (bag ∩ (child i).rootBag) := by
+      intro i
+      have hRIi : (child i).RunningIntersection := fun v => (hRI v).node_inv.1 i
+      have hrbFin : ((child i).rootBag).Finite := (hFinChild i).rootBag
+      have htfin : (bag ∩ (child i).rootBag).Finite := hFinBag.inter_of_left _
+      have hsub : bag ∩ (child i).rootBag ⊆ (child i).rootBag := Set.inter_subset_right
+      have hinj_t : Set.InjOn c₀ (bag ∩ (child i).rootBag) := hc₀.mono Set.inter_subset_left
+      have hunion : (bag ∩ (child i).rootBag) ∪ ((child i).rootBag \ (bag ∩ (child i).rootBag))
+          = (child i).rootBag := Set.union_diff_cancel hsub
+      obtain ⟨d_i, hd_inj, hd_eq⟩ := exists_injOn_extend htfin hinj_t hrbFin.diff
+        Set.disjoint_sdiff_right (by rw [hunion]; exact (hWChild i).rootBag)
+      rw [hunion] at hd_inj
+      obtain ⟨c_i, hc_i_bag, hc_i_eq⟩ := ih i hRIi (hFinChild i) (hWChild i) hd_inj
+      exact ⟨c_i, hc_i_bag, fun v hv => by rw [hc_i_eq (hsub hv), hd_eq hv]⟩
+    choose c_fam hc_bag hc_eq using key
+    set c : V -> Fin (ω + 1) := fun v =>
+      if hb : v ∈ bag then c₀ v
+      else if h : ∃ i, (child i).ContainsVertex v then c_fam h.choose v else c₀ v
+      with hc_def
+    have hP1 : ∀ v, v ∈ bag -> c v = c₀ v := by
+      intro v hv; simp only [hc_def, dif_pos hv]
+    have hP2 : ∀ i v, (child i).ContainsVertex v -> c v = c_fam i v := by
+      intro i v hcv
+      by_cases hv : v ∈ bag
+      · rw [hP1 v hv]
+        have hvr : v ∈ (child i).rootBag := (hRI v).node_inv.2.1 hv i hcv
+        exact (hc_eq i ⟨hv, hvr⟩).symm
+      · have hexists : ∃ j, (child j).ContainsVertex v := ⟨i, hcv⟩
+        have hchoose : hexists.choose = i :=
+          (hRI v).node_inv.2.2 hv hexists.choose i hexists.choose_spec hcv
+        simp only [hc_def, dif_neg hv, dif_pos hexists, hchoose]
+    refine ⟨c, ?_, fun v hv => hP1 v hv⟩
+    simp only [IsBagColoring, allBags_node_iff]
+    refine ⟨hc₀.congr (fun v hv => (hP1 v hv).symm), fun i => ?_⟩
+    exact isBagColoring_congr (hc_bag i) (fun v hcv => (hP2 i v hcv).symm)
+
+/-- **Existence of a bag-injective coloring.** A width-`ω` tree decomposition with the
+running-intersection property admits a coloring with `ω + 1` colors that is injective
+on every bag (the lecture-note rainbow coloring). -/
+theorem exists_isBagColoring {ω : Nat} {T : DecompositionTree V}
+    (hRI : T.RunningIntersection) (hFin : T.BagsFinite) (hW : T.WidthAtMost ω) :
+    ∃ c : V -> Fin (ω + 1), T.IsBagColoring c := by
+  obtain ⟨c₀, hc₀, -⟩ := exists_injOn_extend (k := ω + 1) (t := (∅ : Set V))
+    (c₀ := fun _ => 0) Set.finite_empty (by simp) (AllBags.rootBag hFin) (by simp)
+    (by rw [Set.empty_union]; exact AllBags.rootBag hW)
+  rw [Set.empty_union] at hc₀
+  obtain ⟨c, hc, -⟩ := exists_isBagColoring_extend hRI hFin hW hc₀
+  exact ⟨c, hc⟩
+
 end DecompositionTree
 
 /--
