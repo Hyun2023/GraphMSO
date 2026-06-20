@@ -260,13 +260,15 @@ Courcelle theorem의 graph-theoretic 핵심 API를 만든다.
   overlapping bag `{0,1}—{1,2}` 분해 `pathP3Decomp`, 유효성 `pathP3Decomp_decomposition`.
 - `NiceTreeDecomposition`을 `DecompositionTree`로 해석하는 다리를 추가했다. 구현:
   `NiceTreeDecomposition.toDecompositionTree`와 root bag 보존 `toDecompositionTree_rootBag`.
+- running intersection이 `BAGS(v)` 연결성을 함의함을 증명했다. 구현: `isConnectedNodeSet_bags`
+  (running intersection ∧ `ContainsVertex` ⇒ 각 `v`의 `BAGS(v)`가 `IsConnectedNodeSet`)와
+  topmost 유일성 `IsTopmost.unique`. 보조 API: `mem_bags_nil`, `mem_bags_cons_iff`,
+  `mem_bags_cons_fin`, `RunningIntersectionAt.node_inv`, `containsVertex_of_mem_bags`,
+  ancestor-closedness 보조정리 `bags_prefixClosed`.
 - `lake build`가 통과한다.
 
 남은 작업:
 
-- rooted node addressing 위에서 핵심 정리를 채운다: running intersection ⇒ 각 `v`의
-  `BAGS(v)`가 `IsConnectedNodeSet`이고 topmost node가 유일하다. 현재는 정의와 기본
-  계산 보조정리(`mem_BAGS`, `nodeAt_nil`, `bagAt_nil`, `parent_append_singleton`)만 있다.
 - binary decomposition을 위한 arity ≤ 2 술어와 adhesion/cone 관련 보조정리를 추가한다.
 - `(ω + 1)`-coloring의 존재/구성 정리를 추가한다. 현재는 표현 `IsBagColoring`과
   width 하한 방향(`widthAtMost_of_isBagColoring`)만 있고, width `ω` decomposition에서

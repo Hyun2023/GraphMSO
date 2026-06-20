@@ -265,6 +265,144 @@ On a tree this is exactly the induced-subgraph connectivity condition. -/
 def IsConnectedNodeSet (S : Set (List Nat)) : Prop :=
   ∃ r, IsTopmost S r ∧ ∀ p ∈ S, ∀ q, r <+: q -> q <+: p -> q ∈ S
 
+/-! #### `BAGS(v)` is a connected node set
+
+Under the running-intersection property, the nodes containing a fixed vertex `v`
+form a connected rooted subtree: there is a topmost node (closest to the root)
+containing `v`, and the set is convex below it. -/
+
+theorem mem_bags_nil (T : DecompositionTree V) (v : V) :
+    [] ∈ T.BAGS v ↔ v ∈ T.rootBag := by
+  simp only [BAGS, Set.mem_setOf_eq, bagAt_nil]
+
+theorem mem_bags_cons_iff (bag : Set V) (arity : Nat) (child : Fin arity -> DecompositionTree V)
+    (i : Nat) (rest : List Nat) (v : V) :
+    (i :: rest) ∈ BAGS (.node bag arity child) v ↔
+      ∃ h : i < arity, rest ∈ (child ⟨i, h⟩).BAGS v := by
+  simp only [BAGS, Set.mem_setOf_eq, bagAt, nodeAt_node_cons]
+  by_cases h : i < arity
+  · simp only [dif_pos h]
+    exact ⟨fun hm => ⟨h, hm⟩, fun ⟨_, hm⟩ => hm⟩
+  · simp only [dif_neg h]
+    constructor
+    · intro hm; simp at hm
+    · rintro ⟨h', _⟩; exact absurd h' h
+
+theorem mem_bags_cons_fin (bag : Set V) (arity : Nat) (child : Fin arity -> DecompositionTree V)
+    (j : Fin arity) (rest : List Nat) (v : V) :
+    ((j : Nat) :: rest) ∈ BAGS (.node bag arity child) v ↔ rest ∈ (child j).BAGS v := by
+  rw [mem_bags_cons_iff]
+  exact ⟨fun ⟨_, hm⟩ => hm, fun hm => ⟨j.2, hm⟩⟩
+
+/-- Inversion for the running-intersection property at a node. -/
+theorem RunningIntersectionAt.node_inv {bag : Set V} {arity : Nat}
+    {child : Fin arity -> DecompositionTree V} {v : V}
+    (h : RunningIntersectionAt (.node bag arity child) v) :
+    (∀ i, (child i).RunningIntersectionAt v) ∧
+      (v ∈ bag -> ∀ i, (child i).ContainsVertex v -> v ∈ (child i).rootBag) ∧
+      (v ∉ bag -> ∀ i j, (child i).ContainsVertex v -> (child j).ContainsVertex v -> i = j) := by
+  cases h with
+  | node _ _ _ _ hchild hroot hunique => exact ⟨hchild, hroot, hunique⟩
+
+/-- A node of `BAGS T v` witnesses that `T` contains `v`. -/
+theorem containsVertex_of_mem_bags {v : V} {p : List Nat} :
+    ∀ {T : DecompositionTree V}, p ∈ T.BAGS v -> T.ContainsVertex v := by
+  induction p with
+  | nil =>
+    intro T hp
+    cases T with
+    | node bag arity child => rw [mem_bags_nil] at hp; exact .root _ _ _ _ hp
+  | cons i rest ih =>
+    intro T hp
+    cases T with
+    | node bag arity child =>
+      rw [mem_bags_cons_iff] at hp
+      obtain ⟨h, hmem⟩ := hp
+      exact .child _ _ _ _ ⟨i, h⟩ (ih hmem)
+
+/-- If the root bag contains `v`, then `BAGS T v` is closed under taking ancestors
+(prefixes): every node between the root and a node containing `v` also contains `v`. -/
+theorem bags_prefixClosed {v : V} {p : List Nat} :
+    ∀ {T : DecompositionTree V}, T.RunningIntersectionAt v -> v ∈ T.rootBag ->
+      p ∈ T.BAGS v -> ∀ {q : List Nat}, q <+: p -> q ∈ T.BAGS v := by
+  induction p with
+  | nil =>
+    intro T _ hroot_mem _ q hq
+    rw [List.prefix_nil] at hq; subst hq
+    rw [mem_bags_nil]; exact hroot_mem
+  | cons i rest ih =>
+    intro T hT hroot_mem hp q hq
+    cases T with
+    | node bag arity child =>
+      rw [mem_bags_cons_iff] at hp
+      obtain ⟨h, hmem⟩ := hp
+      obtain ⟨hchild, hrootRI, _⟩ := hT.node_inv
+      cases q with
+      | nil => rw [mem_bags_nil]; exact hroot_mem
+      | cons k rest' =>
+        rw [List.cons_prefix_cons] at hq
+        obtain ⟨hki, hq'⟩ := hq
+        rw [hki, mem_bags_cons_iff]
+        refine ⟨h, ?_⟩
+        have hcv : (child ⟨i, h⟩).ContainsVertex v := containsVertex_of_mem_bags hmem
+        have hvr : v ∈ (child ⟨i, h⟩).rootBag := hrootRI hroot_mem ⟨i, h⟩ hcv
+        exact ih (hchild ⟨i, h⟩) hvr hmem hq'
+
+/-- **Running intersection implies `BAGS(v)` is connected.** For each vertex `v`
+appearing in `T`, the set of nodes whose bag contains `v` is a connected node set. -/
+theorem isConnectedNodeSet_bags {v : V} :
+    ∀ {T : DecompositionTree V}, T.RunningIntersectionAt v -> T.ContainsVertex v ->
+      IsConnectedNodeSet (T.BAGS v) := by
+  intro T
+  induction T with
+  | node bag arity child ih =>
+    intro hT hcv
+    by_cases hbag : v ∈ bag
+    · -- Case A: the root contains `v`, so the topmost node is the root `[]`.
+      refine ⟨[], ⟨?_, ?_⟩, ?_⟩
+      · rw [mem_bags_nil]; exact hbag
+      · intro p _; exact List.nil_prefix
+      · intro p hp q _ hqp
+        exact bags_prefixClosed hT hbag hp hqp
+    · -- Case B: `v` lies in a unique child subtree `i₀`.
+      obtain ⟨i₀, hcv₀⟩ : ∃ i, (child i).ContainsVertex v := by
+        cases hcv with
+        | root _ _ _ _ hv => exact absurd hv hbag
+        | child _ _ _ _ i hc => exact ⟨i, hc⟩
+      obtain ⟨hchild, _, hunique⟩ := hT.node_inv
+      obtain ⟨r₀, ⟨hr₀mem, hr₀top⟩, hr₀conv⟩ := ih i₀ (hchild i₀) hcv₀
+      refine ⟨(i₀ : Nat) :: r₀, ⟨?_, ?_⟩, ?_⟩
+      · rw [mem_bags_cons_fin]; exact hr₀mem
+      · intro p hp
+        cases p with
+        | nil => rw [mem_bags_nil] at hp; exact absurd hp hbag
+        | cons k rest =>
+          rw [mem_bags_cons_iff] at hp
+          obtain ⟨hk, hmem⟩ := hp
+          have hcvk : (child ⟨k, hk⟩).ContainsVertex v := containsVertex_of_mem_bags hmem
+          have hki₀ : (⟨k, hk⟩ : Fin arity) = i₀ := hunique hbag ⟨k, hk⟩ i₀ hcvk hcv₀
+          rw [List.cons_prefix_cons]
+          exact ⟨congrArg Fin.val hki₀.symm, hr₀top rest (hki₀ ▸ hmem)⟩
+      · intro p hp q hrq hqp
+        cases p with
+        | nil => rw [mem_bags_nil] at hp; exact absurd hp hbag
+        | cons k rest =>
+          rw [mem_bags_cons_iff] at hp
+          obtain ⟨hk, hmem⟩ := hp
+          have hcvk : (child ⟨k, hk⟩).ContainsVertex v := containsVertex_of_mem_bags hmem
+          have hki₀ : (⟨k, hk⟩ : Fin arity) = i₀ := hunique hbag ⟨k, hk⟩ i₀ hcvk hcv₀
+          have hrest : rest ∈ (child i₀).BAGS v := hki₀ ▸ hmem
+          obtain ⟨t, rfl⟩ := hrq
+          rw [List.cons_append] at hqp ⊢
+          rw [mem_bags_cons_fin]
+          rw [List.cons_prefix_cons] at hqp
+          exact hr₀conv rest hrest (r₀ ++ t) ⟨t, rfl⟩ hqp.2
+
+/-- A node set has at most one topmost node. -/
+theorem IsTopmost.unique {S : Set (List Nat)} {r r' : List Nat}
+    (h : IsTopmost S r) (h' : IsTopmost S r') : r = r' :=
+  (h.2 r' h'.1).sublist.antisymm (h'.2 r h.1).sublist
+
 /-! ### Bag-injective colorings
 
 For a width-`ω` decomposition the lecture note rainbow-colors vertices with `ω + 1`
