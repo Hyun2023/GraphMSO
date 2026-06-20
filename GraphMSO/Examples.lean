@@ -4,6 +4,7 @@ import Mathlib.Combinatorics.SimpleGraph.Bipartite
 import Mathlib.Combinatorics.SimpleGraph.Matching
 import Mathlib.Combinatorics.SimpleGraph.Coloring
 import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
+import Mathlib.Combinatorics.SimpleGraph.Hamiltonian
 import GraphMSO.Semantics
 
 namespace SimpleGraph
@@ -195,6 +196,138 @@ def HasHamiltonianCycleByEdges : Prop :=
   ∃ F : Set G.edgeSet,
     (∀ v : V, G.HasExactlyTwoIncidentEdgesIn F v) ∧
     G.EdgeSetConnectedSpanning F
+
+/-- The edge-set (2-factor) characterization of a Hamiltonian cycle coincides with the
+existence of a mathlib `Walk.IsHamiltonianCycle`, for a nonempty finite graph. -/
+theorem hasHamiltonianCycleByEdges_iff [Fintype V] [DecidableEq V] [Nonempty V] :
+    G.HasHamiltonianCycleByEdges ↔ ∃ a, ∃ p : G.Walk a a, p.IsHamiltonianCycle := by
+  constructor
+  · rintro ⟨F, hdeg, hconn⟩
+    classical
+    set H : SimpleGraph V := (G.spanningSubgraphOfEdges F).spanningCoe with hH
+    have hHadj : ∀ v w, H.Adj v w ↔ s(v, w) ∈ Subtype.val '' F := by
+      intro v w
+      rw [hH, Subgraph.spanningCoe_adj, spanningSubgraphOfEdges_adj]
+    have hcyc : H.IsCycles := by
+      intro v _
+      obtain ⟨e₀, e₁, he₀F, he₁F, hve₀, hve₁, hne, huniq⟩ := hdeg v
+      refine Set.ncard_eq_two.mpr ⟨Sym2.Mem.other hve₀, Sym2.Mem.other hve₁, ?_, ?_⟩
+      · intro heq
+        exact hne (Subtype.ext (by rw [← Sym2.other_spec hve₀, ← Sym2.other_spec hve₁, heq]))
+      · ext w
+        simp only [SimpleGraph.mem_neighborSet, hHadj, Set.mem_image, Set.mem_insert_iff,
+          Set.mem_singleton_iff]
+        constructor
+        · rintro ⟨e', he'F, he'eq⟩
+          have hve' : v ∈ (e' : Sym2 V) := by rw [he'eq]; exact Sym2.mem_mk_left v w
+          rcases huniq e' he'F hve' with rfl | rfl
+          · left
+            have heq : s(v, Sym2.Mem.other hve₀) = s(v, w) := by
+              rw [Sym2.other_spec hve₀]; exact he'eq
+            exact (Sym2.congr_right.mp heq).symm
+          · right
+            have heq : s(v, Sym2.Mem.other hve₁) = s(v, w) := by
+              rw [Sym2.other_spec hve₁]; exact he'eq
+            exact (Sym2.congr_right.mp heq).symm
+        · rintro (rfl | rfl)
+          · exact ⟨e₀, he₀F, (Sym2.other_spec hve₀).symm⟩
+          · exact ⟨e₁, he₁F, (Sym2.other_spec hve₁).symm⟩
+    have hpre : H.Preconnected := by
+      rw [← H.isConnectedByPartition_iff_preconnected]
+      intro hdisc
+      obtain ⟨S, T, hpart, hno⟩ := hdisc
+      obtain ⟨e, heF, u, w, huS, hwT, hue, hwe⟩ := hconn S T hpart
+      have huw : u ≠ w := fun h => hpart.2.2.2 u huS (h ▸ hwT)
+      have hwoth : w = Sym2.Mem.other hue := by
+        have hmem : w ∈ s(u, Sym2.Mem.other hue) := by rw [Sym2.other_spec hue]; exact hwe
+        rcases Sym2.mem_iff.mp hmem with h | h
+        · exact absurd h huw.symm
+        · exact h
+      have hee : (e : Sym2 V) = s(u, w) := by rw [← Sym2.other_spec hue, hwoth]
+      exact hno u w huS hwT ((hHadj u w).mpr ⟨e, heF, hee⟩)
+    obtain ⟨v⟩ := (inferInstance : Nonempty V)
+    have hn : (H.neighborSet v).Nonempty := by
+      obtain ⟨e₀, _, he₀F, _, hve₀, _, _, _⟩ := hdeg v
+      exact ⟨Sym2.Mem.other hve₀,
+        (hHadj v (Sym2.Mem.other hve₀)).mpr ⟨e₀, he₀F, (Sym2.other_spec hve₀).symm⟩⟩
+    obtain ⟨q, hqc, hverts⟩ :=
+      hcyc.exists_cycle_toSubgraph_verts_eq_connectedComponentSupp (c := H.connectedComponentMk v)
+        ((ConnectedComponent.mem_supp_iff _ v).mpr rfl) hn
+    have hsupp : (H.connectedComponentMk v).supp = Set.univ := by
+      ext w
+      simp only [Set.mem_univ, iff_true, ConnectedComponent.mem_supp_iff, ConnectedComponent.eq]
+      exact hpre w v
+    rw [hsupp] at hverts
+    have hle : H ≤ G := (G.spanningSubgraphOfEdges F).spanningCoe_le
+    refine ⟨v, q.mapLe hle, ?_⟩
+    rw [Walk.isHamiltonianCycle_iff_isCycle_and_support_count_tail_eq_one]
+    refine ⟨hqc.mapLe hle, fun a => ?_⟩
+    rw [Walk.support_mapLe_eq_support]
+    have hmem : a ∈ q.support.tail := by
+      have ha : a ∈ q.support := (q.mem_verts_toSubgraph).mp (by rw [hverts]; exact Set.mem_univ a)
+      rw [Walk.support_eq_cons] at ha
+      rcases List.mem_cons.mp ha with rfl | h
+      · exact Walk.end_mem_tail_support hqc.not_nil
+      · exact h
+    exact List.count_eq_one_of_mem hqc.support_nodup hmem
+  · rintro ⟨a, p, hp⟩
+    classical
+    refine ⟨{e : G.edgeSet | (e : Sym2 V) ∈ p.edges}, ?_, ?_⟩
+    · intro v
+      have hvs : v ∈ p.support := hp.mem_support v
+      have hmem : ∀ w, p.toSubgraph.Adj v w ↔ s(v, w) ∈ p.edges :=
+        fun w => Walk.adj_toSubgraph_iff_mem_edges
+      obtain ⟨w₀, w₁, hne, hset⟩ := Set.ncard_eq_two.mp
+        (hp.isCycle.ncard_neighborSet_toSubgraph_eq_two hvs)
+      have hadj0 : p.toSubgraph.Adj v w₀ := by
+        have : w₀ ∈ p.toSubgraph.neighborSet v := by rw [hset]; exact Set.mem_insert _ _
+        exact this
+      have hadj1 : p.toSubgraph.Adj v w₁ := by
+        have : w₁ ∈ p.toSubgraph.neighborSet v := by
+          rw [hset]; exact Set.mem_insert_of_mem _ rfl
+        exact this
+      have hw0 : s(v, w₀) ∈ p.edges := (hmem w₀).mp hadj0
+      have hw1 : s(v, w₁) ∈ p.edges := (hmem w₁).mp hadj1
+      refine ⟨⟨s(v, w₀), p.edges_subset_edgeSet hw0⟩, ⟨s(v, w₁), p.edges_subset_edgeSet hw1⟩,
+        hw0, hw1, Sym2.mem_iff.mpr (Or.inl rfl), Sym2.mem_iff.mpr (Or.inl rfl), ?_, ?_⟩
+      · intro h
+        exact hne (Sym2.congr_right.mp (congrArg Subtype.val h))
+      · rintro ⟨e, he⟩ hmemF hve
+        have hother : s(v, Sym2.Mem.other hve) = e := Sym2.other_spec hve
+        have hadj : p.toSubgraph.Adj v (Sym2.Mem.other hve) := by
+          rw [hmem]; rw [hother]; exact hmemF
+        have hin : Sym2.Mem.other hve ∈ p.toSubgraph.neighborSet v := hadj
+        rw [hset] at hin
+        rcases hin with h | h
+        · left
+          apply Subtype.ext
+          show e = s(v, w₀)
+          rw [← hother, h]
+        · right
+          rw [Set.mem_singleton_iff] at h
+          apply Subtype.ext
+          show e = s(v, w₁)
+          rw [← hother, h]
+    · rintro S T ⟨hSne, hTne, hcover, hdisj⟩
+      obtain ⟨u, huS⟩ := hSne
+      obtain ⟨t, htT⟩ := hTne
+      have htnS : t ∉ S := fun h => hdisj t h htT
+      by_cases ha : a ∈ S
+      · obtain ⟨d, hd, hfst, hsnd⟩ :=
+          (p.takeUntil t (hp.mem_support t)).exists_boundary_dart S ha htnS
+        have h1 : d ∈ p.darts := Walk.darts_takeUntil_subset _ _ hd
+        have hedge : d.edge ∈ p.edges := List.mem_map.mpr ⟨d, h1, rfl⟩
+        exact ⟨⟨d.edge, d.edge_mem⟩, hedge, d.fst, d.snd, hfst,
+          (hcover d.snd).resolve_left hsnd, Sym2.mem_mk_left d.fst d.snd,
+          Sym2.mem_mk_right d.fst d.snd⟩
+      · have haT : a ∈ T := (hcover a).resolve_left ha
+        obtain ⟨d, hd, hfst, hsnd⟩ :=
+          (p.takeUntil u (hp.mem_support u)).exists_boundary_dart T haT (fun h => hdisj u huS h)
+        have h1 : d ∈ p.darts := Walk.darts_takeUntil_subset _ _ hd
+        have hedge : d.edge ∈ p.edges := List.mem_map.mpr ⟨d, h1, rfl⟩
+        exact ⟨⟨d.edge, d.edge_mem⟩, hedge, d.snd, d.fst,
+          (hcover d.snd).resolve_right hsnd, hfst, Sym2.mem_mk_right d.fst d.snd,
+          Sym2.mem_mk_left d.fst d.snd⟩
 
 /-- A vertex belongs to one of the listed color classes. -/
 def IsInSomeColor (v : V) : List (Set V) -> Prop
@@ -1099,6 +1232,13 @@ theorem satisfiesAt_hamiltonian_iff {V : Type} (G : SimpleGraph V)
   simp [hamiltonian, SimpleGraph.HasHamiltonianCycleByEdges, Semantics.SatisfiesAt, E0,
     Assignment.updateEdgeSO, satisfiesAt_everyVertexExactlyTwoIncEdgesIn_iff,
     satisfiesAt_edgeSetConnected_iff]
+
+/-- For a nonempty finite graph, the MSO2 Hamiltonian-cycle sentence holds exactly when the
+graph admits a mathlib `Walk.IsHamiltonianCycle`. -/
+theorem satisfiesAt_hamiltonian_iff_isHamiltonianCycle {V : Type} (G : SimpleGraph V)
+    [Fintype V] [DecidableEq V] [Nonempty V] (rho : Assignment V G.edgeSet) :
+    SatisfiesAt hamiltonian G rho ↔ ∃ a, ∃ p : G.Walk a a, p.IsHamiltonianCycle :=
+  (satisfiesAt_hamiltonian_iff G rho).trans G.hasHamiltonianCycleByEdges_iff
 
 def vertexCover (X : SOVar) : Formula :=
   forallEdgeFO e0 (existsFO x (conj (inSet x X) (inc x e0)))
