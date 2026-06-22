@@ -1,0 +1,343 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\MSO}{\ensuremath{\mathrm{MSO}}}
+\newcommand{\MSOtwo}{\ensuremath{\mathrm{MSO}_2}}
+\newcommand{\Bags}{\ensuremath{\mathrm{BAGS}}}
+\newcommand{\adh}{\ensuremath{\mathrm{adh}}}
+\newcommand{\cone}{\ensuremath{\mathrm{cone}}}
+
+\title{Mathematical Issues and Gaps in\\
+  \texttt{lecture\_note\_expanded.tex}}
+\author{}
+\date{Review of the version dated June 19, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Scope and summary}
+
+This report reviews the mathematical argument in
+\texttt{lecture\_note\_expanded.tex}.  It does not attempt a Lean design review.
+Line numbers below refer to that source file.  The most serious findings are:
+\begin{enumerate}[label=\textbf{C\arabic*.},leftmargin=*]
+  \item the claimed reduction of \MSOtwo{} to ordinary graph \MSO{} on the
+    uncoloured incidence graph is false;
+  \item the definition of a legal tree omits the requirement that the root
+    boundary be empty, so the decoding and inverse lemmas are false as stated;
+  \item the cone-gluing identity is not an equality of the rooted, labelled
+    graphs that were defined; and
+  \item the running-time statement cannot hold for the stated input format,
+    since it omits both the formula length and the size of the supplied
+    decomposition.
+\end{enumerate}
+The remaining findings are mainly missing lemmas or underspecified standard
+results.  They appear repairable, but several of them are essential links in
+the proof rather than cosmetic details.
+
+\section{Critical mathematical problems}
+
+\subsection{The incidence-graph reduction does not define the two sorts}
+
+\paragraph{Location.} Lines 113--137, especially lines 125--135.
+
+The note proposes, in the uncoloured incidence graph \(I(G)\),
+\[
+  \operatorname{edg}(z) := \exists x\,\operatorname{inc}(x,z),
+  \qquad
+  \operatorname{vtx}(z) := \neg\operatorname{edg}(z),
+\]
+and then replaces incidence by ordinary adjacency.  After that replacement,
+\(\operatorname{edg}(z)\) merely says that \(z\) has a neighbour.  It holds for
+every nonisolated original vertex as well as for every edge-vertex.  For
+example, if \(G\) consists of one edge and its two endpoints, then every one of
+the three vertices of \(I(G)\) satisfies this formula, while none satisfies the
+proposed vertex formula.
+
+More conceptually, forgetting the predicates naming the two sides of the
+incidence structure loses precisely the sort information needed to interpret
+typed vertex and edge variables.  Consequently the displayed translation is
+not truth-preserving, and Corollary~4 is not proved.
+
+\paragraph{Repair.} Use an incidence structure with unary predicates \(V\) and
+\(E\), and prove Courcelle's theorem for a fixed finite relational vocabulary
+that permits unary predicates.  This only changes the finite alphabet by
+recording the unary type of each bag element.  Alternatively, attach bounded
+gadgets that mark the two sorts and prove that this gadget encoding preserves a
+bounded treewidth bound.  In either repair, typed first-order and monadic
+quantifiers must be explicitly relativised to the appropriate unary predicate.
+
+\subsection{A legal tree may have a nonempty root boundary}
+
+\paragraph{Location.} Definition 6 and Lemma 7--Lemma 9, lines 248--383.
+
+Legality checks compatibility only across parent--child edges.  It imposes no
+condition on the root letter.  However, the root adhesion of every encoded
+decomposition is empty.  The proof of Lemma~8 simply asserts that the root has
+empty external root because it has no parent (lines 339--340), even though the
+letter at the root may specify a nonempty root set.
+
+There is an immediate counterexample: take a one-node tree whose letter is
+\((H,R)\) with \(R\neq\varnothing\).  It is legal vacuously under Definition~6,
+but it cannot be the encoding of any decomposition, since the root adhesion of
+an encoding is empty.  Re-encoding its proposed decoding changes \(R\) to the
+empty set.  Thus Lemma~9 is false as stated.
+
+\paragraph{Repair.} Add the condition \(R=\varnothing\) at the root to the
+definition of legality and to \(\varphi_{\mathrm{legal}}\).  The finite formula
+can require that every root carry a letter in
+\(\{(H,R):R=\varnothing\}\).
+
+\subsection{The cone-gluing equation has the wrong external labelling}
+
+\paragraph{Location.} Definition 5 and Lemma 6, lines 172--230.
+
+The node graph \(H_t\) is labelled on all of \(\beta(t)\), whereas the cone graph
+at \(t\) is labelled only on \(\adh(t)\).  By definition, gluing inherits the root
+and the labelling from its first argument.  Hence the right-hand side of
+\[
+  (H_t,R_t,\iota_t)\oplus(G_1,R_1,\iota_1)
+    \oplus(G_2,R_2,\iota_2)
+\]
+retains labels on every vertex of \(\beta(t)\), but the left-hand cone graph has
+labels only on \(R_t=\adh(t)\).  The displayed equality in Lemma~6 is therefore
+false as an equality of the triples defined in Definition~5.
+
+There is also a structural equality issue: disjoint union followed by quotient
+identifications normally produces a graph canonically isomorphic to the cone
+graph, not literally equal to it.
+
+\paragraph{Repair.} After both gluings, explicitly restrict the labelling to
+\(R_t\), just as the decoding construction later says to do.  State the result
+as a label-preserving rooted-graph isomorphism, or define a canonical quotient
+model for which literal equality is meaningful.
+
+\subsection{The stated running time ignores part of the input}
+
+\paragraph{Location.} Theorem 1 and its proof, lines 71--78 and 806--831.
+
+The theorem takes both a formula \(\varphi\) and a decomposition \(T\) as input,
+but claims time
+\[
+  f(\omega,\operatorname{qr}(\varphi))\,|V(G)|.
+\]
+This cannot be the total running time for the stated input representation.
+
+First, formulas of fixed quantifier rank can have arbitrarily large syntactic
+length, and an algorithm must at least read the input formula.  The proof only
+shows that the translated sentence and automaton depend on \(\omega\) and on the
+whole formula; it does not justify replacing dependence on \(\varphi\) by
+dependence only on its quantifier rank.
+
+Second, a supplied decomposition can have arbitrarily many redundant or
+duplicate nodes even when \(G\) is fixed.  Constructing its labelled encoding
+takes \(\Theta(|N(T)|)\) time, as the proof itself observes.  A later appeal to a
+``usual linear-size normalization'' cannot remove the cost of reading an
+arbitrarily large input decomposition.
+
+\paragraph{Repair.} A standard precise statement is either
+\[
+  f(\omega,|\varphi|)\bigl(|V(G)|+|N(T)|\bigr)
+\]
+up to the chosen input encoding, or a theorem in which \(\varphi\) is fixed and
+the supplied decomposition is assumed to be in a normalized form with
+\(|N(T)|=O(|V(G)|)\).  If quantifier rank is intentionally used as the logical
+parameter, the compilation/preprocessing cost for reading \(\varphi\) must be
+stated separately and a quantifier-rank bound for the automaton construction
+must be proved.
+
+\section{Substantial proof gaps}
+
+\subsection{The bag-injective colouring proof is not valid as written}
+
+\paragraph{Location.} Lines 154--168.
+
+The greedy paragraph chooses an arbitrary bag containing the current vertex
+and counts previously coloured vertices only in that bag.  It does not show
+that all previously coloured vertices whose bag-subtrees intersect the current
+vertex's bag-subtree occur together in the chosen bag.  Thus the asserted
+greedy step is not established.  The phrase ``intersection graph of the bags''
+is also inaccurate: the relevant graph has one vertex for each graph vertex,
+and two such vertices conflict when their connected bag-subtrees intersect.
+
+The existence claim is true.  A complete proof can use the facts that
+intersection graphs of subtrees of a tree are chordal, subtrees of a tree have
+the Helly property, and hence every clique of the conflict graph occurs in one
+bag and has size at most \(\omega+1\).  Perfectness of chordal graphs then gives
+the required colouring.  For the algorithmic theorem, one must additionally
+give an effective ordering/colouring procedure rather than merely an existence
+argument.
+
+\subsection{Cone gluing needs intersection and edge-localisation lemmas}
+
+\paragraph{Location.} Lines 210--230.
+
+The proof asserts without proof that gluing identifies exactly all shared
+vertices of the three pieces and that every edge of \(G[\cone(t)]\) occurs in a
+bag in the subtree rooted at \(t\).  Both facts follow from the running-
+intersection axiom, but neither follows merely from the definitions.
+
+A complete proof should establish at least
+\[
+\begin{aligned}
+  \cone(t_i)\cap\beta(t)&=\adh(t_i),\\
+  \cone(t_1)\cap\cone(t_2)&\subseteq\beta(t),
+\end{aligned}
+\]
+and then show that any edge whose endpoints lie in \(\cone(t)\) is recorded in
+the parent bag or in one child cone.  The latter requires following the
+connected occurrence subtrees of both endpoints to a bag covering the edge.
+These lemmas are also needed later for decoding correctness.
+
+\subsection{The decoding needs a precise quotient and a proof of connectedness}
+
+\paragraph{Location.} Lines 294--359.
+
+Phrases such as ``a vertex represented by \(v(t,i)\)'' presuppose an equivalence
+relation generated by the gluing identifications, but that relation is not
+defined.  Consequently it is not yet precise when two representatives denote
+the same decoded vertex, or why a representative has a well-defined colour.
+
+The connectedness argument in lines 352--358 also skips its central step.  It
+claims that a representative can be identified with one outside a selected
+component only through \(R_t\), without proving this from the recursive gluings.
+A clean repair is to define decoded vertices as equivalence classes of pairs
+\((t,i)\), where identifications are generated across a parent--child edge
+exactly for colours in the child root.  One then proves that each equivalence
+class has a connected set of tree nodes, either directly from paths in the tree
+or by induction through the bottom-up gluing.  This simultaneously proves the
+running-intersection axiom for the decoded bags.
+
+\subsection{The re-encoding argument omits decisive coherence lemmas}
+
+\paragraph{Location.} Lemma 9, especially lines 378--383.
+
+The proof asserts that the decoded node graph is exactly the original letter.
+That does not follow immediately from the definition of the decoded graph,
+which is the union of edges contributed at all tree nodes.  One must rule out
+the possibility that an edge contributed elsewhere becomes an additional edge
+between two vertices of the decoded bag at \(t\).  Local legality should imply
+the needed edge coherence, but that implication is not proved.
+
+Likewise, one must prove that the intersection of the decoded child and parent
+bags is exactly the root set recorded by the child letter.  Merely knowing that
+the recorded root is contained in both bags gives only one inclusion.
+
+The missing statements can be organized as follows:
+\begin{enumerate}[label=(\alph*),leftmargin=*]
+  \item two representatives \((s,i)\) and \((t,i)\) are equivalent exactly when
+    the unique path between \(s\) and \(t\) carries colour \(i\) through every
+    intervening child root;
+  \item for a child \(x\) of \(y\),
+    \(\beta(x)\cap\beta(y)\) is precisely the set represented by \(R_x\);
+  \item the subgraph of the final decoded graph induced on \(\beta(t)\) is
+    exactly \(H_t\).
+\end{enumerate}
+With these lemmas and the empty-root correction, encoding after decoding really
+does return the original labelled tree.
+
+\subsection{The formula-translation correctness proof is only announced}
+
+\paragraph{Location.} Lines 747--802.
+
+The note says that a structural induction gives correctness, but does not state
+or prove the induction invariant.  In particular, the reverse direction of an
+existential-quantifier step uses the fact that every tuple satisfying the
+vertex or set guard decodes to a graph object, while the forward direction uses
+surjectivity of the defining-tuple representation.  Those are the main logical
+steps and should be written out.
+
+For a syntactic translation, all auxiliary variables in the formulas for
+connectedness, top nodes, and defining tuples must also be chosen fresh so that
+substitution does not capture variables.  This is usually handled silently by
+working modulo alpha-renaming, but the convention should be stated.  The
+correctness theorem should quantify over graph assignments and their
+corresponding tuple assignments, and then prove the atomic, Boolean, individual-
+quantifier, and set-quantifier cases separately.
+
+\subsection{The exact effective tree-automata theorem is not stated}
+
+\paragraph{Location.} Lines 823--831.
+
+The equivalence between regularity and \MSO{} definability is cited only as an
+existence theorem.  To obtain an algorithm, the proof needs the effective
+direction: from the particular tree \MSO{} sentence and finite alphabet, one
+can compute a finite bottom-up automaton.  It should also specify whether the
+trees are full binary ranked trees, ordered trees of outdegree at most two, or
+trees padded by null leaves.  The automaton model and the logical vocabulary
+must match this choice.
+
+This is a legitimate external theorem, but the exact version required by the
+proof should be isolated as a theorem with a citation.  If deterministic
+automata are desired, include the standard determinisation step.
+
+\section{Definitions and boundary cases requiring clarification}
+
+\subsection{Unary nodes are omitted from the recursive construction}
+
+The input is called a binary tree-decomposition, which often means that every
+node has at most two children.  Nevertheless, the cone-gluing lemma and decoding
+recursion discuss only leaves and nodes with two children.  A node with exactly
+one child is not covered.  Either ``binary'' must mean full binary and a
+normalisation to that form must be given, or the one-child gluing case must be
+added.  This choice must agree with the tree-automaton model.
+
+\subsection{The ambient class of tree structures is implicit}
+
+The formulas use uniqueness of parents, a unique root, acyclicity, and exactly
+one letter per node.  These are valid because the text informally evaluates
+only on labelled rooted trees.  If satisfaction is instead taken over arbitrary
+structures for the vocabulary
+\(\{\operatorname{child}_1,\operatorname{child}_2,P_a\}\), then tree axioms and
+the exactly-one-letter axiom are missing.  The cleanest mathematical statement
+is to define a \(\Sigma\)-tree as a finite rooted ordered tree together with a
+labelling function \(\rho:N(T)\to\Sigma\), and restrict all logical languages and
+automata to that class.
+
+\subsection{Rooted-graph notation and equality need one convention}
+
+Definition~5 uses labels in \([k]\), while the later colour set is
+\(\{0,\ldots,\omega\}\); it also introduces \(\oplus_k\) and later drops the
+subscript.  These are harmless only after an explicit identification of the
+label types.  More importantly, all gluing statements should consistently use
+either literal equality of a chosen quotient construction or isomorphism
+classes of rooted labelled graphs.
+
+\subsection{The incidence construction also needs a size bound}
+
+Even after repairing the two sorts, \(I(G)\) has \(|V(G)|+|E(G)|\) vertices and
+the displayed decomposition adds one bag per edge.  To retain a linear bound in
+\(|V(G)|\), the proof should invoke the standard fact that a simple graph of
+treewidth at most \(\omega\) has \(O(\omega|V(G)|)\) edges (for example via
+\(\omega\)-degeneracy).  For fixed \(\omega\) this gives the required linear
+size.  Without that sentence, the runtime conclusion does not follow from the
+incidence construction alone.
+
+\section{Suggested order of repair}
+
+The dependencies suggest the following order:
+\begin{enumerate}[leftmargin=*]
+  \item correct the main complexity statement and decide the exact binary-tree
+    representation;
+  \item replace the \MSOtwo{} incidence argument by a coloured incidence
+    structure (or a proved gadget reduction);
+  \item repair legality by enforcing an empty root boundary;
+  \item define gluing and decoded vertices precisely, preferably using an
+    explicit equivalence relation on representatives;
+  \item prove the path/equivalence, adhesion, edge-coherence, and cone-union
+    lemmas before restating the encoding--decoding inverse theorem;
+  \item replace the colouring paragraph by a complete subtree-intersection
+    argument and, for the algorithmic theorem, an effective colouring method;
+  \item state and prove the assignment-level translation theorem; and
+  \item state the precise effective \MSO{}-to-tree-automaton theorem being used.
+\end{enumerate}
+
+After these repairs, the defining-pair and defining-tuple part of the note
+(roughly Lemmas 10--19) appears mathematically sound; its main dependency is a
+fully proved encoding--decoding theorem.
+
+\end{document}
