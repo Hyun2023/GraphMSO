@@ -63,13 +63,91 @@ incidence structure loses precisely the sort information needed to interpret
 typed vertex and edge variables.  Consequently the displayed translation is
 not truth-preserving, and Corollary~4 is not proved.
 
-\paragraph{Repair.} Use an incidence structure with unary predicates \(V\) and
-\(E\), and prove Courcelle's theorem for a fixed finite relational vocabulary
-that permits unary predicates.  This only changes the finite alphabet by
-recording the unary type of each bag element.  Alternatively, attach bounded
-gadgets that mark the two sorts and prove that this gadget encoding preserves a
-bounded treewidth bound.  In either repair, typed first-order and monadic
-quantifiers must be explicitly relativised to the appropriate unary predicate.
+\paragraph{Recommended repair: retain the two sorts as unary colours.}
+Define the \emph{coloured incidence structure} \(\widehat I(G)\) as follows:
+\begin{itemize}[leftmargin=*]
+  \item its universe is the disjoint union \(V(G)\sqcup E(G)\);
+  \item \(\mathsf{Vert}(z)\) holds exactly for elements coming from \(V(G)\);
+  \item \(\mathsf{EdgeObj}(z)\) holds exactly for elements coming from
+    \(E(G)\); and
+  \item \(\operatorname{Adj}_I(z,z')\) holds exactly when one element is a
+    vertex, the other is an edge-object, and the original vertex is an endpoint
+    of the original edge.
+\end{itemize}
+Thus \(\mathsf{Vert}\) and \(\mathsf{EdgeObj}\) are part of the vocabulary; they
+are not supposed to be reconstructed from the uncoloured adjacency relation.
+
+Translate a typed \MSOtwo{} formula \(\psi\) into ordinary one-sorted \MSO{} over
+\[
+  \tau_I=\{\operatorname{Adj}_I,\mathsf{Vert},\mathsf{EdgeObj}\}.
+\]
+The atomic incidence formula becomes
+\[
+  \operatorname{inc}(x,e)^\dagger
+  :=\operatorname{Adj}_I(x,e).
+\]
+Membership and equality are left unchanged.  The sorts are enforced at every
+typed quantifier.  For first-order quantifiers, use
+\[
+\begin{aligned}
+  (\exists x\!:\!V\;\theta)^\dagger
+    &:=\exists x\bigl(\mathsf{Vert}(x)\wedge\theta^\dagger\bigr),\\
+  (\exists e\!:\!E\;\theta)^\dagger
+    &:=\exists e\bigl(\mathsf{EdgeObj}(e)\wedge\theta^\dagger\bigr).
+\end{aligned}
+\]
+For monadic second-order quantifiers, define
+\[
+\begin{aligned}
+  \operatorname{VertSet}(X)&:=
+    \forall z\,(z\in X\to\mathsf{Vert}(z)),\\
+  \operatorname{EdgeSet}(F)&:=
+    \forall z\,(z\in F\to\mathsf{EdgeObj}(z)),
+\end{aligned}
+\]
+and use
+\[
+\begin{aligned}
+  (\exists X\!\subseteq\!V\;\theta)^\dagger
+    &:=\exists X\bigl(\operatorname{VertSet}(X)\wedge\theta^\dagger\bigr),\\
+  (\exists F\!\subseteq\!E\;\theta)^\dagger
+    &:=\exists F\bigl(\operatorname{EdgeSet}(F)\wedge\theta^\dagger\bigr).
+\end{aligned}
+\]
+Universal quantifiers can be translated dually, using implication instead of
+conjunction, or by \(\forall q\,\theta\equiv\neg\exists q\,\neg\theta\).  A
+straightforward induction on \(\psi\) then proves
+\[
+  G\models_{\MSOtwo}\psi
+  \quad\Longleftrightarrow\quad
+  \widehat I(G)\models_{\MSO}\psi^\dagger.
+\]
+
+To apply the main theorem, its MSO-over-graphs statement must therefore be
+slightly generalized from the vocabulary \(\{\operatorname{edge}\}\) to a fixed
+finite vocabulary containing adjacency and finitely many unary predicates.
+The proof changes only locally: a letter of \(\Sigma_\omega\) records, in
+addition to the induced adjacency relation on a bag, which unary predicates
+hold of each coloured bag element.  Compatibility of a child root with its
+parent requires agreement on both adjacency and these unary predicates.  The
+alphabet remains finite, and the defining-tuple translation gains atomic
+clauses for the unary predicates.
+
+Finally, the treewidth bound used in the note is valid for this coloured
+incidence structure because unary predicates do not affect treewidth.  Given a
+decomposition of \(G\), for each edge \(e=uv\) choose a bag containing \(u,v\)
+and attach a leaf bag \(\{u,v,e\}\).  This covers the two incidence edges
+\(ue\) and \(ve\), preserves connectedness of the bags containing each original
+vertex, and places the edge-object \(e\) in exactly one bag.  The resulting
+width is at most \(\max(\omega,2)\).  The separate size estimate needed for the
+running time is discussed below.
+
+If one insists on a theorem whose vocabulary is exactly
+\(\{\operatorname{edge}\}\), the unary colours can instead be encoded by fixed
+bounded-size graph gadgets.  That route requires an additional interpretation
+theorem proving that the gadgets are logically recognizable and that they
+increase treewidth only by a bounded amount.  Keeping the two unary predicates
+is the simpler and more transparent repair.
 
 \subsection{A legal tree may have a nonempty root boundary}
 
