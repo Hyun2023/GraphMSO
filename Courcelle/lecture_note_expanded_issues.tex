@@ -170,29 +170,77 @@ definition of legality and to \(\varphi_{\mathrm{legal}}\).  The finite formula
 can require that every root carry a letter in
 \(\{(H,R):R=\varnothing\}\).
 
-\subsection{The cone-gluing equation has the wrong external labelling}
+\subsection{The cone-gluing equation needs a final label restriction}
 
 \paragraph{Location.} Definition 5 and Lemma 6, lines 172--230.
 
-The node graph \(H_t\) is labelled on all of \(\beta(t)\), whereas the cone graph
-at \(t\) is labelled only on \(\adh(t)\).  By definition, gluing inherits the root
-and the labelling from its first argument.  Hence the right-hand side of
+There are two different subsets in the definition of a rooted graph, and they
+should not be conflated.  The root or boundary is \(R\), while the domain of the
+partial labelling map \(\iota\) is only required to \emph{contain} \(R\); labels
+outside the root are explicitly permitted.  In the expanded note the two
+relevant definitions are
+\[
+\begin{aligned}
+  \text{node graph at }t
+    &=\bigl(G[\beta(t)],\adh(t),c|_{\beta(t)}\bigr),\\
+  \text{cone graph at }t
+    &=\bigl(G[\cone(t)],\adh(t),c|_{\adh(t)}\bigr).
+\end{aligned}
+\]
+Thus the node graph really is temporarily labelled on all of \(\beta(t)\), even
+though its distinguished boundary is only \(\adh(t)\).  By contrast, the cone
+graph keeps labels only on the adhesion through which the completed cone will
+later be attached to its parent.
+
+The larger temporary label domain is necessary.  For a child \(t_i\), its
+adhesion \(\adh(t_i)\) is contained in \(\beta(t)\), but need not be contained in
+\(\adh(t)\).  To glue the child cone to the node graph at \(t\), vertices of
+\(\adh(t_i)\) must therefore have labels available in the first operand.  For
+example, it is possible that
+\[
+  \beta(t)=\{a,b\},\qquad \adh(t)=\{a\},\qquad
+  \adh(t_i)=\{b\}.
+\]
+The label of \(b\) is needed while attaching the child, although it must be
+forgotten after the entire cone at \(t\) has been constructed.
+
+Now apply the definition of gluing: the root and the whole labelling map of the
+result are inherited from the first argument.  Hence the right-hand side of
 \[
   (H_t,R_t,\iota_t)\oplus(G_1,R_1,\iota_1)
     \oplus(G_2,R_2,\iota_2)
 \]
-retains labels on every vertex of \(\beta(t)\), but the left-hand cone graph has
-labels only on \(R_t=\adh(t)\).  The displayed equality in Lemma~6 is therefore
-false as an equality of the triples defined in Definition~5.
+retains the temporary labels on every vertex of \(\beta(t)\), but the left-hand
+cone graph has labels only on \(R_t=\adh(t)\).  The underlying glued graph and
+the root are the intended ones, but the partial labelling maps have different
+domains.  Consequently the displayed equality in Lemma~6 is not literally an
+equality of the triples defined in Definition~5.
 
 There is also a structural equality issue: disjoint union followed by quotient
 identifications normally produces a graph canonically isomorphic to the cone
 graph, not literally equal to it.
 
-\paragraph{Repair.} After both gluings, explicitly restrict the labelling to
-\(R_t\), just as the decoding construction later says to do.  State the result
-as a label-preserving rooted-graph isomorphism, or define a canonical quotient
-model for which literal equality is meaningful.
+\paragraph{Repair.} After both gluings, explicitly forget every label outside
+\(R_t\), just as the decoding construction later does.  If
+\(\operatorname{forget}_{R_t}\) denotes restriction of the partial labelling
+map to \(R_t\), the corrected statement is, up to the chosen quotient model,
+\[
+  (G_t,R_t,c|_{R_t})\cong
+  \operatorname{forget}_{R_t}\Bigl(
+    (H_t,R_t,c|_{\beta(t)})\oplus
+    (G_1,R_1,c|_{R_1})\oplus
+    (G_2,R_2,c|_{R_2})
+  \Bigr).
+\]
+Here \(\cong\) is a label-preserving rooted-graph isomorphism.  Alternatively,
+one may define a canonical quotient construction and use literal equality.
+
+If the intended convention were instead that only root vertices may ever be
+labelled, then the node graph would have labelling \(c|_{\adh(t)}\).  That does
+not repair the proof: in the example above the child cannot be glued because
+the first operand has no label for \(b\).  The temporary labels on the whole
+parent bag, followed by restriction to the parent adhesion, are the mechanism
+that makes the recursive gluing work.
 
 \subsection{The stated running time ignores part of the input}
 
