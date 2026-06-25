@@ -83,6 +83,21 @@ input into a \(\Sigma_\omega\)-tree, translates \(\varphi\) into a tree \MSO{}
 sentence, and then runs the finite tree automaton corresponding to that tree
 sentence.
 
+\begin{remark}
+Two parts of the input must be accounted for in the running time.  First, one
+may assume the supplied decomposition is normalized so that
+\(|N(T)|=O(|V(G)|)\): any width-\(\omega\) tree-decomposition can be converted in
+linear time to a nice (equivalently, binary) tree-decomposition with
+\(O(|V(G)|)\) nodes, after which building the \(\Sigma_\omega\)-tree encoding
+costs \(O(|V(G)|)\).  Second, the factor \(f(\omega,\operatorname{qr}(\varphi))\)
+absorbs the cost of reading and compiling \(\varphi\): reading the sentence
+already takes \(\Omega(|\varphi|)\) time, and the compiled tree automaton depends
+on \(\varphi\), not only on \(\operatorname{qr}(\varphi)\).  For a fixed sentence
+and a normalized decomposition this preprocessing is a constant and the
+model-checking phase runs in time \(O(|V(G)|)\); for varying \(\varphi\) the
+honest bound is \(f(\omega,|\varphi|)\,(|V(G)|+|N(T)|)\).
+\end{remark}
+
 \begin{theorem}[Computing treewidth]
 There is an algorithm which, given a graph \(G\) and \(\omega\in\mathbb N\),
 either outputs a tree-decomposition of width at most \(2\omega+1\), or correctly
@@ -194,9 +209,12 @@ For a node \(t\), define the \emph{node graph}
 \]
 The \emph{cone graph} at \(t\) is
 \[
-  (G_t,R_t,\iota_t) \defeq (G[\cone(t)],\adh(t),c|_{\adh(t)}),
+  (G_t,R_t,\iota_t) \defeq (G[\cone(t)],\adh(t),c|_{\beta(t)}),
 \]
-where only the adhesion is kept as the external root for the cone.
+whose external root is the adhesion \(\adh(t)\) but which retains the bag labels
+\(c|_{\beta(t)}\).  These temporary labels are exactly the ones supplied by the
+node graph during gluing; only the labels on \(\adh(t)\) are used when the cone
+is later attached to its parent.
 
 \begin{lemma}[Cone gluing]
 Let \(t\) be an internal node with children \(t_1,t_2\).  If
@@ -226,8 +244,11 @@ parts of the tree-decomposition.  It creates no new edges; it only takes the
 union of the edges already present in the induced graphs.  Since every edge of
 \(G[\cone(t)]\) is covered by some bag in the subtree of \(t\), it appears in
 one of the three pieces.  Conversely every edge in a piece is an edge of
-\(G[\cone(t)]\).  Thus the glued graph is exactly \(G_t\), with root \(R_t\) and
-external labels inherited from \(H_t\), as claimed.
+\(G[\cone(t)]\).  The root of the result is \(R_t=\adh(t)\) and, since gluing
+inherits the labelling of its first operand, its labels are \(c|_{\beta(t)}\),
+matching the cone graph at \(t\).  Thus the glued graph equals \(G_t\), as
+claimed, up to the canonical label-preserving isomorphism of the
+disjoint-union-and-quotient model of \(\oplus\).
 \end{proof}
 
 \subsection{The alphabet and legal trees}
@@ -246,8 +267,10 @@ rooted graph obtained from \((H_t,R_t,\iota_t)\) after renaming every vertex
 renaming is well-defined and loses no information inside a single bag.
 
 \begin{definition}
-A \(\Sigma_\omega\)-tree \((T,\rho)\) is \emph{legal} if for every node \(x\) with
-parent \(y\), writing \(\rho(x)=(H_x,R_x)\) and \(\rho(y)=(H_y,R_y)\), we have
+A \(\Sigma_\omega\)-tree \((T,\rho)\) is \emph{legal} if its root \(r\) carries a
+letter \(\rho(r)=(H_r,R_r)\) with \(R_r=\varnothing\), and if for every node
+\(x\) with parent \(y\), writing \(\rho(x)=(H_x,R_x)\) and \(\rho(y)=(H_y,R_y)\),
+we have
 \[
   R_x\subseteq V(H_y)
   \quad\text{and}\quad
@@ -279,14 +302,18 @@ and
   \parent(y,x)\wedge
   \bigvee_{\operatorname{Comp}(a,b)}(P_a(x)\wedge P_b(y)).
 \]
-Finally set
+Writing \(\Sigma_\omega^{\varnothing}\defeq\{(H,R)\in\Sigma_\omega:R=\varnothing\}\)
+for the letters with empty root, set
 \[
   \varphi_{\legal}
   \defeq
+  \forall x\,\Bigl(\rootnode(x)\to\bigvee_{a\in\Sigma_\omega^{\varnothing}}P_a(x)\Bigr)
+  \wedge
   \forall x\,\bigl(\rootnode(x)\vee \exists y\,\varphi_{\operatorname{loc}}(x,y)\bigr),
 \]
 where \(\rootnode(x)\) abbreviates \(\neg\exists y\,\parent(y,x)\).  Since every
-node carries exactly one letter, the finite disjunction says exactly that the
+node carries exactly one letter, the first conjunct says the root letter has
+empty root set, and the finite disjunction in the second says exactly that the
 letter of a non-root node is compatible with the letter of its parent.  This is
 precisely legality.
 \end{proof}
@@ -321,9 +348,9 @@ leaf.  Let \(t\) be an internal node and assume the statement for each child
 root agrees with the subgraph of the parent letter on the same labels.  Hence
 \((H_t,R_t,\iota_t)\oplus(\bar G_{t_i},\bar R_{t_i},\bar\iota_{t_i})\) is defined.
 After gluing the first child, the copy of \(H_t\) and its labels are unchanged,
-so the same argument glues the second child.  Finally, by definition of the cone
-root at \(t\), all labels outside \(R_t\) are forgotten.  Therefore the remaining
-labelling is defined exactly on \(\bar R_t\).
+so the same argument glues the second child.  Finally, the decoding construction
+forgets all labels outside \(R_t\).  Therefore the remaining labelling is defined
+exactly on \(\bar R_t\).
 \end{proof}
 
 The decoding of a legal \((T,\rho)\) is the triple \((G,c,(T,\beta))\) defined as
@@ -336,8 +363,9 @@ If \((T,\rho)\) is legal, its decoding \((G,c,(T,\beta))\) is well-defined.
 \end{lemma}
 
 \begin{proof}
-By Lemma~7, the graph at the root is well-defined.  Since the root has no parent,
-its external root is empty, so it is an ordinary graph.  The color of a decoded
+By Lemma~7, the graph at the root is well-defined.  Legality requires the root
+letter to have empty root set, so \(\bar R_r=\varnothing\) and the graph at the
+root is an ordinary graph.  The color of a decoded
 vertex is well-defined because vertices are identified only when their labels
 agree; thus two representatives of the same decoded vertex have the same color.
 
