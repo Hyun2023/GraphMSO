@@ -149,6 +149,98 @@ theorem proving that the gadgets are logically recognizable and that they
 increase treewidth only by a bounded amount.  Keeping the two unary predicates
 is the simpler and more transparent repair.
 
+\subsubsection*{How the rest of the proof should be adapted}
+
+The remaining proof should not be read as a proof only for plain graph
+structures \((V,\operatorname{edge})\).  It should first be upgraded to a proof
+for structures over an arbitrary fixed finite relational vocabulary \(\tau\),
+and then applied to the particular vocabulary
+\[
+  \tau_I=\{\operatorname{Adj}_I,\mathsf{Vert},\mathsf{EdgeObj}\}.
+\]
+This is the clean mathematical way to replace the old graph-only target
+vocabulary
+\[
+  \{\operatorname{edge}\}
+\]
+by the incidence-structure vocabulary \(\tau_I\).  The upgrade is mostly local,
+but it should be stated explicitly.
+
+First, treewidth must be understood through the Gaifman graph of a structure.
+The Gaifman graph of a \(\tau\)-structure has the same universe as the
+structure, and two distinct elements are adjacent if they appear together in
+some tuple of some relation of arity at least two.  Unary predicates, such as
+\(\mathsf{Vert}\) and \(\mathsf{EdgeObj}\), do not add Gaifman edges.  Thus they
+do not change treewidth.  For the coloured incidence structure, the Gaifman
+graph is just the usual incidence graph.
+
+Second, a bag letter should no longer be only a small rooted graph.  It should
+be a small rooted \(\tau\)-structure.  For \(\tau_I\), this means that a letter
+records
+\begin{itemize}[leftmargin=*]
+  \item which labels are present in the bag;
+  \item which labels are in the root/adhesion;
+  \item which labelled pairs satisfy \(\operatorname{Adj}_I\);
+  \item which labelled elements satisfy \(\mathsf{Vert}\); and
+  \item which labelled elements satisfy \(\mathsf{EdgeObj}\).
+\end{itemize}
+Since \(\omega\) and \(\tau_I\) are fixed, there are still only finitely many
+possible letters.  In the general \(\tau\)-structure version, the same letter
+records the complete induced \(\tau\)-structure on the labelled bag.
+
+Third, compatibility and gluing must include the predicate data.  If a child
+root element is identified with a parent bag element of the same colour, then
+the two copies must agree on all unary predicates.  In the incidence case, one
+must not be allowed to glue a \(\mathsf{Vert}\)-element to an
+\(\mathsf{EdgeObj}\)-element.  More generally, the two pieces must agree on the
+induced \(\tau\)-structure on the common labelled root.  After gluing, each
+relation of the glued structure is the union of the corresponding relations in
+the pieces, modulo the quotient identification.  The final ``forget labels
+outside the adhesion'' operation is still needed, exactly as in the graph-only
+version.
+
+Fourth, the decoding and re-encoding lemmas need the same additional coherence
+statements for predicates that they need for edges.  For example, if two
+representatives \((t,i)\) and \((s,i)\) denote the same decoded element, then
+legality must imply that they have the same unary type:
+\[
+  \mathsf{Vert}(t,i)\Longleftrightarrow\mathsf{Vert}(s,i),
+  \qquad
+  \mathsf{EdgeObj}(t,i)\Longleftrightarrow\mathsf{EdgeObj}(s,i).
+\]
+This proves that the decoded predicates are well-defined on equivalence
+classes.  The re-encoding proof must then show not only that the decoded
+adjacency relation on each bag recovers the original letter, but also that the
+decoded unary predicates on each bag recover the original unary predicate data.
+
+Fifth, the formula-translation section gains atomic cases for the new relation
+symbols.  Previously the main atomic case was the graph adjacency atom.  In the
+incidence setting the atomic cases include
+\[
+  \operatorname{Adj}_I(x,y),\qquad
+  \mathsf{Vert}(x),\qquad
+  \mathsf{EdgeObj}(x),
+\]
+besides equality and membership.  The unary cases are simpler than adjacency:
+one only checks that the representative chosen for \(x\) carries the relevant
+unary predicate in its top bag.  Quantifiers and Boolean connectives are handled
+exactly as before.
+
+Finally, the tree-automaton step is unchanged in substance.  The automaton
+theorem applies to labelled trees over a finite alphabet.  Replacing graph
+letters by finite \(\tau_I\)-structure letters merely changes the finite
+alphabet and the compiled tree sentence.  Thus the high-level pipeline becomes
+\[
+  G\models_{\MSOtwo}\psi
+  \Longleftrightarrow
+  \widehat I(G)\models_{\MSO}\psi^\dagger
+  \Longleftrightarrow
+  \text{the decomposition encoding of }\widehat I(G)\text{ is accepted.}
+\]
+So the original proof architecture survives, but every occurrence of
+``graph'', ``edge relation'', and ``rooted graph letter'' in the encoding part
+should be replaced by the corresponding fixed-vocabulary structure notion.
+
 \subsection{A legal tree may have a nonempty root boundary}
 
 \paragraph{Location.} Definition 6 and Lemma 7--Lemma 9, lines 248--383.
