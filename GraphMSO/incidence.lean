@@ -1,4 +1,5 @@
 import Mathlib.Combinatorics.SimpleGraph.Basic
+import GraphMSO.Decomp.KRootedPGraph
 
 inductive IncidenceVertex.{u} {V : Type u} (G : SimpleGraph V) : Type u where
   |fromV (v : V)
@@ -101,3 +102,39 @@ theorem IncidenceVertex.isVertex_iff_not_isEdgeObj.{u} {V : Type u} {G : SimpleG
 theorem IncidenceVertex.isVertex_or_isEdgeObj.{u} {V : Type u} {G : SimpleGraph V}
     (x : IncidenceVertex G) : x.IsVertex ∨ x.IsEdgeObj := by
   cases x <;> simp
+
+/-- The vertex sort is decidable: it is read off the constructor. -/
+instance IncidenceVertex.instDecidableIsVertex.{u} {V : Type u} {G : SimpleGraph V}
+    (x : IncidenceVertex G) : Decidable x.IsVertex :=
+  match x with
+  | .fromV _ => .isTrue trivial
+  | .fromEdge _ => .isFalse id
+
+/-- The edge-object sort is decidable: it is read off the constructor. -/
+instance IncidenceVertex.instDecidableIsEdgeObj.{u} {V : Type u} {G : SimpleGraph V}
+    (x : IncidenceVertex G) : Decidable x.IsEdgeObj :=
+  match x with
+  | .fromV _ => .isFalse id
+  | .fromEdge _ => .isTrue trivial
+
+/-!
+### The coloured incidence structure as a `KRootedPGraph`
+
+The coloured incidence structure `Î(G)` over the vocabulary
+`τ_I = {adj, Vert, EdgeObj}` is the instance of `KRootedPGraph` whose adjacency is
+the incidence graph and whose two unary predicates are `IsVertex` and `IsEdgeObj`.
+-/
+
+/-- The two predicate symbols of the coloured incidence vocabulary `τ_I`. -/
+inductive IncSort
+  | vert
+  | edgeObj
+  deriving DecidableEq
+
+/-- The coloured incidence structure of `G` as a `KRootedPGraph` over `IncSort`. -/
+def colouredIncidence.{u} {V : Type u} (G : SimpleGraph V) : KRootedPGraph IncSort where
+  V := IncidenceVertex G
+  G := IncidenceGraph G
+  pred := fun
+    | .vert => (·.IsVertex)
+    | .edgeObj => (·.IsEdgeObj)
