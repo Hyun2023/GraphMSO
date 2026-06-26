@@ -23,7 +23,8 @@
 
 This report reviews the mathematical argument in
 \texttt{lecture\_note\_expanded.tex}.  It does not attempt a Lean design review.
-Line numbers below refer to that source file.  The most serious findings are:
+Line numbers below refer to that source file.  The most serious findings in the
+earlier draft were:
 \begin{enumerate}[label=\textbf{C\arabic*.},leftmargin=*]
   \item the claimed reduction of \MSOtwo{} to ordinary graph \MSO{} on the
     uncoloured incidence graph is false;
@@ -124,7 +125,7 @@ straightforward induction on \(\psi\) then proves
 \]
 
 To apply the main theorem, its MSO-over-graphs statement must therefore be
-slightly generalized from the vocabulary \(\{\operatorname{edge}\}\) to a fixed
+slightly generalized from the vocabulary \(\{\operatorname{adj}\}\) to a fixed
 finite vocabulary containing adjacency and finitely many unary predicates.
 The proof changes only locally: a letter of \(\Sigma_\omega\) records, in
 addition to the induced adjacency relation on a bag, which unary predicates
@@ -143,7 +144,7 @@ width is at most \(\max(\omega,2)\).  The separate size estimate needed for the
 running time is discussed below.
 
 If one insists on a theorem whose vocabulary is exactly
-\(\{\operatorname{edge}\}\), the unary colours can instead be encoded by fixed
+\(\{\operatorname{adj}\}\), the unary colours can instead be encoded by fixed
 bounded-size graph gadgets.  That route requires an additional interpretation
 theorem proving that the gadgets are logically recognizable and that they
 increase treewidth only by a bounded amount.  Keeping the two unary predicates
@@ -152,16 +153,16 @@ is the simpler and more transparent repair.
 \subsubsection*{How the rest of the proof should be adapted}
 
 The remaining proof should not be read as a proof only for plain graph
-structures \((V,\operatorname{edge})\).  It should first be upgraded to a proof
+structures \((V,\operatorname{adj})\).  It should first be upgraded to a proof
 for structures over an arbitrary fixed finite relational vocabulary \(\tau\),
 and then applied to the particular vocabulary
 \[
-  \tau_I=\{\operatorname{Adj}_I,\mathsf{Vert},\mathsf{EdgeObj}\}.
+  \tau_I=\{\operatorname{adj},\mathsf{Vert},\mathsf{EdgeObj}\}.
 \]
 This is the clean mathematical way to replace the old graph-only target
 vocabulary
 \[
-  \{\operatorname{edge}\}
+  \{\operatorname{adj}\}
 \]
 by the incidence-structure vocabulary \(\tau_I\).  The upgrade is mostly local,
 but it should be stated explicitly.
@@ -180,7 +181,7 @@ records
 \begin{itemize}[leftmargin=*]
   \item which labels are present in the bag;
   \item which labels are in the root/adhesion;
-  \item which labelled pairs satisfy \(\operatorname{Adj}_I\);
+  \item which labelled pairs satisfy \(\operatorname{adj}\);
   \item which labelled elements satisfy \(\mathsf{Vert}\); and
   \item which labelled elements satisfy \(\mathsf{EdgeObj}\).
 \end{itemize}
@@ -217,7 +218,7 @@ Fifth, the formula-translation section gains atomic cases for the new relation
 symbols.  Previously the main atomic case was the graph adjacency atom.  In the
 incidence setting the atomic cases include
 \[
-  \operatorname{Adj}_I(x,y),\qquad
+  \operatorname{adj}(x,y),\qquad
   \mathsf{Vert}(x),\qquad
   \mathsf{EdgeObj}(x),
 \]
@@ -241,18 +242,20 @@ So the original proof architecture survives, but every occurrence of
 ``graph'', ``edge relation'', and ``rooted graph letter'' in the encoding part
 should be replaced by the corresponding fixed-vocabulary structure notion.
 
-\paragraph{Status (2026-06).} Deferred pending a decision with collaborators;
-the main note is left unchanged for now.  The planned route is the coloured
-incidence structure above, adding unary predicates \(\mathsf{Vert}\) and
-\(\mathsf{EdgeObj}\).  A brief check of the tree-language translation shows no
-fundamental obstruction: the alphabet \(\Sigma_\omega\) stays finite (each letter
-additionally tags every present colour as \(\mathsf{Vert}\) or
-\(\mathsf{EdgeObj}\)); the atomic translations \(\mathsf{Vert}(x)^\dagger\) and
-\(\mathsf{EdgeObj}(x)^\dagger\) only read the tag of the representative's top
-letter.  The one nontrivial addition is that \(\varphi_{\mathrm{legal}}\) must
-gain a parent--child agreement condition on the unary tags of shared colours,
-together with the corresponding coherence lemma, so that the decoded unary
-predicates are well-defined on equivalence classes.
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+The main theorem is now stated for \MSO{} over
+\(\tau_{\mathcal P}=\{\operatorname{adj}\}\cup\mathcal P\), where
+\(\mathcal P\) is a fixed finite set of unary predicates.  The alphabet letters
+are rooted \(\tau_{\mathcal P}\)-graphs, so they record both adjacency and unary
+predicate tags.  The legality condition now requires agreement of the full
+induced \(\tau_{\mathcal P}\)-structure on a child root, not merely agreement of
+the adjacency relation.  The formula translation has atomic clauses for each unary
+predicate \(Q(x)\).  The \MSOtwo{} corollary now uses the coloured incidence
+graph \(\widehat I(G)\) with unary predicates \(\mathsf{Vert}\) and
+\(\mathsf{EdgeObj}\), and the typed \MSOtwo{} quantifiers are translated by
+guarding them with these predicates.  The proof also records that unary
+predicates do not affect treewidth and that bounded treewidth gives the needed
+linear size bound for the incidence structure.
 
 \subsection{A legal tree may have a nonempty root boundary}
 
@@ -401,13 +404,15 @@ parameter, the compilation/preprocessing cost for reading \(\varphi\) must be
 stated separately and a quantifier-rank bound for the automaton construction
 must be proved.
 
-\paragraph{Status (2026-06).} Partially addressed in
-\texttt{lecture\_note\_expanded.tex}.  A remark after Theorem~1 now records the
-normalized decomposition with \(|N(T)|=O(|V(G)|)\) and the honest bound
-\(f(\omega,|\varphi|)\,(|V(G)|+|N(T)|)\), and separates the \(\Omega(|\varphi|)\)
-cost of reading and compiling the sentence.  The statement of Theorem~1 itself is
-left unchanged, pending a decision on whether the intended logical parameter is
-\(|\varphi|\) or \(\operatorname{qr}(\varphi)\).
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+Theorem~1 now states the honest varying-formula, supplied-decomposition bound
+\[
+  f_{\mathcal P}(\omega,|\varphi|)\bigl(|V(G)|+|N(T)|\bigr),
+\]
+for a fixed finite unary vocabulary \(\mathcal P\).  The surrounding remark
+explains how this specializes to the usual linear-time statement when
+\(\varphi\) is fixed and the decomposition has been normalized so that
+\(|N(T)|=O(|V(G)|)\).
 
 \section{Substantial proof gaps}
 

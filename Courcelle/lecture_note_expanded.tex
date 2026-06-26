@@ -27,7 +27,10 @@
 \newcommand{\legal}{\mathrm{legal}}
 \newcommand{\vtx}{\mathrm{vtx}}
 \newcommand{\set}{\mathrm{set}}
-\newcommand{\edge}{\mathrm{edge}}
+\newcommand{\adj}{\mathrm{adj}}
+\newcommand{\Pred}{\mathcal P}
+\newcommand{\Vrt}{\mathsf{Vert}}
+\newcommand{\EObj}{\mathsf{EdgeObj}}
 \newcommand{\eq}{\mathrm{eq}}
 \newcommand{\cont}{\mathrm{cont}}
 \newcommand{\emptysetf}{\mathrm{empty}}
@@ -63,39 +66,56 @@ the lecture note are expanded here.
 
 \section{Courcelle's theorem}
 
-Let graphs be finite simple graphs unless stated otherwise.  The graph vocabulary
-for \MSO{} in the first part is \(\tau=\{\edge\}\), where \(\edge(x,y)\) is the
-adjacency relation.  The \MSOtwo{} corollary is recovered by passing to the
-incidence graph.
-
-\begin{theorem}[Courcelle's theorem]
-For every \(\omega\in\mathbb N\), there exists an algorithm which, on input a
-graph \(G\), a binary tree-decomposition \((T,\beta)\) of \(G\) of width at most
-\(\omega\), and an \MSO{} sentence \(\varphi\) over \(\{\edge\}\), decides whether
-\(G\models\varphi\) in time
+Let graphs be finite simple graphs unless stated otherwise.  Fix a finite set
+\(\Pred\) of unary predicate symbols and write
 \[
-  f(\omega,\operatorname{qr}(\varphi))\cdot |V(G)|.
+  \tau_{\Pred}\defeq \{\adj\}\cup\Pred .
 \]
+A \(\tau_{\Pred}\)-graph is a finite simple graph together with an interpretation
+\(\adj^G\subseteq V(G)^2\) of adjacency and an interpretation
+\(P^G\subseteq V(G)\) for each \(P\in\Pred\).  Its treewidth is the treewidth of
+the underlying graph, since unary predicates add no edges to the Gaifman graph.
+The ordinary graph case is \(\Pred=\varnothing\).
+
+Let us spell out the logical convention.  \MSO{} over \(\tau_{\Pred}\) is
+one-sorted: first-order variables range over vertices, monadic second-order
+variables range over sets of vertices, and the atomic formulas are
+\(\adj(x,y)\), \(P(x)\) for \(P\in\Pred\), equality, and membership \(x\in X\).
+By contrast, \MSOtwo{} on an original graph can quantify not only over vertices
+and vertex sets, but also over edge-objects and sets of edge-objects.  It has an
+incidence predicate \(\operatorname{inc}(v,e)\) connecting a vertex \(v\) to an
+edge-object \(e\).  Thus an edge-object in \MSOtwo{} is not the same thing as
+the binary adjacency relation \(\adj(x,y)\).  The \MSOtwo{} corollary below
+therefore passes to a coloured incidence graph, where the unary predicates
+\(\Vrt\) and \(\EObj\) remember which elements are original vertices and which
+are original edge-objects.
+
+\begin{theorem}[Courcelle's theorem for unary-expanded graphs]
+For every \(\omega\in\mathbb N\) and every fixed finite unary vocabulary
+\(\Pred\), there exists an algorithm which, on input a \(\tau_{\Pred}\)-graph
+\(G\), a binary tree-decomposition \((T,\beta)\) of the underlying graph of \(G\)
+of width at most \(\omega\), and an \MSO{} sentence \(\varphi\) over
+\(\tau_{\Pred}\), decides whether \(G\models\varphi\) in time
+\[
+  f_{\Pred}(\omega,|\varphi|)\cdot\bigl(|V(G)|+|N(T)|\bigr).
+\]
+In particular, for fixed \(\varphi\) and normalized decompositions with
+\(|N(T)|=O(|V(G)|)\), the model-checking phase is linear in \(|V(G)|\).
 \end{theorem}
 
-The proof below constructs a finite alphabet \(\Sigma_\omega\), translates the
-input into a \(\Sigma_\omega\)-tree, translates \(\varphi\) into a tree \MSO{}
-sentence, and then runs the finite tree automaton corresponding to that tree
-sentence.
+The proof below constructs a finite alphabet \(\Sigma_\omega\) whose letters
+remember both adjacency and unary predicate information, translates the input
+into a \(\Sigma_\omega\)-tree, translates \(\varphi\) into a tree \MSO{} sentence,
+and then runs the finite tree automaton corresponding to that tree sentence.
 
 \begin{remark}
-Two parts of the input must be accounted for in the running time.  First, one
-may assume the supplied decomposition is normalized so that
-\(|N(T)|=O(|V(G)|)\): any width-\(\omega\) tree-decomposition can be converted in
-linear time to a nice (equivalently, binary) tree-decomposition with
-\(O(|V(G)|)\) nodes, after which building the \(\Sigma_\omega\)-tree encoding
-costs \(O(|V(G)|)\).  Second, the factor \(f(\omega,\operatorname{qr}(\varphi))\)
-absorbs the cost of reading and compiling \(\varphi\): reading the sentence
-already takes \(\Omega(|\varphi|)\) time, and the compiled tree automaton depends
-on \(\varphi\), not only on \(\operatorname{qr}(\varphi)\).  For a fixed sentence
-and a normalized decomposition this preprocessing is a constant and the
-model-checking phase runs in time \(O(|V(G)|)\); for varying \(\varphi\) the
-honest bound is \(f(\omega,|\varphi|)\,(|V(G)|+|N(T)|)\).
+If one wants a statement with a supplied decomposition but with the shorter
+linear bound \(f(\omega,\varphi)|V(G)|\), one should either assume that the input
+decomposition has already been normalized so that \(|N(T)|=O(|V(G)|)\), or include
+the linear-time normalization step in the algorithm.  The dependence on the
+formula is written as \(|\varphi|\) because the algorithm must read and compile
+the sentence; when \(\varphi\) is fixed this is absorbed into the parameter
+function.
 \end{remark}
 
 \begin{theorem}[Computing treewidth]
@@ -106,9 +126,10 @@ decides that the treewidth of \(G\) is greater than \(\omega\), in time
 \end{theorem}
 
 \begin{corollary}
-There is an algorithm which, given a graph \(G\) of treewidth at most \(\omega\)
-and an \MSO{} sentence \(\varphi\) over \(\{\edge\}\), decides whether
-\(G\models\varphi\) in time \(f(\omega,\operatorname{qr}(\varphi))|V(G)|\).
+For every fixed finite unary vocabulary \(\Pred\), there is an algorithm which,
+given a \(\tau_{\Pred}\)-graph \(G\) whose underlying graph has treewidth at most
+\(\omega\), and an \MSO{} sentence \(\varphi\) over \(\tau_{\Pred}\), decides
+whether \(G\models\varphi\) in time \(f_{\Pred}(\omega,|\varphi|)|V(G)|\).
 \end{corollary}
 
 \begin{proof}
@@ -126,37 +147,75 @@ decided in time \(f(\omega,\mathcal G)|V(G)|\).
 \end{corollary}
 
 \begin{proof}
-Let \(\psi\) be an \MSOtwo{} sentence over the incidence vocabulary
-\(\{\operatorname{inc},V,E\}\) defining \(\mathcal G\).  Given a graph \(G\), form
-its incidence graph \(I(G)\), whose vertices are \(V(G)\sqcup E(G)\), with an edge
-between \(v\in V(G)\) and \(e\in E(G)\) exactly when \(v\) is an endpoint of
-\(e\).  If \((T,\beta)\) has width \(\omega\), then \(I(G)\) has width bounded by a
-function of \(\omega\): for every edge \(e=uv\), choose a bag containing \(u,v\)
-and attach a new leaf bag \(\{u,v,e\}\).  The old bags cover the original
-vertices; the new leaf bags cover incidence edges; and the bags containing every
-old vertex remain connected after attaching leaves to nodes that already contain
-that vertex.  Hence the width is at most \(\max(\omega,2)\).
-
-Translate \(\psi\) into an ordinary graph \MSO{} sentence \(\psi'\) over
-\(\{\edge\}\) on \(I(G)\).  In the incidence graph,
+Let \(\psi\) be an \MSOtwo{} sentence defining \(\mathcal G\).  Given a graph
+\(G\), form its \emph{coloured incidence graph} \(\widehat I(G)\).  Its universe
+is the disjoint union \(V(G)\sqcup E(G)\).  The binary relation \(\adj\) is the
+ordinary incidence adjacency: \(v\in V(G)\) is adjacent to \(e\in E(G)\) exactly
+when \(v\) is an endpoint of \(e\).  In addition, \(\widehat I(G)\) carries two
+unary predicates:
 \[
-  \operatorname{edg}(z) \defeq \exists x\,\operatorname{inc}(x,z),
+  \Vrt(z) \quad\text{iff } z\in V(G),
   \qquad
-  \operatorname{vtx}(z) \defeq \neg \operatorname{edg}(z)
+  \EObj(z) \quad\text{iff } z\in E(G).
 \]
-can be expressed using only the adjacency relation of \(I(G)\).  Replace
-membership in the edge sort by \(\operatorname{edg}\), membership in the vertex
-sort by \(\operatorname{vtx}\), and replace \(\operatorname{inc}(x,e)\) by
-\(\edge(x,e)\) in \(I(G)\).  The translation is truth-preserving:
-\(G\models\psi\) iff \(I(G)\models\psi'\).  Applying Corollary~3 to \(I(G)\)
-proves the claim.
+Thus \(\widehat I(G)\) is a \(\tau_I\)-graph for
+\(\tau_I=\{\adj,\Vrt,\EObj\}\).  The predicates \(\Vrt\) and \(\EObj\) are part
+of the structure; they are not reconstructed from the uncoloured incidence
+adjacency.
+
+Translate \(\psi\) into a one-sorted \MSO{} sentence \(\psi^\dagger\) over
+\(\tau_I\).  Atomic incidence becomes
+\[
+  \operatorname{inc}(x,e)^\dagger \defeq \adj(x,e),
+\]
+while typed quantifiers are guarded by the unary predicates:
+\[
+\begin{aligned}
+  (\exists x\!:\!V\;\theta)^\dagger
+    &\defeq \exists x\bigl(\Vrt(x)\wedge\theta^\dagger\bigr),\\
+  (\exists e\!:\!E\;\theta)^\dagger
+    &\defeq \exists e\bigl(\EObj(e)\wedge\theta^\dagger\bigr).
+\end{aligned}
+\]
+For set variables, use the guards
+\[
+  \operatorname{VertSet}(X)\defeq
+    \forall z(z\in X\to\Vrt(z)),\qquad
+  \operatorname{EdgeSet}(F)\defeq
+    \forall z(z\in F\to\EObj(z)),
+\]
+and translate vertex-set and edge-set quantifiers by adding these guards.
+Universal quantifiers are translated dually.  A structural induction on
+\(\psi\) gives
+\[
+  G\models_{\MSOtwo}\psi
+  \quad\Longleftrightarrow\quad
+  \widehat I(G)\models_{\MSO}\psi^\dagger .
+\]
+
+It remains to check bounded treewidth and size.  If \((T,\beta)\) has width
+\(\omega\), then the underlying incidence graph of \(\widehat I(G)\) has width at
+most \(\max(\omega,2)\): for every edge \(e=uv\), choose a bag containing \(u,v\)
+and attach a new leaf bag \(\{u,v,e\}\).  The old bags cover the original
+vertices; the new leaf bags cover incidence edges; the bags containing every
+old vertex remain connected; and each edge-object appears in one new leaf bag.
+Unary predicates do not affect treewidth.  Also, a simple graph of treewidth at
+most \(\omega\) is \(\omega\)-degenerate, hence has \(O(\omega|V(G)|)\) edges.
+Therefore \(|V(\widehat I(G))|=|V(G)|+|E(G)|=O_\omega(|V(G)|)\).
+
+Apply the previous corollary to the \(\tau_I\)-graph \(\widehat I(G)\) and the
+sentence \(\psi^\dagger\).  Since \(\psi\) is fixed by the property
+\(\mathcal G\), the dependence on \(\psi^\dagger\) is absorbed into
+\(f(\omega,\mathcal G)\).
 \end{proof}
 
 \section{Encoding a colored decomposition as a \texorpdfstring{\(\Sigma\)}{Sigma}-tree}
 
-Fix a rooted binary tree-decomposition \((T,\beta)\) of a graph \(G\) of width at
-most \(\omega\).  The set of nodes of \(T\) is denoted by \(N(T)\).  If \(t\) is
-not the root, \(p(t)\) denotes its parent.  Define
+For the rest of the proof, fix the finite unary vocabulary \(\Pred\).  Fix a
+rooted binary tree-decomposition \((T,\beta)\) of the underlying graph of a
+\(\tau_{\Pred}\)-graph \(G\), of width at most \(\omega\).  The set of nodes of
+\(T\) is denoted by \(N(T)\).  If \(t\) is not the root, \(p(t)\) denotes its
+parent.  Define
 \[
   \adh(t) \defeq
   \begin{cases}
@@ -182,25 +241,29 @@ all bags containing \(v\).  Equivalently, the intersection graph of the bags has
 clique number at most \(\omega+1\) and is chordal, hence \((\omega+1)\)-colorable.
 \end{proof}
 
-\subsection{Rooted graphs and gluing}
+\subsection{Rooted unary-expanded graphs and gluing}
 
 \begin{definition}
-A \(k\)-rooted graph is a triple \((H,R,\iota)\) where \(H\) is a graph,
-\(R\subseteq V(H)\) is the root or boundary, and \(\iota\) is a partial injective
-map from \(V(H)\) to \([k]\) whose domain contains \(R\).  When \(\iota(v)=i\), we
-say that \(v\) has label \(i\).
+A \(k\)-rooted \(\tau_{\Pred}\)-graph is a triple \((H,R,\iota)\) where \(H\) is a
+\(\tau_{\Pred}\)-graph, \(R\subseteq V(H)\) is the root or boundary, and
+\(\iota\) is a partial injective map from \(V(H)\) to \([k]\) whose domain
+contains \(R\).  When \(\iota(v)=i\), we say that \(v\) has label \(i\).
 \end{definition}
 
-Given \(k\)-rooted graphs \((H_1,R_1,\iota_1)\) and \((H_2,R_2,\iota_2)\), the
-partial gluing
+Given \(k\)-rooted \(\tau_{\Pred}\)-graphs \((H_1,R_1,\iota_1)\) and
+\((H_2,R_2,\iota_2)\), the partial gluing
 \[
   (H_1,R_1,\iota_1)\oplus_k(H_2,R_2,\iota_2)
 \]
-is defined when the labelled rooted graph induced by \(R_2\) is label-preserving
-isomorphic to the induced labelled subgraph of \(H_1\) on vertices with the same
-labels.  Then we take the disjoint union and identify every \(v\in R_2\) with
-the unique vertex \(v'\in V(H_1)\) satisfying \(\iota_1(v')=\iota_2(v)\).  The root
-and labelling of the result are inherited from the first graph.
+is defined when the labelled rooted \(\tau_{\Pred}\)-graph induced by \(R_2\) is
+label-preserving isomorphic to the induced labelled \(\tau_{\Pred}\)-subgraph of
+\(H_1\) on vertices with the same labels.  Thus, on the common labelled root,
+both the adjacency relation and every unary predicate \(P\in\Pred\) agree.  Then
+we take the disjoint union and identify every \(v\in R_2\) with the unique vertex
+\(v'\in V(H_1)\) satisfying \(\iota_1(v')=\iota_2(v)\).  The root and labelling of
+the result are inherited from the first graph, and each unary predicate is
+inherited from the two pieces.  The compatibility condition makes the predicate
+interpretations well-defined on identified vertices.
 
 For a node \(t\), define the \emph{node graph}
 \[
@@ -229,10 +292,11 @@ Let \(t\) be an internal node with children \(t_1,t_2\).  If
 For each child \(t_i\), the root \(R_i=\adh(t_i)=\beta(t_i)\cap\beta(t)\) is a
 subset of \(\beta(t)\).  Because the coloring is injective on \(\beta(t)\), every
 label appearing in \(R_i\) identifies a unique vertex of \(H_t\).  The induced
-subgraph on \(R_i\) inside the child cone is the same as the induced subgraph on
-that same vertex set inside \(H_t\), since both are induced subgraphs of the
-original graph \(G\).  Therefore the first gluing is defined, and the same
-argument applies to the second child.
+substructure on \(R_i\) inside the child cone is the same as the induced
+substructure on that same vertex set inside \(H_t\), since both are induced
+\(\tau_{\Pred}\)-subgraphs of the original structure \(G\).  Thus the edge
+relation and all unary predicates agree on the common labelled root.  Therefore
+the first gluing is defined, and the same argument applies to the second child.
 
 The vertices in the resulting graph are exactly
 \[
@@ -244,11 +308,14 @@ parts of the tree-decomposition.  It creates no new edges; it only takes the
 union of the edges already present in the induced graphs.  Since every edge of
 \(G[\cone(t)]\) is covered by some bag in the subtree of \(t\), it appears in
 one of the three pieces.  Conversely every edge in a piece is an edge of
-\(G[\cone(t)]\).  The root of the result is \(R_t=\adh(t)\) and, since gluing
-inherits the labelling of its first operand, its labels are \(c|_{\beta(t)}\),
-matching the cone graph at \(t\).  Thus the glued graph equals \(G_t\), as
-claimed, up to the canonical label-preserving isomorphism of the
-disjoint-union-and-quotient model of \(\oplus\).
+\(G[\cone(t)]\).  The same union argument applies to each unary predicate,
+because each piece carries the restriction of the predicate interpretation from
+the same ambient structure \(G\).  The root of the result is \(R_t=\adh(t)\) and,
+since gluing inherits the labelling of its first operand, its labels are
+\(c|_{\beta(t)}\), matching the cone graph at \(t\).  Thus the glued
+\(\tau_{\Pred}\)-graph equals \(G_t\), as claimed, up to the canonical
+label-preserving isomorphism of the disjoint-union-and-quotient model of
+\(\oplus\).
 \end{proof}
 
 \subsection{The alphabet and legal trees}
@@ -256,15 +323,21 @@ disjoint-union-and-quotient model of \(\oplus\).
 Let
 \[
   \Sigma_\omega \defeq
-  \{(H,R): V(H)\subseteq C_\omega,\ R\subseteq V(H)\}.
+  \{(H,R): H \text{ is a } \tau_{\Pred}\text{-graph with }
+       V(H)\subseteq C_\omega,\ R\subseteq V(H)\}.
 \]
-A letter is a rooted graph on a subset of the fixed color set \(C_\omega\); the
-identity map is the implicit labelling.  The set \(\Sigma_\omega\) is finite.
+A letter is a rooted \(\tau_{\Pred}\)-graph on a subset of the fixed color set
+\(C_\omega\); the identity map is the implicit labelling.  Equivalently, a
+letter records the induced adjacency relation on the bag and, for every present
+color \(i\), which unary predicates \(P\in\Pred\) hold of the element of color
+\(i\).  Since both \(C_\omega\) and \(\Pred\) are finite, the set
+\(\Sigma_\omega\) is finite.
 
 The encoding \((T,\rho)\) of \((G,c,(T,\beta))\) labels each node \(t\) by the
-rooted graph obtained from \((H_t,R_t,\iota_t)\) after renaming every vertex
-\(v\in\beta(t)\) to its color \(c(v)\).  Since colors are injective on bags, this
-renaming is well-defined and loses no information inside a single bag.
+rooted \(\tau_{\Pred}\)-graph obtained from \((H_t,R_t,\iota_t)\) after renaming
+every vertex \(v\in\beta(t)\) to its color \(c(v)\).  Since colors are injective
+on bags, this renaming is well-defined and loses no information inside a single
+bag.
 
 \begin{definition}
 A \(\Sigma_\omega\)-tree \((T,\rho)\) is \emph{legal} if its root \(r\) carries a
@@ -276,6 +349,8 @@ we have
   \quad\text{and}\quad
   H_x[R_x]=H_y[R_x].
 \]
+The equality here is equality of induced \(\tau_{\Pred}\)-graphs: the edge
+relation and every unary predicate agree on the shared colors.
 \end{definition}
 
 \begin{lemma}
@@ -291,7 +366,9 @@ parent labelled \(b\), namely
 \[
   R_a\subseteq V(H_b)\quad\text{and}\quad H_a[R_a]=H_b[R_a].
 \]
-This is a finite relation on \(\Sigma_\omega\).  Define
+Again the equality is equality of induced \(\tau_{\Pred}\)-graphs, so unary
+predicate tags must agree on every shared root color.  This is a finite relation
+on \(\Sigma_\omega\).  Define
 \[
   \parent(y,x) \defeq \child_1(y,x)\vee \child_2(y,x)
 \]
@@ -321,11 +398,13 @@ precisely legality.
 \subsection{Decoding a legal tree}
 
 Suppose \((T,\rho)\) is legal.  If \(\rho(t)=(H,R)\), define a concrete rooted
-graph \((H_t,R_t,\iota_t)\) by replacing each color \(i\in V(H)\) by a formal
-vertex \(v(t,i)\), taking \(R_t=\{v(t,i):i\in R\}\), and setting
-\(\iota_t(v(t,i))=i\).
+\(\tau_{\Pred}\)-graph \((H_t,R_t,\iota_t)\) by replacing each color
+\(i\in V(H)\) by a formal vertex \(v(t,i)\), transporting the edge relation and
+all unary predicates along this renaming, taking
+\(R_t=\{v(t,i):i\in R\}\), and setting \(\iota_t(v(t,i))=i\).
 
-Define rooted graphs \((\bar G_t,\bar R_t,\bar\iota_t)\) bottom-up.  At a leaf,
+Define rooted \(\tau_{\Pred}\)-graphs
+\((\bar G_t,\bar R_t,\bar\iota_t)\) bottom-up.  At a leaf,
 \((\bar G_t,\bar R_t,\bar\iota_t)=(H_t,R_t,\iota_t|_{R_t})\).  If \(t\) has
 children \(t_1,t_2\), glue
 \[
@@ -344,8 +423,9 @@ for every node \(t\).  Moreover, the domain of \(\bar\iota_t\) is exactly
 Proceed by induction from leaves to the root.  The statement is immediate for a
 leaf.  Let \(t\) be an internal node and assume the statement for each child
 \(t_i\).  By induction, the child cone has external labels exactly on
-\(\bar R_{t_i}\).  Legality says that the rooted graph induced by this labelled
-root agrees with the subgraph of the parent letter on the same labels.  Hence
+\(\bar R_{t_i}\).  Legality says that the rooted \(\tau_{\Pred}\)-graph induced
+by this labelled root agrees with the substructure of the parent letter on the
+same labels.  Hence
 \((H_t,R_t,\iota_t)\oplus(\bar G_{t_i},\bar R_{t_i},\bar\iota_{t_i})\) is defined.
 After gluing the first child, the copy of \(H_t\) and its labels are unchanged,
 so the same argument glues the second child.  Finally, the decoding construction
@@ -365,14 +445,18 @@ If \((T,\rho)\) is legal, its decoding \((G,c,(T,\beta))\) is well-defined.
 \begin{proof}
 By Lemma~7, the graph at the root is well-defined.  Legality requires the root
 letter to have empty root set, so \(\bar R_r=\varnothing\) and the graph at the
-root is an ordinary graph.  The color of a decoded
-vertex is well-defined because vertices are identified only when their labels
-agree; thus two representatives of the same decoded vertex have the same color.
+root is an ordinary \(\tau_{\Pred}\)-graph, with no remaining external labels.
+The color of a decoded vertex is well-defined because vertices are identified
+only when their labels agree; thus two representatives of the same decoded
+vertex have the same color.  The unary predicates are also well-defined because
+gluing is allowed only when all predicate tags agree on the identified labelled
+root vertices.
 
-It remains to check that \((T,\beta)\) is a tree-decomposition of \(G\).  Every
-vertex of \(G\) is created as some \(v(t,i)\), hence appears in \(\beta(t)\).  No
-edge is created by gluing; every edge of \(G\) comes from a node graph \(H_t\), so
-both endpoints occur in \(\beta(t)\).  For connectedness, fix a decoded vertex
+It remains to check that \((T,\beta)\) is a tree-decomposition of the underlying
+graph of \(G\).  Every vertex of \(G\) is created as some \(v(t,i)\), hence
+appears in \(\beta(t)\).  No edge is created by gluing; every edge of the
+underlying graph of \(G\) comes from a node graph \(H_t\), so both endpoints
+occur in \(\beta(t)\).  For connectedness, fix a decoded vertex
 \(v\), represented with color \(i\), and let
 \[
   U_v\defeq\{t\in N(T): v\in\beta(t)\}.
@@ -388,16 +472,16 @@ topmost in its component.  Thus \(U_v\) is connected.
 
 \begin{lemma}
 A \(\Sigma_\omega\)-tree \((T,\rho)\) is legal iff it is the encoding of some
-\((\omega+1)\)-colored graph with a binary tree-decomposition of width at most
-\(\omega\).  Moreover, in the forward direction the witnessing triple is the
-decoding of \((T,\rho)\).
+\((\omega+1)\)-colored \(\tau_{\Pred}\)-graph with a binary tree-decomposition
+of width at most \(\omega\).  Moreover, in the forward direction the witnessing
+triple is the decoding of \((T,\rho)\).
 \end{lemma}
 
 \begin{proof}
 If \((T,\rho)\) is an encoding, legality follows directly from the definition of
 adhesion: the child root is exactly the intersection with the parent bag, and
-both induced graphs are induced subgraphs of the same graph \(G\) on that
-intersection.
+both induced \(\tau_{\Pred}\)-graphs are induced subgraphs of the same structure
+\(G\) on that intersection.
 
 Conversely, assume \((T,\rho)\) is legal and decode it as \((G,c,(T,\beta))\).
 Lemma~8 shows that this is a valid tree-decomposition.  Each bag has at most
@@ -407,8 +491,9 @@ most one vertex of each color.  Finally, for a node \(t\), the node graph of the
 decoded decomposition is exactly the letter \(\rho(t)\): the vertices in
 \(\beta(t)\) are the formal vertices \(v(t,i)\) appearing in the letter, their
 colors are the corresponding \(i\)'s, the root is the adhesion encoded by
-\(R_t\), and the edge relation is the one recorded in \(H_t\).  Thus re-encoding
-the decoded triple returns \((T,\rho)\).
+\(R_t\), the edge relation is the one recorded in \(H_t\), and each unary
+predicate \(P\in\Pred\) holds exactly on the colors tagged by \(P\) in \(H_t\).
+Thus re-encoding the decoded triple returns \((T,\rho)\).
 \end{proof}
 
 \section{Combinatorial properties of defining tuples}
@@ -605,6 +690,12 @@ Let
   R_i(x)\defeq \bigvee_{a\in\Sigma_i^R} P_a(x),\quad
   E_{ij}(x)\defeq \bigvee_{a\in\Sigma_{ij}^E} P_a(x).
 \]
+For \(Q\in\Pred\), define
+\[
+  \Sigma_i^Q\defeq\{(H,R): i\in Q^H\},
+  \qquad
+  Q_i(x)\defeq\bigvee_{a\in\Sigma_i^Q}P_a(x).
+\]
 
 \subsection{Recognizing vertices and vertex sets}
 
@@ -693,12 +784,12 @@ Lemma~11; hence the distinct sets among the \(Y_x\)'s form a partition of
 defining tuple is \(\tuple U\).
 \end{proof}
 
-\subsection{Recognizing graph atomic formulas}
+\subsection{Recognizing graph and predicate atomic formulas}
 
 For two tuples \(\tuple X=(X_0,\ldots,X_\omega)\) and \(\tuple Y=(Y_0,\ldots,Y_\omega)\), define
 \[
 \begin{aligned}
-  \varphi_{\edge}(\tuple X,\tuple Y)\defeq{}&
+  \varphi_{\adj}(\tuple X,\tuple Y)\defeq{}&
   \varphi_{\vtx}(\tuple X)\wedge\varphi_{\vtx}(\tuple Y)\\
   &\wedge\bigvee_{i,j=0}^{\omega}
   \exists t\bigl(t\in X_i\wedge t\in Y_j\wedge E_{ij}(t)\bigr).
@@ -706,7 +797,7 @@ For two tuples \(\tuple X=(X_0,\ldots,X_\omega)\) and \(\tuple Y=(Y_0,\ldots,Y_\
 \]
 
 \begin{lemma}
-The formula \(\varphi_{\edge}(\tuple X,\tuple Y)\) holds on defining tuples
+The formula \(\varphi_{\adj}(\tuple X,\tuple Y)\) holds on defining tuples
 \(\tuple U^u,\tuple U^v\) iff \(uv\) is an edge in the decoded graph.
 \end{lemma}
 
@@ -716,6 +807,27 @@ say \(u\) and \(v\).  If the last conjunct holds for colors \(i=c(u)\) and
 \(j=c(v)\), then there is a node \(t\in\Bags(u)\cap\Bags(v)\) whose letter records
 an edge between colors \(i,j\).  Lemma~12 implies \(uv\in E(G)\).  Conversely, if
 \(uv\in E(G)\), Lemma~12 gives such a node \(t\), so the formula holds.
+\end{proof}
+
+For \(Q\in\Pred\), define
+\[
+  \varphi_Q(\tuple X)\defeq
+  \varphi_{\vtx}(\tuple X)\wedge
+  \bigvee_{i=0}^{\omega}\exists t\bigl(t\in X_i\wedge Q_i(t)\bigr).
+\]
+
+\begin{lemma}
+Let \(Q\in\Pred\).  The formula \(\varphi_Q(\tuple X)\) holds on the defining
+tuple \(\tuple U^v\) iff \(v\in Q^G\).
+\end{lemma}
+
+\begin{proof}
+If \(\tuple X=\tuple U^v\), then exactly one coordinate is nonempty, namely
+\(\Bags(v)\) at the color \(i=c(v)\).  In an encoding, every bag containing \(v\)
+records the same unary predicate information for the color \(i\), because each
+node letter is induced from the same ambient \(\tau_{\Pred}\)-graph \(G\).
+Therefore some, equivalently every, node \(t\in\Bags(v)\) satisfies \(Q_i(t)\)
+exactly when \(v\in Q^G\).
 \end{proof}
 
 Define set equality by
@@ -774,8 +886,8 @@ any different color-\(i\) defining pair.  Hence one of the pieces is
 
 \subsection{The formula translation}
 
-Let \(\theta\) be an \MSO{} formula over the graph vocabulary
-\(\{\edge\}\).  Each first-order graph variable \(x\) is represented by a tuple of
+Let \(\theta\) be an \MSO{} formula over the unary-expanded graph vocabulary
+\(\tau_{\Pred}\).  Each first-order variable \(x\) is represented by a tuple of
 set variables
 \[
   \tuple Z_x=(Z^x_0,\ldots,Z^x_\omega),
@@ -787,7 +899,8 @@ and each monadic set variable \(X\) is represented by
 Define the translation \(\theta^\star\) recursively:
 \begin{align*}
   (x=y)^\star &\defeq \varphi_{\eq}(\tuple Z_x,\tuple Z_y),\\
-  (\edge(x,y))^\star &\defeq \varphi_{\edge}(\tuple Z_x,\tuple Z_y),\\
+  (\adj(x,y))^\star &\defeq \varphi_{\adj}(\tuple Z_x,\tuple Z_y),\\
+  (Q(x))^\star &\defeq \varphi_Q(\tuple Z_x)\qquad(Q\in\Pred),\\
   (x\in X)^\star &\defeq \varphi_{\cont}(\tuple Z_x,\tuple Z_X),
 \end{align*}
 and commute the translation with Boolean connectives.  Existential quantifiers
@@ -814,15 +927,16 @@ Universal quantifiers are handled by the identity \(\forall q\,\psi\equiv
 Let \((T,\rho)\) be the encoding of \((G,c,(T,\beta))\).  If a graph assignment sends every
 individual variable to a vertex and every set variable to a vertex set, let the
 corresponding tree assignment send each variable to the defining tuple of that
-object.  A structural induction on \(\theta\), using Lemmas~15--19 for the atomic
-cases and the displayed clauses for quantifiers, gives
+object.  A structural induction on \(\theta\), using the atomic correctness
+lemmas above for equality, adjacency, unary predicates, and membership, together
+with the displayed clauses for quantifiers, gives
 \[
   G\models\theta
   \quad\Longleftrightarrow\quad
   (T,\rho)\models\theta^\star
 \]
-under corresponding assignments.  In particular, for every graph \MSO{} sentence
-\(\varphi\),
+under corresponding assignments.  In particular, for every \(\tau_{\Pred}\)-MSO{}
+sentence \(\varphi\),
 \[
   G\models\varphi
   \quad\Longleftrightarrow\quad
@@ -832,16 +946,19 @@ under corresponding assignments.  In particular, for every graph \MSO{} sentence
 \section{Completing the proof of Courcelle's theorem}
 
 \begin{proof}[Proof of Theorem~1]
-Fix \(\omega\), a graph \(G\), a binary tree-decomposition \((T,\beta)\) of width
-at most \(\omega\), and an \MSO{} sentence \(\varphi\) over \(\{\edge\}\).  Choose a
-bag-injective coloring \(c:V(G)\to C_\omega\).  Construct the encoding
+Fix \(\omega\) and the finite unary vocabulary \(\Pred\).  Let \(G\) be a
+\(\tau_{\Pred}\)-graph, let \((T,\beta)\) be a binary tree-decomposition of its
+underlying graph of width at most \(\omega\), and let \(\varphi\) be an \MSO{}
+sentence over \(\tau_{\Pred}\).
+Choose a bag-injective coloring \(c:V(G)\to C_\omega\).  Construct the encoding
 \((T,\rho)\) over the finite alphabet \(\Sigma_\omega\); this is linear in the
-number of nodes of the decomposition because every bag has bounded size.
+number of nodes of the decomposition because every bag has bounded size and
+\(\Pred\) is fixed.
 
 Translate \(\varphi\) to the tree sentence \(\varphi_{\mathrm{tree}}
 =\varphi_{\legal}\wedge\varphi^\star\).  The size of this sentence depends only
-on \(\omega\) and \(\varphi\), because all alphabet disjunctions are over the
-finite set \(\Sigma_\omega\).  By the correctness of the translation,
+on \(\omega\), \(\Pred\), and \(\varphi\), because all alphabet disjunctions are
+over the finite set \(\Sigma_\omega\).  By the correctness of the translation,
 \[
   G\models\varphi
   \quad\Longleftrightarrow\quad
@@ -850,13 +967,14 @@ finite set \(\Sigma_\omega\).  By the correctness of the translation,
 
 Use the standard theorem that \MSO{}-definable languages of finite labelled
 binary trees are exactly regular tree languages.  Thus there is a deterministic
-bottom-up finite tree automaton \(\Aut\), depending only on \(\omega\) and
-\(\varphi\), which accepts exactly the \(\Sigma_\omega\)-trees satisfying
+bottom-up finite tree automaton \(\Aut\), depending only on \(\omega\), \(\Pred\),
+and \(\varphi\), which accepts exactly the \(\Sigma_\omega\)-trees satisfying
 \(\varphi_{\mathrm{tree}}\).  Running \(\Aut\) on \((T,\rho)\) is linear in
-\(|N(T)|\), hence linear in \(|V(G)|\) after the usual linear-size normalization
-of the decomposition.  Accept iff \(\Aut\) accepts.  The displayed equivalence
-proves correctness, and the automaton size and translation cost are absorbed
-into \(f(\omega,\operatorname{qr}(\varphi))\).
+\(|N(T)|\).  Accept iff \(\Aut\) accepts.  The displayed equivalence proves
+correctness, and the automaton size and translation cost are absorbed into
+\(f_{\Pred}(\omega,|\varphi|)\).  After the usual linear-size normalization of
+the decomposition, this gives the advertised linear dependence on \(|V(G)|\)
+for fixed \(\varphi\).
 \end{proof}
 
 \begin{remark}
