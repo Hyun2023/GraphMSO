@@ -1,4 +1,3 @@
-import Mathlib
 import GraphMSO.Decomp.rootedGraph
 import GraphMSO.Decomp.bagColoring
 

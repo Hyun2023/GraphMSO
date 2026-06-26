@@ -1,4 +1,3 @@
-import Mathlib
 import GraphMSO.Decomp.tree_decomp
 
 /-!

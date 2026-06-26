@@ -1,4 +1,4 @@
-import Mathlib
+import Mathlib.Combinatorics.SimpleGraph.Basic
 
 inductive IncidenceVertex.{u} {V : Type u} (G : SimpleGraph V) : Type u where
   |fromV (v : V)
@@ -42,3 +42,62 @@ theorem IncidenceGraph_not_adj_fromEdge_fromEdge.{u} {V : Type u} (G : SimpleGra
     (e f : G.edgeSet) :
     ¬ (IncidenceGraph G).Adj (IncidenceVertex.fromEdge e) (IncidenceVertex.fromEdge f) :=
   id
+
+/-!
+### The two sorts of the coloured incidence structure
+
+The coloured incidence structure is `IncidenceGraph G` together with the two
+unary predicates below, forming the vocabulary `τ_I = {adj, Vert, EdgeObj}`. The
+sort of an incidence vertex is read off its constructor, never reconstructed
+from adjacency; this is what makes the `MSO₂`-to-incidence reduction
+truth-preserving (an isolated original vertex and an edge object are
+indistinguishable by adjacency alone).
+-/
+
+/-- `Vert` predicate of the coloured incidence structure: holds of the incidence
+vertices coming from an original vertex of `G`. -/
+def IncidenceVertex.IsVertex.{u} {V : Type u} {G : SimpleGraph V} :
+    IncidenceVertex G → Prop
+  | .fromV _ => True
+  | .fromEdge _ => False
+
+/-- `EdgeObj` predicate of the coloured incidence structure: holds of the incidence
+vertices coming from an edge of `G`. -/
+def IncidenceVertex.IsEdgeObj.{u} {V : Type u} {G : SimpleGraph V} :
+    IncidenceVertex G → Prop
+  | .fromV _ => False
+  | .fromEdge _ => True
+
+@[simp]
+theorem IncidenceVertex.isVertex_fromV.{u} {V : Type u} {G : SimpleGraph V} (v : V) :
+    (IncidenceVertex.fromV v : IncidenceVertex G).IsVertex :=
+  trivial
+
+@[simp]
+theorem IncidenceVertex.not_isVertex_fromEdge.{u} {V : Type u} {G : SimpleGraph V}
+    (e : G.edgeSet) :
+    ¬ (IncidenceVertex.fromEdge e : IncidenceVertex G).IsVertex :=
+  id
+
+@[simp]
+theorem IncidenceVertex.isEdgeObj_fromEdge.{u} {V : Type u} {G : SimpleGraph V}
+    (e : G.edgeSet) :
+    (IncidenceVertex.fromEdge e : IncidenceVertex G).IsEdgeObj :=
+  trivial
+
+@[simp]
+theorem IncidenceVertex.not_isEdgeObj_fromV.{u} {V : Type u} {G : SimpleGraph V} (v : V) :
+    ¬ (IncidenceVertex.fromV v : IncidenceVertex G).IsEdgeObj :=
+  id
+
+/-- The two sorts are complementary: every incidence vertex is a `Vert` exactly
+when it is not an `EdgeObj`. -/
+theorem IncidenceVertex.isVertex_iff_not_isEdgeObj.{u} {V : Type u} {G : SimpleGraph V}
+    (x : IncidenceVertex G) : x.IsVertex ↔ ¬ x.IsEdgeObj := by
+  cases x <;> simp
+
+/-- The two sorts are exhaustive: every incidence vertex is a `Vert` or an
+`EdgeObj`. -/
+theorem IncidenceVertex.isVertex_or_isEdgeObj.{u} {V : Type u} {G : SimpleGraph V}
+    (x : IncidenceVertex G) : x.IsVertex ∨ x.IsEdgeObj := by
+  cases x <;> simp

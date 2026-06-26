@@ -1,4 +1,6 @@
-import Mathlib
+import Mathlib.Combinatorics.SimpleGraph.Acyclic
+import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
+import Mathlib.Logic.Relation
 
 
 structure TreeDecomposition {V : Type*} (G : SimpleGraph V) where
