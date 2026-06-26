@@ -12,7 +12,8 @@ formalization into three layers.
 
 * `Gluable A B` records the precondition saying that `A ⊕ B` is defined.
 * `GluingData A B C` is explicit witness data saying that `C` is obtained by
-  gluing `A` and `B`.
+  gluing the disjoint sum of `A` and `B` along the labelled root vertices of
+  `B`.
 * `IsGluing A B C := Nonempty (GluingData A B C)` is the proposition-level
   predicate used in theorem statements.
 
@@ -107,58 +108,102 @@ def Gluable (A B : KRootedGraph k) : Prop :=
     A.LabelCompatibleOnRoots B
 
 /--
+The equivalence relation on representatives in the disjoint sum of the input
+vertex types.
+
+Left representatives are identified only with themselves, right representatives
+are identified only with themselves, and a left representative is identified
+with a right representative exactly when the right vertex is in the root of
+`B` and has the same label as the left vertex in `A`.
+-/
+def GluingRel (A B : KRootedGraph k) :
+    A.V ⊕ B.V -> A.V ⊕ B.V -> Prop
+  | .inl u, .inl u' => u = u'
+  | .inr v, .inr v' => v = v'
+  | .inl u, .inr v => ∃ hv : v ∈ B.R, A.HasLabel u (B.rootLabel v hv)
+  | .inr v, .inl u => ∃ hv : v ∈ B.R, A.HasLabel u (B.rootLabel v hv)
+
+/--
 Concrete witness data that `C` is a gluing result of `A` and `B`.
 
-The maps `left` and `right` represent the quotient maps from the disjoint union
-of vertices of `A` and `B` into the glued graph.  We use maps instead of
-defining the quotient immediately because the quotient construction and the
-resulting simple graph can be added later without changing theorem statements
-that only need the predicate `IsGluing`.
+The map `repr` sends representatives in the disjoint sum of vertices of `A`
+and `B` to vertices of the glued graph.  Its fibers are exactly `GluingRel`,
+so this records the quotient-style specification without defining a canonical
+quotient construction.
 -/
 structure GluingData (A B C : KRootedGraph k) where
-  /-- The left inclusion/quotient map from `A` into the glued graph. -/
-  left : A.V -> C.V
-  /-- The right inclusion/quotient map from `B` into the glued graph. -/
-  right : B.V -> C.V
+  /-- The quotient map from disjoint-sum representatives into the glued graph. -/
+  repr : A.V ⊕ B.V -> C.V
   /-- Gluing is only meaningful when the boundary of `B` matches inside `A`. -/
   gluable : A.Gluable B
-  /-- Vertices from `A` remain distinct in the glued graph. -/
-  left_injective : Function.Injective left
-  /-- Vertices from `B` remain distinct in the glued graph. -/
-  right_injective : Function.Injective right
   /-- Every vertex of the result comes from one of the two input graphs. -/
-  vertex_cover : ∀ x : C.V, (∃ u : A.V, left u = x) ∨ (∃ v : B.V, right v = x)
+  repr_surjective : Function.Surjective repr
   /--
-  The only identifications between the two sides are the intended boundary
-  identifications: a vertex of `B` is identified with a vertex of `A` exactly
-  when it is in `B.R` and the two vertices have the same label.
+  The fibers of `repr` are exactly the intended gluing identifications.
   -/
-  identified_iff :
-    ∀ (u : A.V) (v : B.V),
-      left u = right v ↔ ∃ hv : v ∈ B.R, A.HasLabel u (B.rootLabel v hv)
+  repr_eq_iff :
+    ∀ x y : A.V ⊕ B.V, repr x = repr y ↔ GluingRel A B x y
   /--
   The root of the glued graph is inherited from the first graph, as in the
   lecture note.
   -/
-  root_eq : C.R = left '' A.R
+  root_eq : C.R = repr '' (Sum.inl '' A.R)
   /--
   The remaining labels of the glued graph are inherited from the first graph.
   Labels on the right graph are used only to decide boundary identifications.
   -/
-  labelDom_eq : C.labelDom = left '' A.labelDom
+  labelDom_eq : C.labelDom = repr '' (Sum.inl '' A.labelDom)
   /-- The inherited labels agree with the labels of the first graph. -/
-  label_left : ∀ u : A.labelDom, C.HasLabel (left u.1) (A.label u)
+  label_left : ∀ u : A.labelDom, C.HasLabel (repr (.inl u.1)) (A.label u)
   /-- Edges from the first graph appear in the glued graph. -/
-  left_adj : ∀ {u v : A.V}, A.G.Adj u v -> C.G.Adj (left u) (left v)
+  left_adj : ∀ {u v : A.V}, A.G.Adj u v -> C.G.Adj (repr (.inl u)) (repr (.inl v))
   /-- Edges from the second graph appear in the glued graph. -/
-  right_adj : ∀ {u v : B.V}, B.G.Adj u v -> C.G.Adj (right u) (right v)
+  right_adj : ∀ {u v : B.V}, B.G.Adj u v -> C.G.Adj (repr (.inr u)) (repr (.inr v))
   /--
   Conversely, every edge of the glued graph comes from one of the two input
   graphs.  This prevents `C` from containing extra edges not created by gluing.
   -/
   adj_cases : ∀ {x y : C.V}, C.G.Adj x y ->
-    (∃ u v : A.V, A.G.Adj u v ∧ left u = x ∧ left v = y) ∨
-      (∃ u v : B.V, B.G.Adj u v ∧ right u = x ∧ right v = y)
+    (∃ u v : A.V, A.G.Adj u v ∧ repr (.inl u) = x ∧ repr (.inl v) = y) ∨
+      (∃ u v : B.V, B.G.Adj u v ∧ repr (.inr u) = x ∧ repr (.inr v) = y)
+
+namespace GluingData
+
+variable {A B C : KRootedGraph k}
+
+/-- The induced map from the left input into the glued graph. -/
+def left (data : GluingData A B C) : A.V -> C.V :=
+  fun u => data.repr (.inl u)
+
+/-- The induced map from the right input into the glued graph. -/
+def right (data : GluingData A B C) : B.V -> C.V :=
+  fun v => data.repr (.inr v)
+
+theorem left_injective (data : GluingData A B C) :
+    Function.Injective data.left := by
+  intro u v huv
+  exact (data.repr_eq_iff (.inl u) (.inl v)).mp huv
+
+theorem right_injective (data : GluingData A B C) :
+    Function.Injective data.right := by
+  intro u v huv
+  exact (data.repr_eq_iff (.inr u) (.inr v)).mp huv
+
+theorem vertex_cover (data : GluingData A B C) (x : C.V) :
+    (∃ u : A.V, data.left u = x) ∨ (∃ v : B.V, data.right v = x) := by
+  rcases data.repr_surjective x with ⟨rep, hrep⟩
+  cases rep with
+  | inl u =>
+      exact Or.inl ⟨u, hrep⟩
+  | inr v =>
+      exact Or.inr ⟨v, hrep⟩
+
+theorem identified_iff (data : GluingData A B C) (u : A.V) (v : B.V) :
+    data.left u = data.right v ↔
+      ∃ hv : v ∈ B.R, A.HasLabel u (B.rootLabel v hv) :=
+  data.repr_eq_iff (.inl u) (.inr v)
+
+end GluingData
 
 /--
 Predicate-level gluing relation.
