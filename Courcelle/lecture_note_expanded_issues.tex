@@ -592,6 +592,25 @@ correctness theorem should quantify over graph assignments and their
 corresponding tuple assignments, and then prove the atomic, Boolean, individual-
 quantifier, and set-quantifier cases separately.
 
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+The announced paragraph is replaced by a numbered \emph{Translation correctness}
+lemma with the assignment-level invariant: for the encoding \((T,\rho)\) of
+\((G,c,(T,\beta))\) and any graph assignment \(\alpha\) (individual variables to
+vertices, set variables to vertex sets), with the corresponding tree assignment
+\(\alpha^\star\) sending each tuple to the defining tuple of \(\alpha\)'s value,
+\(G\models\theta[\alpha]\) iff \((T,\rho)\models\theta^\star[\alpha^\star]\).  The
+proof is by induction with the atomic, Boolean, individual-quantifier, and
+set-quantifier cases separated.  The existential vertex case is written out in
+both directions: forward uses that the witness vertex's defining tuple satisfies
+the vertex guard; reverse uses that every tuple satisfying the guard is the
+defining tuple of a vertex (the recognition lemmas for the guards), and similarly
+for set quantifiers via the set guard.  A fresh-variable convention is stated:
+auxiliary bound variables in the guard and tree macros are renamed disjoint from
+the tuple variables, with formulas read modulo \(\alpha\)-equivalence.  The
+sentence-level equivalence \(G\models\varphi\) iff
+\((T,\rho)\models\varphi_{\mathrm{tree}}\) is the empty-assignment corollary, and
+the proof of Theorem~1 now cites this lemma.
+
 \subsection{The exact effective tree-automata theorem is not stated}
 
 \paragraph{Location.} The proof of Theorem~1 (the tree-automaton step).
@@ -608,6 +627,18 @@ This is a legitimate external theorem, but the exact version required by the
 proof should be isolated as a theorem with a citation.  If deterministic
 automata are desired, include the standard determinisation step.
 
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+The effective direction is now isolated as a cited theorem (Thatcher--Wright,
+Doner): from an \MSO{} sentence over the tree vocabulary
+\(\{\operatorname{child}_1,\operatorname{child}_2\}\cup\{P_a\}\) one computes a
+deterministic bottom-up finite tree automaton accepting exactly the
+\(\Sigma\)-trees that satisfy it, with a run linear in the number of nodes.  The
+tree/automaton model is fixed: \(\Sigma\)-trees are encoded as full binary ranked
+trees by padding absent children with a null symbol \(\bot\), and the automaton is
+determinised by the bottom-up subset construction.  The proof of Theorem~1 now
+invokes this theorem instead of an existence statement, and the bibliography gains
+the Thatcher--Wright, Doner, and TATA references.
+
 \section{Definitions and boundary cases requiring clarification}
 
 \subsection{Unary nodes are omitted from the recursive construction}
@@ -618,6 +649,15 @@ recursion discuss only leaves and nodes with two children.  A node with exactly
 one child is not covered.  Either ``binary'' must mean full binary and a
 normalisation to that form must be given, or the one-child gluing case must be
 added.  This choice must agree with the tree-automaton model.
+
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+``Binary'' is now defined as ``each node has at most two ordered children'' in the
+\(\Sigma\)-tree definition.  The slot-quotient decoding adopted for the
+encoding--decoding inverse uses only the parent--child relation, so leaves and
+one- and two-child nodes are handled uniformly, with no arity case split.  The
+cone-gluing lemma is restated for children \(t_1,\ldots,t_d\) (with \(d=0\) at a
+leaf and \(d\le 2\) in the binary case), and the cone-structure lemma's
+edge-localisation part is generalised to the same form.
 
 \subsection{The ambient class of tree structures is implicit}
 
@@ -630,6 +670,14 @@ the exactly-one-letter axiom are missing.  The cleanest mathematical statement
 is to define a \(\Sigma\)-tree as a finite rooted ordered tree together with a
 labelling function \(\rho:N(T)\to\Sigma\), and restrict all logical languages and
 automata to that class.
+
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+A definition now fixes the ambient class exactly as recommended: a
+\(\Sigma\)-tree is a finite rooted ordered tree (each node with an optional first
+and second child) together with a labelling \(\rho:N(T)\to\Sigma\), and all tree
+\MSO{} formulas and automata are interpreted over this class.  Parent- and
+root-uniqueness, acyclicity, and the exactly-one-label condition therefore hold by
+definition rather than as axioms.
 
 \subsection{Rooted-graph notation and equality need one convention}
 

@@ -323,9 +323,9 @@ used in the cone-gluing lemma below and again in the decoding lemmas.
   \item For distinct children \(t_1,t_2\) of a node \(t\),
     \(\cone(t_1)\cap\cone(t_2)\subseteq\adh(t_1)\cap\adh(t_2)\).
   \item Every edge of \(G[\cone(t)]\) has both endpoints in a common bag
-    \(\beta(s)\) with \(s\) in the subtree rooted at \(t\).  When \(t\) is internal
-    with children \(t_1,t_2\), it is therefore an edge of one of \(G[\beta(t)]\),
-    \(G[\cone(t_1)]\), \(G[\cone(t_2)]\).
+    \(\beta(s)\) with \(s\) in the subtree rooted at \(t\).  When \(t\) has children
+    \(t_1,\ldots,t_d\), it is therefore an edge of \(G[\beta(t)]\) or of some
+    \(G[\cone(t_k)]\).
 \end{enumerate}
 \end{lemma}
 
@@ -360,58 +360,73 @@ node \(a\in\Bags(u)\) in the subtree rooted at \(t\), and the path from \(a\) to
 is connected and contains \(a\) and \(s_0\), it contains \(t\), so \(u\in\beta(t)\);
 the same argument gives \(v\in\beta(t)\), and \(s=t\) works.  In either case both
 endpoints lie in \(\beta(s)\) with \(s\) in the subtree rooted at \(t\).  When
-\(t\) is internal with children \(t_1,t_2\), the node \(s\) is \(t\), or lies in
-the subtree rooted at \(t_1\), or in the subtree rooted at \(t_2\); correspondingly
-\(\beta(s)\subseteq\beta(t)\), \(\beta(s)\subseteq\cone(t_1)\), or
-\(\beta(s)\subseteq\cone(t_2)\), and the edge belongs to the induced subgraph on
-that vertex set.
+\(t\) has children \(t_1,\ldots,t_d\), the node \(s\) is either \(t\) or lies in
+the subtree rooted at some child \(t_k\); correspondingly
+\(\beta(s)\subseteq\beta(t)\) or \(\beta(s)\subseteq\cone(t_k)\), and the edge
+belongs to the induced subgraph on that vertex set.
 \end{proof}
 
 \begin{lemma}[Cone gluing]\label{lem:cone-gluing}
-Let \(t\) be an internal node with children \(t_1,t_2\).  If
-\((G_i,R_i,\iota_i)\) is the cone graph of \(t_i\), then
+Let \(t\) have children \(t_1,\ldots,t_d\) (so \(d\le 2\) in a binary
+decomposition, and \(d=0\) at a leaf).  If \((G_k,R_k,\iota_k)\) is the cone graph
+of \(t_k\), then
 \[
   (G_t,R_t,\iota_t)
-  = (H_t,R_t,\iota_t)\oplus (G_1,R_1,\iota_1)\oplus (G_2,R_2,\iota_2).
+  = (H_t,R_t,\iota_t)\oplus (G_1,R_1,\iota_1)\oplus\cdots\oplus (G_d,R_d,\iota_d),
 \]
+the empty gluing at a leaf giving \((G_t,R_t,\iota_t)=(H_t,R_t,\iota_t)\).
 \end{lemma}
 
 \begin{proof}
-For each child \(t_i\), the root \(R_i=\adh(t_i)=\beta(t_i)\cap\beta(t)\) is a
+For each child \(t_k\), the root \(R_k=\adh(t_k)=\beta(t_k)\cap\beta(t)\) is a
 subset of \(\beta(t)\).  Because the coloring is injective on \(\beta(t)\), every
-label appearing in \(R_i\) identifies a unique vertex of \(H_t\).  The induced
-substructure on \(R_i\) inside the child cone is the same as the induced
+label appearing in \(R_k\) identifies a unique vertex of \(H_t\).  The induced
+substructure on \(R_k\) inside the child cone is the same as the induced
 substructure on that same vertex set inside \(H_t\), since both are induced
 \(\tau_{\Pred}\)-subgraphs of the original structure \(G\).  Thus the edge
-relation and all unary predicates agree on the common labelled root.  Therefore
-the first gluing is defined, and the same argument applies to the second child.
+relation and all unary predicates agree on the common labelled root, so each
+gluing \(\oplus(G_k,R_k,\iota_k)\) is defined.
 
 The vertex set of the result is
-\(\beta(t)\cup\cone(t_1)\cup\cone(t_2)=\cone(t)\).  The gluing identifies a vertex
-of a child cone with a vertex of \(H_t\) only when they share a label, that is,
-along \(R_i=\adh(t_i)\).  By Lemma~\ref{lem:cone-struct}(i),
-\(\cone(t_i)\cap\beta(t)=\adh(t_i)\), so these are exactly the vertices that
-\(\cone(t_i)\) and \(\beta(t)\) have in common; and by Lemma~\ref{lem:cone-struct}(ii),
-\(\cone(t_1)\cap\cone(t_2)\subseteq\adh(t_1)\cap\adh(t_2)\), so a vertex lying in
-both child cones is, through its label, identified with the same vertex of
-\(H_t\).  Hence the quotient identifies precisely the shared vertices of the three
+\(\beta(t)\cup\cone(t_1)\cup\cdots\cup\cone(t_d)=\cone(t)\).  The gluing identifies
+a vertex of a child cone with a vertex of \(H_t\) only when they share a label,
+that is, along \(R_k=\adh(t_k)\).  By Lemma~\ref{lem:cone-struct}(i),
+\(\cone(t_k)\cap\beta(t)=\adh(t_k)\), so these are exactly the vertices that
+\(\cone(t_k)\) and \(\beta(t)\) have in common; and by
+Lemma~\ref{lem:cone-struct}(ii), for distinct children
+\(\cone(t_k)\cap\cone(t_l)\subseteq\adh(t_k)\cap\adh(t_l)\), so a vertex lying in
+two child cones is, through its label, identified with the same vertex of
+\(H_t\).  Hence the quotient identifies precisely the shared vertices of the
 pieces and nothing more.
 
 Gluing creates no new edges; it takes the union of the edges already present in
-the three induced graphs.  By Lemma~\ref{lem:cone-struct}(iii), every edge of
-\(G[\cone(t)]\) is an edge of \(G[\beta(t)]\), \(G[\cone(t_1)]\), or
-\(G[\cone(t_2)]\), hence of one of the pieces; conversely every edge of a piece is
-an induced edge of \(G[\cone(t)]\).  The same union argument applies to each unary
-predicate, since each piece carries the restriction of the predicate
-interpretation from the same ambient structure \(G\).  The root of the result is
-\(R_t=\adh(t)\) and, since gluing inherits the labelling of its first operand, its
-labels are \(c|_{\beta(t)}\), matching the cone graph at \(t\).  Thus the glued
-\(\tau_{\Pred}\)-graph equals \(G_t\), as claimed, up to the canonical
-label-preserving isomorphism of the disjoint-union-and-quotient model of
-\(\oplus\).
+the pieces.  By Lemma~\ref{lem:cone-struct}(iii), every edge of \(G[\cone(t)]\) is
+an edge of \(G[\beta(t)]\) or of some \(G[\cone(t_k)]\), hence of one of the
+pieces; conversely every edge of a piece is an induced edge of \(G[\cone(t)]\).
+The same union argument applies to each unary predicate, since each piece carries
+the restriction of the predicate interpretation from the same ambient structure
+\(G\).  The root of the result is \(R_t=\adh(t)\) and, since gluing inherits the
+labelling of its first operand, its labels are \(c|_{\beta(t)}\), matching the
+cone graph at \(t\).  Thus the glued \(\tau_{\Pred}\)-graph equals \(G_t\), as
+claimed, up to the canonical label-preserving isomorphism of the
+disjoint-union-and-quotient model of \(\oplus\).
 \end{proof}
 
 \subsection{The alphabet and legal trees}
+
+\begin{definition}\label{def:sigma-tree}
+For a finite alphabet \(\Sigma\), a \emph{\(\Sigma\)-tree} is a finite rooted
+ordered tree---each node having an optional first child and an optional second
+child, recorded by the relations \(\child_1,\child_2\)---together with a labelling
+\(\rho:N(T)\to\Sigma\).  Thus every node has at most two children, in order; a
+\emph{binary tree-decomposition} is one whose underlying tree is of this form.
+All tree \MSO{} formulas over the vocabulary
+\(\tau_\Sigma=\{\child_1,\child_2\}\cup\{P_a:a\in\Sigma\}\), where \(P_a(x)\) holds
+iff \(\rho(x)=a\), and all tree automata below are interpreted over the class of
+\(\Sigma\)-trees.  Restricted to this class, the uniqueness of the parent and of
+the root, acyclicity, and the presence of exactly one label per node hold by
+definition and need not be axiomatised.
+\end{definition}
 
 Let
 \[
@@ -881,7 +896,7 @@ For a tuple \(\tuple Z=(Z_0,\ldots,Z_\omega)\), define
   \right).
 \]
 
-\begin{lemma}
+\begin{lemma}\label{lem:vtx}
 There is an \MSO{} formula \(\varphi_{\vtx}(\tuple Z)\) with \(\omega+1\) free set
 variables such that \((T,\rho)\models\varphi_{\vtx}(\tuple U)\) iff \((T,\rho)\) is legal and \(\tuple U\) is
 the defining tuple of a vertex in the decoded graph.
@@ -907,7 +922,7 @@ Define
   \right).
 \]
 
-\begin{lemma}
+\begin{lemma}\label{lem:set}
 There is an \MSO{} formula \(\varphi_{\set}(\tuple Z)\) with \(\omega+1\) free set
 variables such that \((T,\rho)\models\varphi_{\set}(\tuple U)\) iff \((T,\rho)\) is
 legal and \(\tuple U\) is the defining tuple of a vertex subset of the decoded
@@ -940,7 +955,7 @@ For two tuples \(\tuple X=(X_0,\ldots,X_\omega)\) and \(\tuple Y=(Y_0,\ldots,Y_\
 \end{aligned}
 \]
 
-\begin{lemma}
+\begin{lemma}\label{lem:adj}
 The formula \(\varphi_{\adj}(\tuple X,\tuple Y)\) holds on defining tuples
 \(\tuple U^u,\tuple U^v\) iff \(uv\) is an edge in the decoded graph.
 \end{lemma}
@@ -960,7 +975,7 @@ For \(Q\in\Pred\), define
   \bigvee_{i=0}^{\omega}\exists t\bigl(t\in X_i\wedge Q_i(t)\bigr).
 \]
 
-\begin{lemma}
+\begin{lemma}\label{lem:pred}
 Let \(Q\in\Pred\).  The formula \(\varphi_Q(\tuple X)\) holds on the defining
 tuple \(\tuple U^v\) iff \(v\in Q^G\).
 \end{lemma}
@@ -987,7 +1002,7 @@ and put
   \wedge\bigwedge_{i=0}^{\omega} X_i=Y_i.
 \]
 
-\begin{lemma}
+\begin{lemma}\label{lem:eq}
 The formula \(\varphi_{\eq}(\tuple X,\tuple Y)\) holds on defining tuples
 \(\tuple U^u,\tuple U^v\) iff \(u=v\) in the decoded graph.
 \end{lemma}
@@ -1009,7 +1024,7 @@ For containment, define
 \end{aligned}
 \]
 
-\begin{lemma}
+\begin{lemma}\label{lem:cont}
 The formula \(\varphi_{\cont}(\tuple X,\tuple Y)\) holds iff \(\tuple X\) is the
 defining tuple of a vertex \(v\), \(\tuple Y\) is the defining tuple of a vertex
 set \(S\), and \(v\in S\).
@@ -1067,27 +1082,100 @@ Universal quantifiers are handled by the identity \(\forall q\,\psi\equiv
   \varphi_{\mathrm{tree}}\defeq \varphi_{\legal}\wedge\varphi^\star.
 \]
 
+We adopt the standard fresh-variable convention: the auxiliary bound variables
+introduced by the macros \(\varphi_{\legal}\), \(\varphi_{\vtx}\),
+\(\varphi_{\set}\), \(\conn\), \(\topnode\), and \(\dang\) are renamed to be
+pairwise distinct and disjoint from the tuple variables \(Z^x_i,Z^X_i\), so that
+the substitutions defining \(\theta^\star\) are capture-free; formulas are read
+modulo \(\alpha\)-equivalence.
+
 \paragraph{Correctness of the translation.}
-Let \((T,\rho)\) be the encoding of \((G,c,(T,\beta))\).  If a graph assignment sends every
-individual variable to a vertex and every set variable to a vertex set, let the
-corresponding tree assignment send each variable to the defining tuple of that
-object.  A structural induction on \(\theta\), using the atomic correctness
-lemmas above for equality, adjacency, unary predicates, and membership, together
-with the displayed clauses for quantifiers, gives
+Fix the encoding \((T,\rho)\) of \((G,c,(T,\beta))\); by
+Lemma~\ref{lem:legal-iff-enc} its decoded graph is \(G\), and every vertex \(v\)
+and vertex set \(S\) has the defining tuple \(\tuple U^v\), \(\tuple U^S\)
+introduced above.  Given a \(\tau_{\Pred}\)-MSO{} formula \(\theta\) and a
+\emph{graph assignment} \(\alpha\) mapping each free individual variable of
+\(\theta\) to a vertex and each free set variable to a vertex set, let the
+\emph{tree assignment} \(\alpha^\star\) map each tuple \(\tuple Z_x\) to
+\(\tuple U^{\alpha(x)}\) and each tuple \(\tuple Z_X\) to \(\tuple U^{\alpha(X)}\).
+
+\begin{lemma}[Translation correctness]\label{lem:translation}
+For every \(\tau_{\Pred}\)-MSO{} formula \(\theta\) and every graph assignment
+\(\alpha\) to its free variables,
 \[
-  G\models\theta
+  G\models\theta[\alpha]
   \quad\Longleftrightarrow\quad
-  (T,\rho)\models\theta^\star
+  (T,\rho)\models\theta^\star[\alpha^\star].
 \]
-under corresponding assignments.  In particular, for every \(\tau_{\Pred}\)-MSO{}
-sentence \(\varphi\),
+\end{lemma}
+
+\begin{proof}
+Induction on \(\theta\); throughout, \((T,\rho)\) is legal, being an encoding.
+
+\emph{Atomic formulas.}  Under \(\alpha^\star\) every tuple variable is assigned a
+defining tuple, so the atomic equivalences proved above apply directly:
+Lemma~\ref{lem:eq} for \(x=y\), Lemma~\ref{lem:adj} for \(\adj(x,y)\),
+Lemma~\ref{lem:pred} for \(Q(x)\), and Lemma~\ref{lem:cont} for \(x\in X\).  Each
+gives \(G\models\theta[\alpha]\) iff \((T,\rho)\models\theta^\star[\alpha^\star]\).
+
+\emph{Boolean connectives.}  The translation commutes with \(\neg,\wedge,\vee\)
+and leaves \(\alpha^\star\) unchanged, so these cases are immediate from the
+induction hypothesis.
+
+\emph{Existential vertex quantifier} \(\theta=\exists x\,\psi\), with
+\(\theta^\star=\exists Z^x_0\cdots\exists Z^x_\omega
+(\varphi_{\vtx}(\tuple Z_x)\wedge\psi^\star)\).  If \(G\models\theta[\alpha]\),
+choose a witness vertex \(a\); its defining tuple \(\tuple U^a\) satisfies
+\(\varphi_{\vtx}\) by Lemma~\ref{lem:vtx}, and the induction hypothesis for
+\(\psi\) and \(\alpha[x\mapsto a]\)---whose tree assignment is
+\(\alpha^\star[\tuple Z_x\mapsto\tuple U^a]\)---gives
+\((T,\rho)\models\psi^\star[\alpha^\star[\tuple Z_x\mapsto\tuple U^a]]\); thus
+\(\tuple U^a\) witnesses \(\theta^\star[\alpha^\star]\).  Conversely, if
+\((T,\rho)\models\theta^\star[\alpha^\star]\), a witnessing tuple \(W\) satisfies
+\(\varphi_{\vtx}(W)\); since \((T,\rho)\) is legal, Lemma~\ref{lem:vtx} gives
+\(W=\tuple U^a\) for some vertex \(a\).  The induction hypothesis for \(\psi\) and
+\(\alpha[x\mapsto a]\) then yields \(G\models\psi[\alpha[x\mapsto a]]\), so
+\(G\models\theta[\alpha]\).
+
+\emph{Existential set quantifier} \(\theta=\exists X\,\psi\) is identical, using
+\(\varphi_{\set}\) and Lemma~\ref{lem:set}: every vertex set has a defining tuple
+satisfying \(\varphi_{\set}\), and every tuple satisfying \(\varphi_{\set}\) is the
+defining tuple of a vertex set.
+
+\emph{Universal quantifiers} reduce to the existential cases through
+\(\forall q\,\psi\equiv\neg\exists q\,\neg\psi\).
+\end{proof}
+
+Taking \(\theta=\varphi\) a sentence (so \(\alpha\) and \(\alpha^\star\) are empty)
+yields, for every \(\tau_{\Pred}\)-MSO{} sentence \(\varphi\),
 \[
   G\models\varphi
   \quad\Longleftrightarrow\quad
-  (T,\rho)\models\varphi_{\mathrm{tree}}.
+  (T,\rho)\models\varphi_{\mathrm{tree}},
 \]
+because \(\varphi_{\mathrm{tree}}=\varphi_{\legal}\wedge\varphi^\star\) and the
+encoding is legal.
 
 \section{Completing the proof of Courcelle's theorem}
+
+\begin{theorem}[Effective \MSO{}--tree-automaton correspondence;
+Thatcher--Wright, Doner]\label{thm:automata}
+Let \(\Sigma\) be a finite alphabet.  From an \MSO{} sentence \(\Phi\) over
+\(\tau_\Sigma=\{\child_1,\child_2\}\cup\{P_a:a\in\Sigma\}\) one can compute a
+deterministic bottom-up finite tree automaton \(\Aut_\Phi\) such that, for every
+\(\Sigma\)-tree, \(\Aut_\Phi\) accepts it iff it satisfies \(\Phi\).  Running
+\(\Aut_\Phi\) takes time linear in the number of nodes.
+\end{theorem}
+
+To fit a ranked-tree automaton model, encode a \(\Sigma\)-tree as a full binary
+ranked tree by padding each absent child with a fresh null symbol \(\bot\)
+(internal letters of rank \(2\), \(\bot\) of rank \(0\)); the relations
+\(\child_1,\child_2\) and the label predicates \(P_a\) are first-order definable in
+this encoding, so the translation of \(\Phi\) is faithful.  Over ranked trees the
+\MSO{}-definable and the regular tree languages coincide effectively
+\cite{ThatcherWright1968,Doner1970,TATA}; determinising the resulting automaton by
+the bottom-up subset construction yields the deterministic \(\Aut_\Phi\), whose run
+is a single bottom-up pass.
 
 \begin{proof}[Proof of Theorem~\ref{thm:courcelle}]
 Fix \(\omega\) and the finite unary vocabulary \(\Pred\).  Let \(G\) be a
@@ -1102,19 +1190,19 @@ number of nodes of the decomposition because every bag has bounded size and
 Translate \(\varphi\) to the tree sentence \(\varphi_{\mathrm{tree}}
 =\varphi_{\legal}\wedge\varphi^\star\).  The size of this sentence depends only
 on \(\omega\), \(\Pred\), and \(\varphi\), because all alphabet disjunctions are
-over the finite set \(\Sigma_\omega\).  By the correctness of the translation,
+over the finite set \(\Sigma_\omega\).  By Lemma~\ref{lem:translation},
 \[
   G\models\varphi
   \quad\Longleftrightarrow\quad
   (T,\rho)\models\varphi_{\mathrm{tree}}.
 \]
 
-Use the standard theorem that \MSO{}-definable languages of finite labelled
-binary trees are exactly regular tree languages.  Thus there is a deterministic
-bottom-up finite tree automaton \(\Aut\), depending only on \(\omega\), \(\Pred\),
-and \(\varphi\), which accepts exactly the \(\Sigma_\omega\)-trees satisfying
-\(\varphi_{\mathrm{tree}}\).  Running \(\Aut\) on \((T,\rho)\) is linear in
-\(|N(T)|\).  Accept iff \(\Aut\) accepts.  The displayed equivalence proves
+By Theorem~\ref{thm:automata} applied to the finite alphabet \(\Sigma_\omega\) and
+the sentence \(\varphi_{\mathrm{tree}}\), one computes a deterministic bottom-up
+finite tree automaton \(\Aut\), depending only on \(\omega\), \(\Pred\), and
+\(\varphi\), that accepts exactly the \(\Sigma_\omega\)-trees satisfying
+\(\varphi_{\mathrm{tree}}\).  Running \(\Aut\) on \((T,\rho)\) is a single
+bottom-up pass, linear in \(|N(T)|\).  Accept iff \(\Aut\) accepts.  The displayed equivalence proves
 correctness, and the automaton size and translation cost are absorbed into
 \(f_{\Pred}(\omega,|\varphi|)\).  After the usual linear-size normalization of
 the decomposition, this gives the advertised linear dependence on \(|V(G)|\)
@@ -1122,9 +1210,9 @@ for fixed \(\varphi\).
 \end{proof}
 
 \begin{remark}
-The only external ingredient in the last paragraph is the regularity theorem for
-\MSO{} on finite labelled binary trees.  All graph-specific work is contained in
-the encoding, decoding, and interpretation lemmas proved above.
+The only external ingredient in the last paragraph is Theorem~\ref{thm:automata},
+the effective \MSO{}--tree-automaton correspondence.  All graph-specific work is
+contained in the encoding, decoding, and interpretation lemmas proved above.
 \end{remark}
 
 \begin{thebibliography}{9}
@@ -1145,6 +1233,23 @@ Science (FOCS)}, pages 184--192, 2022.
 Mikolaj Bojanczyk.
 \newblock Interactive lecture note: Interpreting a graph in its tree decomposition.
 \newblock 2015.
+
+\bibitem{ThatcherWright1968}
+James W. Thatcher and Jesse B. Wright.
+\newblock Generalized finite automata theory with an application to a decision
+problem of second-order logic.
+\newblock \emph{Mathematical Systems Theory}, 2(1):57--81, 1968.
+
+\bibitem{Doner1970}
+John Doner.
+\newblock Tree acceptors and some of their applications.
+\newblock \emph{Journal of Computer and System Sciences}, 4(5):406--451, 1970.
+
+\bibitem{TATA}
+Hubert Comon, Max Dauchet, R\'emi Gilleron, Florent Jacquemard, Denis Lugiez,
+Christof L\"oding, Sophie Tison, and Marc Tommasi.
+\newblock \emph{Tree Automata Techniques and Applications}.
+\newblock 2007. \url{http://tata.gforge.inria.fr/}.
 
 \end{thebibliography}
 
