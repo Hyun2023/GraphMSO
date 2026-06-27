@@ -44,7 +44,8 @@ the proof rather than cosmetic details.
 
 \subsection{The incidence-graph reduction does not define the two sorts}
 
-\paragraph{Location.} Lines 113--137, especially lines 125--135.
+\paragraph{Location.} The \MSOtwo{} corollary and its proof (the coloured
+incidence graph \(\widehat I(G)\)).
 
 The note proposes, in the uncoloured incidence graph \(I(G)\),
 \[
@@ -62,7 +63,7 @@ proposed vertex formula.
 More conceptually, forgetting the predicates naming the two sides of the
 incidence structure loses precisely the sort information needed to interpret
 typed vertex and edge variables.  Consequently the displayed translation is
-not truth-preserving, and Corollary~4 is not proved.
+not truth-preserving, and the \MSOtwo{} corollary is not proved.
 
 \paragraph{Recommended repair: retain the two sorts as unary colours.}
 Define the \emph{coloured incidence structure} \(\widehat I(G)\) as follows:
@@ -259,19 +260,21 @@ linear size bound for the incidence structure.
 
 \subsection{A legal tree may have a nonempty root boundary}
 
-\paragraph{Location.} Definition 6 and Lemma 7--Lemma 9, lines 248--383.
+\paragraph{Location.} The legality definition, \(\varphi_{\mathrm{legal}}\), and the
+decoding lemmas.
 
 Legality checks compatibility only across parent--child edges.  It imposes no
 condition on the root letter.  However, the root adhesion of every encoded
-decomposition is empty.  The proof of Lemma~8 simply asserts that the root has
-empty external root because it has no parent (lines 339--340), even though the
+decomposition is empty.  The proof of the decoding lemma simply asserts that the
+root has empty external root because it has no parent, even though the
 letter at the root may specify a nonempty root set.
 
 There is an immediate counterexample: take a one-node tree whose letter is
-\((H,R)\) with \(R\neq\varnothing\).  It is legal vacuously under Definition~6,
+\((H,R)\) with \(R\neq\varnothing\).  It is legal vacuously under the legality
+definition,
 but it cannot be the encoding of any decomposition, since the root adhesion of
 an encoding is empty.  Re-encoding its proposed decoding changes \(R\) to the
-empty set.  Thus Lemma~9 is false as stated.
+empty set.  Thus the encoding--decoding inverse lemma is false as stated.
 
 \paragraph{Repair.} Add the condition \(R=\varnothing\) at the root to the
 definition of legality and to \(\varphi_{\mathrm{legal}}\).  The finite formula
@@ -287,7 +290,8 @@ parent''.
 
 \subsection{The cone-gluing equation needs a final label restriction}
 
-\paragraph{Location.} Definition 5 and Lemma 6, lines 172--230.
+\paragraph{Location.} The rooted-graph and cone-graph definitions and the
+cone-gluing lemma.
 
 There are two different subsets in the definition of a rooted graph, and they
 should not be conflated.  The root or boundary is \(R\), while the domain of the
@@ -328,8 +332,8 @@ result are inherited from the first argument.  Hence the right-hand side of
 retains the temporary labels on every vertex of \(\beta(t)\), but the left-hand
 cone graph has labels only on \(R_t=\adh(t)\).  The underlying glued graph and
 the root are the intended ones, but the partial labelling maps have different
-domains.  Consequently the displayed equality in Lemma~6 is not literally an
-equality of the triples defined in Definition~5.
+domains.  Consequently the displayed equality in the cone-gluing lemma is not
+literally an equality of the triples defined in the rooted-graph definition.
 
 There is also a structural equality issue: disjoint union followed by quotient
 identifications normally produces a graph canonically isomorphic to the cone
@@ -372,7 +376,7 @@ canonical label-preserving isomorphism of the disjoint-union-and-quotient model.
 
 \subsection{The stated running time ignores part of the input}
 
-\paragraph{Location.} Theorem 1 and its proof, lines 71--78 and 806--831.
+\paragraph{Location.} Theorem~1 (Courcelle's theorem) and its proof.
 
 The theorem takes both a formula \(\varphi\) and a decomposition \(T\) as input,
 but claims time
@@ -418,7 +422,7 @@ explains how this specializes to the usual linear-time statement when
 
 \subsection{The bag-injective colouring proof is not valid as written}
 
-\paragraph{Location.} Lines 154--168.
+\paragraph{Location.} The Bag-injective coloring fact and its proof.
 
 The greedy paragraph chooses an arbitrary bag containing the current vertex
 and counts previously coloured vertices only in that bag.  It does not show
@@ -436,9 +440,24 @@ the required colouring.  For the algorithmic theorem, one must additionally
 give an effective ordering/colouring procedure rather than merely an existence
 argument.
 
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}
+by a constructive greedy colouring rather than the chordal/perfect-graph
+existence route.  The bag set \(\Bags(v)=\{t:v\in\beta(t)\}\) and the topmost node
+\(\mathrm{top}(\Bags(v))\) of a connected node set are now introduced before the
+colouring fact (and reused throughout the encoding section); the vertices are
+coloured in order of nondecreasing depth of \(\mathrm{top}(\Bags(v))\) (a single
+root-to-leaf sweep), each \(v\) receiving a colour unused on the already-coloured
+vertices of its top bag.  The proof now establishes the key claim that, at the
+moment \(v\) is coloured, every already-coloured vertex sharing a bag with \(v\)
+lies in that top bag; since the bag has at most \(\omega+1\) vertices, a free
+colour always exists.  This simultaneously fixes the invalid ``arbitrary bag''
+greedy step and the inaccurate ``intersection graph of the bags'' phrasing, and
+it yields the effective (linear-sweep) procedure required by the algorithmic
+theorem.
+
 \subsection{Cone gluing needs intersection and edge-localisation lemmas}
 
-\paragraph{Location.} Lines 210--230.
+\paragraph{Location.} The cone-gluing lemma and its proof.
 
 The proof asserts without proof that gluing identifies exactly all shared
 vertices of the three pieces and that every edge of \(G[\cone(t)]\) occurs in a
@@ -457,16 +476,32 @@ the parent bag or in one child cone.  The latter requires following the
 connected occurrence subtrees of both endpoints to a bag covering the edge.
 These lemmas are also needed later for decoding correctness.
 
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+A numbered \emph{Cone structure} lemma is now stated and proved just before the
+cone-gluing lemma, with three parts: (i) \(\cone(s)\cap\beta(t)=\adh(s)\) for a
+child \(s\) of \(t\); (ii) \(\cone(t_1)\cap\cone(t_2)\subseteq\adh(t_1)\cap\adh(t_2)\)
+for distinct children; and (iii) every edge of \(G[\cone(t)]\) lies in a single bag
+of the subtree at \(t\), hence in one of the three pieces \(G[\beta(t)]\),
+\(G[\cone(t_1)]\), \(G[\cone(t_2)]\).  Each part is proved from the connectedness
+of the occurrence sets \(\Bags(\cdot)\) (the running-intersection axiom) by routing
+tree paths through \(s\), through the parent \(t\), or out of the subtree at \(t\).
+The cone-gluing proof now cites parts (i)--(ii) for ``the quotient identifies
+precisely the shared vertices'' and part (iii) for ``every edge appears in one of
+the three pieces''.  These lemmas are reused for the decoding correctness items
+below.
+
 \subsection{The decoding needs a precise quotient and a proof of connectedness}
 
-\paragraph{Location.} Lines 294--359.
+\paragraph{Location.} The decoding construction and the decoding
+well-definedness lemmas.
 
 Phrases such as ``a vertex represented by \(v(t,i)\)'' presuppose an equivalence
 relation generated by the gluing identifications, but that relation is not
 defined.  Consequently it is not yet precise when two representatives denote
 the same decoded vertex, or why a representative has a well-defined colour.
 
-The connectedness argument in lines 352--358 also skips its central step.  It
+The connectedness argument in the decoding well-definedness lemma also skips its
+central step.  It
 claims that a representative can be identified with one outside a selected
 component only through \(R_t\), without proving this from the recursive gluings.
 A clean repair is to define decoded vertices as equivalence classes of pairs
@@ -476,9 +511,27 @@ class has a connected set of tree nodes, either directly from paths in the tree
 or by induction through the bottom-up gluing.  This simultaneously proves the
 running-intersection axiom for the decoded bags.
 
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}
+along the recommended route.  The decoded graph is now defined as an explicit
+quotient: on the \emph{slots} \(v(t,i)\) (\(i\in V(H_t)\)) the relation \(\sim\)
+is generated by \(v(x,i)\sim v(p(x),i)\) for \(i\in R_x\) (child-root colours), a
+decoded vertex is a \(\sim\)-class, and colour, bags, adjacency and predicates are
+read off the slots.  Colour is well-defined because the generators preserve the
+colour coordinate, and the predicate tags are well-defined because legality forces
+\(H_x[R_x]=H_{p(x)}[R_x]\).  For connectedness, a new lemma introduces, for each
+colour \(i\), the tree-edge subgraph \(\Gamma_i\) (edges \(\{x,p(x)\}\) with
+\(i\in R_x\)) and proves the path characterization: \(v(s,i)\sim v(t,i)\) iff every
+edge of the \(s\)--\(t\) tree path lies in \(\Gamma_i\).  Each decoded vertex's
+occurrence set is then a component of \(\Gamma_i\); since \(\Gamma_i\)'s edges are
+tree edges, the component is a subtree, so the occurrence set is connected and the
+running-intersection axiom holds.  The old ``minimum tree distance / topmost node''
+argument and the informal bottom-up ``forget labels'' decoding (with its
+well-definedness lemma) are removed.  The path characterization also discharges
+item~(a) of the re-encoding gaps below.
+
 \subsection{The re-encoding argument omits decisive coherence lemmas}
 
-\paragraph{Location.} Lemma 9, especially lines 378--383.
+\paragraph{Location.} The legal-iff-encoding lemma (the re-encoding direction).
 
 The proof asserts that the decoded node graph is exactly the original letter.
 That does not follow immediately from the definition of the decoded graph,
@@ -504,9 +557,25 @@ The missing statements can be organized as follows:
 With these lemmas and the empty-root correction, encoding after decoding really
 does return the original labelled tree.
 
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex},
+using the slot-quotient decoding.  Item~(a) is the path-characterization lemma
+already added for the decoding (\(v(s,i)\sim v(t,i)\) iff the \(s\)--\(t\) tree
+path lies in \(\Gamma_i\)).  Item~(b) is a new lemma: for a child \(x\) with
+parent \(y\), \(\beta(x)\cap\beta(y)=\{[v(x,i)]:i\in R_x\}\); the nontrivial
+inclusion uses (a) on the single edge \(\{x,y\}\).  Item~(c) is a new lemma: for
+each node \(t\), the map \(i\mapsto[v(t,i)]\) is a \(\tau_{\mathcal P}\)-graph
+isomorphism from the letter \(H_t\) onto the induced subgraph \(G[\beta(t)]\); the
+``no spurious edge'' direction rules out a foreign edge by transporting it along
+the \(u\)--\(t\) path, where (a) gives \(i,j\in R_z\) at every edge and legality
+\(H_z[R_z]=H_{p(z)}[R_z]\) keeps \(ij\in E(H_\cdot)\) constant.  The re-encoding
+direction of the encoding--decoding inverse lemma now cites (b) for the recorded
+root and (c) for the recorded graph, so re-encoding returns
+\((H_t,R_t)=\rho(t)\) at every node.
+
 \subsection{The formula-translation correctness proof is only announced}
 
-\paragraph{Location.} Lines 747--802.
+\paragraph{Location.} The formula-translation section and its correctness
+paragraph.
 
 The note says that a structural induction gives correctness, but does not state
 or prove the induction invariant.  In particular, the reverse direction of an
@@ -525,7 +594,7 @@ quantifier, and set-quantifier cases separately.
 
 \subsection{The exact effective tree-automata theorem is not stated}
 
-\paragraph{Location.} Lines 823--831.
+\paragraph{Location.} The proof of Theorem~1 (the tree-automaton step).
 
 The equivalence between regularity and \MSO{} definability is cited only as an
 existence theorem.  To obtain an algorithm, the proof needs the effective
@@ -564,7 +633,7 @@ automata to that class.
 
 \subsection{Rooted-graph notation and equality need one convention}
 
-Definition~5 uses labels in \([k]\), while the later colour set is
+The rooted-graph definition uses labels in \([k]\), while the later colour set is
 \(\{0,\ldots,\omega\}\); it also introduces \(\oplus_k\) and later drops the
 subscript.  These are harmless only after an explicit identification of the
 label types.  More importantly, all gluing statements should consistently use
@@ -601,7 +670,7 @@ The dependencies suggest the following order:
 \end{enumerate}
 
 After these repairs, the defining-pair and defining-tuple part of the note
-(roughly Lemmas 10--19) appears mathematically sound; its main dependency is a
+(the defining-pair and defining-tuple lemmas) appears mathematically sound; its main dependency is a
 fully proved encoding--decoding theorem.
 
 \end{document}
