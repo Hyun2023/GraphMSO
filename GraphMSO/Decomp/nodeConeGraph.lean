@@ -53,11 +53,13 @@ abbrev ConeGraphVertex (T : RootedTreeDecomposition G) (t : T.decomp.Node) : Typ
 The node graph at `t`: the graph induced by the current bag, rooted at the
 adhesion, and labeled by the bag coloring on every bag vertex.
 -/
-def nodeGraph (T : RootedTreeDecomposition G) {omega : ℕ}
+def nodeGraph (T : RootedTreeDecomposition G) {omega : ℕ} {P : Type*}
+    (vpred : P → V → Prop)
     (color : V -> BagColorSet omega) (hcolor : T.IsBagColoring color)
-    (t : T.decomp.Node) : KRootedGraph (omega + 1) where
+    (t : T.decomp.Node) : KRootedGraph P (omega + 1) where
   V := T.NodeGraphVertex t
   G := G.induce (T.bag t)
+  pred := fun p x => vpred p x.1
   R := {x | x.1 ∈ T.adhesion t}
   labelDom := Set.univ
   label := fun x => color x.1.1
@@ -79,11 +81,13 @@ rooted at the adhesion, and labeled only on the adhesion.
 The restricted label domain is deliberate.  After a cone is glued into its
 parent context, only the adhesion remains visible as the boundary.
 -/
-def coneGraph (T : RootedTreeDecomposition G) {omega : ℕ}
+def coneGraph (T : RootedTreeDecomposition G) {omega : ℕ} {P : Type*}
+    (vpred : P → V → Prop)
     (color : V -> BagColorSet omega) (hcolor : T.IsBagColoring color)
-    (t : T.decomp.Node) : KRootedGraph (omega + 1) where
+    (t : T.decomp.Node) : KRootedGraph P (omega + 1) where
   V := T.ConeGraphVertex t
   G := G.induce (T.cone t)
+  pred := fun p x => vpred p x.1
   R := {x | x.1 ∈ T.adhesion t}
   labelDom := {x | x.1 ∈ T.adhesion t}
   label := fun x => color x.1.1

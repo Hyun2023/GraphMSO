@@ -1,4 +1,5 @@
 import GraphMSO.Decomp.tree_decomp
+import GraphMSO.Decomp.KRootedPGraph
 
 /-!
 This file keeps the rooted-graph side of the Courcelle construction separate
@@ -20,11 +21,10 @@ This keeps theorem statements proof-irrelevant while still allowing later
 proofs to unpack the concrete maps into the glued graph when needed.
 -/
 
-/-- A `k`-rooted graph: a graph with a root/boundary set and a partial injective
-labeling whose domain contains the root. -/
-structure KRootedGraph (k : ℕ) where
-  V : Type*
-  G : SimpleGraph V
+/-- A `k`-rooted `τ_P`-graph: a `τ_P`-structure (`KRootedPGraph P`) together with a
+root/boundary set and a partial injective labeling whose domain contains the
+root. -/
+structure KRootedGraph (P : Type*) (k : ℕ) extends KRootedPGraph P where
   R : Set V
   labelDom : Set V
   label : labelDom -> Fin k
@@ -33,7 +33,7 @@ structure KRootedGraph (k : ℕ) where
 
 namespace KRootedGraph
 
-variable {k : ℕ}
+variable {P : Type*} {k : ℕ}
 
 /--
 `HasLabel H v i` means that the partial labeling of `H` is defined at `v`
@@ -44,7 +44,7 @@ This wrapper is useful because the labeling function has domain
 proofs.  Most gluing conditions only care that a vertex has a certain label,
 not which proof was used to view the vertex as an element of `labelDom`.
 -/
-def HasLabel (H : KRootedGraph k) (v : H.V) (i : Fin k) : Prop :=
+def HasLabel (H : KRootedGraph P k) (v : H.V) (i : Fin k) : Prop :=
   ∃ hv : v ∈ H.labelDom, H.label ⟨v, hv⟩ = i
 
 /--
@@ -55,10 +55,10 @@ have a total labeling even though labels are partial on the ambient vertex set.
 This is the label used when matching the boundary of the second graph into the
 first graph during gluing.
 -/
-def rootLabel (H : KRootedGraph k) (v : H.V) (hv : v ∈ H.R) : Fin k :=
+def rootLabel (H : KRootedGraph P k) (v : H.V) (hv : v ∈ H.R) : Fin k :=
   H.label ⟨v, H.root_labeled hv⟩
 
-theorem root_hasLabel (H : KRootedGraph k) {v : H.V} (hv : v ∈ H.R) :
+theorem root_hasLabel (H : KRootedGraph P k) {v : H.V} (hv : v ∈ H.R) :
     H.HasLabel v (H.rootLabel v hv) := by
   exact ⟨H.root_labeled hv, rfl⟩
 
@@ -70,7 +70,7 @@ itself rather than an extra hypothesis on gluing: whenever a boundary label of
 the second graph occurs in the first graph, the matching vertex in the first
 graph is automatically unique.
 -/
-theorem eq_of_hasLabel_eq {H : KRootedGraph k} {u v : H.V} {i : Fin k}
+theorem eq_of_hasLabel_eq {H : KRootedGraph P k} {u v : H.V} {i : Fin k}
     (hu : H.HasLabel u i) (hv : H.HasLabel v i) : u = v := by
   rcases hu with ⟨hu_dom, hu_label⟩
   rcases hv with ⟨hv_dom, hv_label⟩
@@ -86,12 +86,15 @@ matching labels.  Since labels are injective, it is enough here to say that
 whenever the matching vertices in `A` exist, adjacency between root vertices of
 `B` is exactly adjacency between their matched vertices in `A`.
 -/
-def LabelCompatibleOnRoots (A B : KRootedGraph k) : Prop :=
-  ∀ {u v : B.V} (hu : u ∈ B.R) (hv : v ∈ B.R)
+def LabelCompatibleOnRoots (A B : KRootedGraph P k) : Prop :=
+  (∀ {u v : B.V} (hu : u ∈ B.R) (hv : v ∈ B.R)
       {uA vA : A.V},
     A.HasLabel uA (B.rootLabel u hu) ->
     A.HasLabel vA (B.rootLabel v hv) ->
-    (B.G.Adj u v ↔ A.G.Adj uA vA)
+    (B.G.Adj u v ↔ A.G.Adj uA vA)) ∧
+  (∀ {u : B.V} (hu : u ∈ B.R) {uA : A.V},
+    A.HasLabel uA (B.rootLabel u hu) ->
+    ∀ p : P, (B.pred p u ↔ A.pred p uA))
 
 /--
 The precondition for the partial gluing operation `A ⊕ B`.
@@ -102,7 +105,7 @@ induced graph structure on the boundary.  Separating this precondition from
 `IsGluing` lets later statements talk either about definedness of gluing or
 about a particular glued result.
 -/
-def Gluable (A B : KRootedGraph k) : Prop :=
+def Gluable (A B : KRootedGraph P k) : Prop :=
   (∀ v : B.V, ∀ hv : v ∈ B.R, ∃ u : A.V, A.HasLabel u (B.rootLabel v hv)) ∧
     A.LabelCompatibleOnRoots B
 
@@ -115,7 +118,7 @@ are identified only with themselves, and a left representative is identified
 with a right representative exactly when the right vertex is in the root of
 `B` and has the same label as the left vertex in `A`.
 -/
-def GluingRel (A B : KRootedGraph k) :
+def GluingRel (A B : KRootedGraph P k) :
     A.V ⊕ B.V -> A.V ⊕ B.V -> Prop
   | .inl u, .inl u' => u = u'
   | .inr v, .inr v' => v = v'
@@ -130,7 +133,7 @@ and `B` to vertices of the glued graph.  Its fibers are exactly `GluingRel`,
 so this records the quotient-style specification without defining a canonical
 quotient construction.
 -/
-structure GluingData (A B C : KRootedGraph k) where
+structure GluingData (A B C : KRootedGraph P k) where
   /-- The quotient map from disjoint-sum representatives into the glued graph. -/
   repr : A.V ⊕ B.V -> C.V
   /-- Gluing is only meaningful when the boundary of `B` matches inside `A`. -/
@@ -165,10 +168,14 @@ structure GluingData (A B C : KRootedGraph k) where
   adj_cases : ∀ {x y : C.V}, C.G.Adj x y ->
     (∃ u v : A.V, A.G.Adj u v ∧ repr (.inl u) = x ∧ repr (.inl v) = y) ∨
       (∃ u v : B.V, B.G.Adj u v ∧ repr (.inr u) = x ∧ repr (.inr v) = y)
+  /-- Unary predicates of the first graph are inherited by the glued graph. -/
+  left_pred : ∀ (p : P) (u : A.V), C.pred p (repr (.inl u)) ↔ A.pred p u
+  /-- Unary predicates of the second graph are inherited by the glued graph. -/
+  right_pred : ∀ (p : P) (v : B.V), C.pred p (repr (.inr v)) ↔ B.pred p v
 
 namespace GluingData
 
-variable {A B C : KRootedGraph k}
+variable {A B C : KRootedGraph P k}
 
 /-- The induced map from the left input into the glued graph. -/
 def left (data : GluingData A B C) : A.V -> C.V :=
@@ -211,10 +218,10 @@ Using `Nonempty` hides the concrete maps in theorem statements while preserving
 the option to recover them in proofs.  This is the usual Lean pattern for a
 partial construction whose result is better described by a relation first.
 -/
-def IsGluing (A B C : KRootedGraph k) : Prop :=
+def IsGluing (A B C : KRootedGraph P k) : Prop :=
   Nonempty (GluingData A B C)
 
-theorem IsGluing.gluable {A B C : KRootedGraph k} (h : IsGluing A B C) :
+theorem IsGluing.gluable {A B C : KRootedGraph P k} (h : IsGluing A B C) :
     A.Gluable B := by
   rcases h with ⟨data⟩
   exact data.gluable
