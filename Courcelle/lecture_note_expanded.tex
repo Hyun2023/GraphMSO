@@ -3,6 +3,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm,mathtools}
 \usepackage{enumitem}
+\usepackage{xcolor}
 \usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
 
 \newtheorem{theorem}{Theorem}
@@ -46,6 +47,7 @@
 \newcommand{\pow}{\mathcal{P}}
 \newcommand{\tuple}[1]{\overline{#1}}
 \newcommand{\st}{\;:\;}
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{TODO:} #1}}
 
 \title{Expanded Notes on Courcelle's Theorem via Tree-Decomposition Encodings}
 \author{Organized from \texttt{lecture\_note.pdf}; omitted proofs filled in}
@@ -201,6 +203,9 @@ vertices; the new leaf bags cover incidence edges; the bags containing every
 old vertex remain connected; and each edge-object appears in one new leaf bag.
 Unary predicates do not affect treewidth.  Also, a simple graph of treewidth at
 most \(\omega\) is \(\omega\)-degenerate, hence has \(O(\omega|V(G)|)\) edges.
+\TODO{Add a proof or citation for the standard edge-count fact: every simple
+graph of treewidth at most \(\omega\) is \(\omega\)-degenerate, hence has at most
+\(\omega|V(G)|\) edges.}
 Therefore \(|V(\widehat I(G))|=|V(G)|+|E(G)|=O_\omega(|V(G)|)\).
 
 Apply the previous corollary to the \(\tau_I\)-graph \(\widehat I(G)\) and the
@@ -234,9 +239,16 @@ connected set of tree nodes.  For a nonempty connected node set \(U\), let
 \(\topnode(U)\) be the unique node of \(U\) closest to the root; since \(U\) is
 connected, every node of \(U\) is a descendant of \(\topnode(U)\).
 
+For \(k\in\mathbb N\), write \([k]=\{1,\ldots,k\}\), with \([0]=\varnothing\), and
+set
+\[
+  C_k\defeq\{0\}\cup[k].
+\]
+Thus \(C_\omega=\{0,\ldots,\omega\}\) has exactly \(\omega+1\) colours.
+
 \begin{fact}[Bag-injective coloring]
-There is a coloring \(c:V(G)\to C_\omega\defeq\{0,\ldots,\omega\}\) such that no
-bag contains two vertices of the same color.
+There is a coloring \(c:V(G)\to C_\omega\) such that no bag contains two vertices
+of the same color.
 \end{fact}
 
 \begin{proof}
@@ -280,9 +292,21 @@ root-to-leaf sweep, so it is constructive.
 \begin{definition}
 A \(k\)-rooted \(\tau_{\Pred}\)-graph is a triple \((H,R,\iota)\) where \(H\) is a
 \(\tau_{\Pred}\)-graph, \(R\subseteq V(H)\) is the root or boundary, and
-\(\iota\) is a partial injective map from \(V(H)\) to \([k]\) whose domain
+\(\iota\) is a partial injective map from \(V(H)\) to \(C_k\) whose domain
 contains \(R\).  When \(\iota(v)=i\), we say that \(v\) has label \(i\).
 \end{definition}
+
+An isomorphism of \(k\)-rooted \(\tau_{\Pred}\)-graphs
+\[
+  f:(H,R,\iota)\cong (H',R',\iota')
+\]
+is a \(\tau_{\Pred}\)-graph isomorphism \(f:H\to H'\) such that
+\[
+  f(R)=R',\qquad f(\operatorname{dom}\iota)=\operatorname{dom}\iota',
+  \qquad \iota'(f(v))=\iota(v)
+\]
+for every labelled vertex \(v\in\operatorname{dom}\iota\).  Thus roots and all
+temporary labels, not only the labels on roots, are preserved.
 
 Given \(k\)-rooted \(\tau_{\Pred}\)-graphs \((H_1,R_1,\iota_1)\) and
 \((H_2,R_2,\iota_2)\), the partial gluing
@@ -298,6 +322,11 @@ we take the disjoint union and identify every \(v\in R_2\) with the unique verte
 the result are inherited from the first graph, and each unary predicate is
 inherited from the two pieces.  The compatibility condition makes the predicate
 interpretations well-defined on identified vertices.
+
+When \(k\) is clear from context we write \(\oplus\) for \(\oplus_k\).  Since
+\(\oplus\) is defined by a disjoint union followed by quotient identifications,
+statements involving glued graphs are stated up to rooted label-preserving
+isomorphism unless a particular quotient model has been fixed.
 
 For a node \(t\), define the \emph{node graph}
 \[
@@ -372,9 +401,10 @@ decomposition, and \(d=0\) at a leaf).  If \((G_k,R_k,\iota_k)\) is the cone gra
 of \(t_k\), then
 \[
   (G_t,R_t,\iota_t)
-  = (H_t,R_t,\iota_t)\oplus (G_1,R_1,\iota_1)\oplus\cdots\oplus (G_d,R_d,\iota_d),
+  \cong
+  (H_t,R_t,\iota_t)\oplus (G_1,R_1,\iota_1)\oplus\cdots\oplus (G_d,R_d,\iota_d),
 \]
-the empty gluing at a leaf giving \((G_t,R_t,\iota_t)=(H_t,R_t,\iota_t)\).
+the empty gluing at a leaf giving \((G_t,R_t,\iota_t)\cong(H_t,R_t,\iota_t)\).
 \end{lemma}
 
 \begin{proof}
@@ -407,9 +437,9 @@ The same union argument applies to each unary predicate, since each piece carrie
 the restriction of the predicate interpretation from the same ambient structure
 \(G\).  The root of the result is \(R_t=\adh(t)\) and, since gluing inherits the
 labelling of its first operand, its labels are \(c|_{\beta(t)}\), matching the
-cone graph at \(t\).  Thus the glued \(\tau_{\Pred}\)-graph equals \(G_t\), as
-claimed, up to the canonical label-preserving isomorphism of the
-disjoint-union-and-quotient model of \(\oplus\).
+cone graph at \(t\).  Therefore the canonical map from the quotient produced by
+the gluing to the induced cone graph \(G_t\) is a rooted label-preserving
+\(\tau_{\Pred}\)-isomorphism.
 \end{proof}
 
 \subsection{The alphabet and legal trees}

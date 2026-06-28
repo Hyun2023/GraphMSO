@@ -688,6 +688,19 @@ label types.  More importantly, all gluing statements should consistently use
 either literal equality of a chosen quotient construction or isomorphism
 classes of rooted labelled graphs.
 
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+The colour/label convention is now fixed uniformly by
+\[
+  C_k=\{0\}\cup[k],
+\]
+with \([0]=\varnothing\), so the width-\(\omega\) colour set is
+\(C_\omega=\{0,\ldots,\omega\}\).  A \(k\)-rooted
+\(\tau_{\mathcal P}\)-graph now uses labels in \(C_k\), and the text explicitly
+says that \(\oplus\) abbreviates \(\oplus_k\) when \(k\) is clear.  The note also
+defines rooted label-preserving isomorphism and states the cone-gluing lemma
+using \(\cong\), avoiding a commitment to a particular quotient model for
+disjoint-union gluing.
+
 \subsection{The incidence construction also needs a size bound}
 
 Even after repairing the two sorts, \(I(G)\) has \(|V(G)|+|E(G)|\) vertices and
@@ -697,6 +710,14 @@ treewidth at most \(\omega\) has \(O(\omega|V(G)|)\) edges (for example via
 \(\omega\)-degeneracy).  For fixed \(\omega\) this gives the required linear
 size.  Without that sentence, the runtime conclusion does not follow from the
 incidence construction alone.
+
+\paragraph{Status (2026-06).} Partially resolved in
+\texttt{lecture\_note\_expanded.tex}.  The \MSOtwo{} corollary proof now includes
+the needed sentence: a simple graph of treewidth at most \(\omega\) is
+\(\omega\)-degenerate, hence has \(O(\omega|V(G)|)\) edges, so the coloured
+incidence graph has \(O_\omega(|V(G)|)\) vertices.  The detailed proof or
+citation for this standard edge-count fact is intentionally left as a red
+\textsc{TODO} comment in the main note.
 
 \section{Suggested order of repair}
 
