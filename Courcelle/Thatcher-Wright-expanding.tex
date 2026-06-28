@@ -1,0 +1,683 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\TW}{Thatcher--Wright}
+\newcommand{\Nat}{\mathbb N}
+\newcommand{\powfin}{\mathcal P_{\mathrm{fin}}}
+\newcommand{\SigmaSym}{\Sigma}
+\newcommand{\rank}{\sigma}
+\newcommand{\Term}[1]{T_{#1}}
+\newcommand{\Aut}{\mathcal A}
+\newcommand{\NAut}{\mathcal R}
+\newcommand{\bh}{\mathrm{bh}}
+\newcommand{\MSO}{\mathrm{MSO}}
+\newcommand{\child}{\mathrm{child}}
+\newcommand{\dom}{\mathrm{dom}}
+\newcommand{\arity}{\mathrm{arity}}
+\newcommand{\TODO}[1]{\textcolor{red}{\textbf{TODO:} #1}}
+
+\title{Working TeX Extraction of Thatcher--Wright}
+\author{For the Courcelle formalization project}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note extracts the part of Thatcher and Wright~\cite{TW} that is useful for
+formalising the tree-automata ingredient in Courcelle's theorem.  The source PDF
+is a scan with a noisy text layer, so the material below is a cleaned working
+transcription/paraphrase rather than a line-by-line archival copy.  The goal is
+to identify the definitions, lemmas, automaton constructions, and proof
+obligations that should eventually become Lean objects.
+\end{abstract}
+
+\tableofcontents
+
+\section{How This Fits Courcelle}
+
+The proof of Courcelle's theorem needs the following finite-tree automata
+principle.  This is the statement called Theorem~26 in
+\texttt{lecture\_note\_expanded.tex}.
+
+\begin{theorem}[Lecture-note Theorem 26: effective \(\MSO\)--tree-automaton
+correspondence]\label{thm:mso-tree-automata}\label{thm:lecture-note-26}
+Let \(\Sigma\) be a finite alphabet.  From an \(\MSO\) sentence \(\Phi\) over
+\[
+  \tau_\Sigma=\{\child_1,\child_2\}\cup\{P_a:a\in\Sigma\}
+\]
+one can compute a deterministic bottom-up finite tree automaton
+\(\Aut_\Phi\) such that, for every \(\Sigma\)-tree, \(\Aut_\Phi\) accepts it iff
+it satisfies \(\Phi\).  Running \(\Aut_\Phi\) takes time linear in the number of
+nodes.
+\end{theorem}
+
+\TW{} prove the needed ingredients in a slightly different language.
+Their ``generalized finite automata'' are finite algebras over a ranked
+signature; their inputs are finite terms.  This is exactly the bottom-up
+ranked-tree automata view.  Sections~2--3 give finite automata theory for terms:
+determinisation, Boolean closure, projection, inverse projection, replacement,
+emptiness, and regularity.  Section~4 performs the logic-to-automata induction
+for weak monadic second-order logic over the binary successor tree.
+
+For our Courcelle notes, the encoding of finite subsets of \(N_2\) in
+\S\,4 can mostly be replaced by labelled input trees directly.  The core proof
+pattern is still the same: atomic formulas are recognizable, and recognizable
+relations are closed under conjunction, negation, and existential set
+quantification.
+
+To connect the displayed theorem with \TW{}'s ranked-term formalism, encode a
+\(\Sigma\)-tree as a full binary ranked term by adding a fresh nullary symbol
+\(\bot\).  Each real node labelled \(a\in\Sigma\) becomes a binary symbol
+\(a(t_1,t_2)\); an absent child is represented by \(\bot\).  The original
+relations \(\child_1,\child_2\) and predicates \(P_a\) are first-order definable
+on the non-\(\bot\) part of this padded term.  The \(\MSO\)-to-recognizable
+induction below therefore produces a bottom-up automaton for the padded ranked
+terms.  Determinization gives the deterministic automaton in
+Theorem~\ref{thm:mso-tree-automata}, and its run is linear because it performs
+one transition per node of a padded term whose size is \(O(|T|)\).
+
+\section{Generalized Automata}
+
+\begin{definition}[Species and terms, TW \S2]
+A \emph{species} is a pair \((\SigmaSym,\rank)\), where \(\SigmaSym\) is a set of
+function symbols and \(\rank:\SigmaSym\to\Nat\) assigns each symbol its arity.
+Write
+\[
+  \SigmaSym_n=\rank^{-1}(\{n\}).
+\]
+The set \(\Term{\SigmaSym}\) of finite terms is the least set such that
+\(\SigmaSym_0\subseteq\Term{\SigmaSym}\) and, if \(f\in\SigmaSym_n\) and
+\(t_1,\ldots,t_n\in\Term{\SigmaSym}\), then \(f(t_1,\ldots,t_n)\in
+\Term{\SigmaSym}\).
+\end{definition}
+
+\begin{definition}[Deterministic automata]
+A deterministic \(\SigmaSym\)-automaton is a finite
+\(\SigmaSym\)-algebra
+\[
+  \Aut=(A,\alpha),
+\]
+where \(A\) is a finite set of states and, for each \(f\in\SigmaSym_n\),
+\(\alpha_f:A^n\to A\).  The constants \(f\in\SigmaSym_0\) are initial states.
+The bottom-up run is the unique homomorphism
+\[
+  h_\Aut:\Term{\SigmaSym}\to A
+\]
+defined by
+\[
+  h_\Aut(f(t_1,\ldots,t_n))
+  =\alpha_f(h_\Aut(t_1),\ldots,h_\Aut(t_n)).
+\]
+For final states \(A_F\subseteq A\), the behaviour is
+\[
+  \bh_\Aut(A_F)=\{t\in\Term{\SigmaSym}:h_\Aut(t)\in A_F\}.
+\]
+\end{definition}
+
+\begin{definition}[Nondeterministic automata]
+A nondeterministic \(\SigmaSym\)-automaton is a finite relational algebra
+\[
+  \NAut=(R,\rho),
+\]
+where, for \(f\in\SigmaSym_n\), \(\rho_f\subseteq R^n\times R\).  Its run returns
+a set of possible states:
+\[
+  h_\NAut(f(t_1,\ldots,t_n))
+  =
+  \{r:\exists r_1,\ldots,r_n,\ r_i\in h_\NAut(t_i)
+      \text{ and } \rho_f(r_1,\ldots,r_n,r)\}.
+\]
+The behaviour with final states \(R_F\subseteq R\) is
+\[
+  \bh_\NAut(R_F)=\{t:h_\NAut(t)\cap R_F\neq\emptyset\}.
+\]
+\end{definition}
+
+\begin{definition}[Recognizable sets]
+A set \(U\subseteq\Term{\SigmaSym}\) is \emph{recognizable} if
+\(U=\bh_\Aut(A_F)\) for some finite deterministic or nondeterministic
+\(\SigmaSym\)-automaton.
+\end{definition}
+
+\begin{theorem}[TW Theorem 1: subset construction]\label{thm:tw-subset}
+A set of terms is recognizable by a deterministic automaton iff it is
+recognizable by a nondeterministic automaton.
+\end{theorem}
+
+\begin{proof}[Construction]
+Every deterministic automaton is nondeterministic by replacing each transition
+function by its graph.  Conversely, for a nondeterministic automaton
+\(\NAut=(R,\rho)\), take the deterministic powerset automaton with state set
+\(\mathcal P(R)\).  The transition for \(f\in\SigmaSym_n\) maps
+\((S_1,\ldots,S_n)\) to the set of all states reachable by an \(f\)-transition
+from \(S_1,\ldots,S_n\).  If \(R_F\) is the nondeterministic accepting set, the
+deterministic accepting states are
+\[
+  \{S\subseteq R:S\cap R_F\neq\emptyset\}.
+\]
+An induction on terms proves that the powerset run returns exactly the set of
+nondeterministic states reachable on the same term.
+\end{proof}
+
+\begin{theorem}[TW Theorem 2: Boolean closure]\label{thm:tw-boolean}
+If \(U,V\subseteq\Term{\SigmaSym}\) are recognizable, then so are
+\(U\cap V\), \(U\cup V\), and \(\Term{\SigmaSym}\setminus U\).
+\end{theorem}
+
+\begin{proof}[Construction]
+Use deterministic automata.  Complement is obtained by replacing \(A_F\) by
+\(A\setminus A_F\).  Intersection is obtained by the product automaton with
+state set \(A\times B\) and accepting states \(A_F\times B_F\).  Union follows
+from complement and intersection, or directly by the product automaton with
+accepting set \((A_F\times B)\cup(A\times B_F)\).
+\end{proof}
+
+\section{Projection}
+
+\begin{definition}[Projection of species]
+Let \((\SigmaSym,\rank)\) and \((\Gamma,\rank')\) be species.  A map
+\(\pi:\SigmaSym\to\Gamma\) is a projection if it preserves arities:
+\[
+  \rank'(\pi(f))=\rank(f).
+\]
+It extends to terms by
+\[
+  \pi(f(t_1,\ldots,t_n))
+  =
+  \pi(f)(\pi(t_1),\ldots,\pi(t_n)).
+\]
+\end{definition}
+
+\begin{theorem}[TW Theorem 3: closure under projection]\label{thm:tw-projection}
+If \(U\subseteq\Term{\SigmaSym}\) is recognizable and
+\(\pi:\Term{\SigmaSym}\to\Term{\Gamma}\) is induced by an arity-preserving symbol
+map, then \(\pi(U)\subseteq\Term{\Gamma}\) is recognizable.
+\end{theorem}
+
+\begin{proof}[Construction]
+Let \(\Aut=(A,\alpha)\) recognize \(U\).  Build a nondeterministic
+\(\Gamma\)-automaton on the same state set.  For a \(\Gamma\)-symbol \(g\), allow
+all transitions of \(\Aut\) labelled by symbols \(f\) with \(\pi(f)=g\).  For a
+constant \(g\), the initial state set is the set of \(\alpha_f\) over all
+constants \(f\) with \(\pi(f)=g\).  The proof is by induction on terms: every
+source run projects to a target run, and every target nondeterministic run can
+be lifted to some source term.
+\end{proof}
+
+\begin{theorem}[TW Theorem 4: closure under inverse projection]
+If \(U\subseteq\Term{\Gamma}\) is recognizable and
+\(\pi:\Term{\SigmaSym}\to\Term{\Gamma}\) is induced by an arity-preserving symbol
+map, then \(\pi^{-1}(U)\subseteq\Term{\SigmaSym}\) is recognizable.
+\end{theorem}
+
+\begin{proof}[Construction]
+Given a \(\Gamma\)-automaton \((A,\alpha)\), define a \(\SigmaSym\)-automaton by
+using the transition \(\alpha_{\pi(f)}\) for each \(f\in\SigmaSym\).  An induction
+on terms proves \(h(t)=h(\pi(t))\).
+\end{proof}
+
+\section{Replacement and Emptiness}
+
+\begin{definition}[Subterm and depth]
+The depth of a term is
+\[
+  d(c)=1 \quad(c\in\SigmaSym_0), \qquad
+  d(f(t_1,\ldots,t_n))=1+\max_i d(t_i).
+\]
+Write \(t\succeq s\) when \(s\) occurs as a subterm of \(t\).
+\end{definition}
+
+\begin{lemma}[TW Lemma 5: replacement]\label{lem:tw-replacement}
+Let \(\Aut\) be a deterministic \(\SigmaSym\)-automaton.  Suppose \(t'\) is
+obtained from \(t\) by replacing an occurrence of \(t_2\) by \(t_1\).  If
+\[
+  h_\Aut(t_1)=h_\Aut(t_2),
+\]
+then
+\[
+  h_\Aut(t')=h_\Aut(t).
+\]
+\end{lemma}
+
+\begin{proof}
+Induct on the context around the replaced subterm.  At the replaced node the two
+states are equal by hypothesis; every ancestor computes the same transition from
+the same tuple of child states.
+\end{proof}
+
+\begin{corollary}[TW corollary to Lemma 5]
+The same conclusion holds when finitely many pairwise incomparable occurrences
+are replaced by terms with the same automaton states.
+\end{corollary}
+
+\begin{lemma}[TW Lemma 6: bounded-depth witness]
+Let \(\Aut\) have \(n\) states.  If some term \(t\) has \(h_\Aut(t)=a\), then
+there is a term \(t'\) with \(d(t')\le n\) and \(h_\Aut(t')=a\).
+\end{lemma}
+
+\begin{proof}
+If \(d(t)>n\), choose a root-to-leaf chain of more than \(n\) subterms.  Two
+subterms on the chain have the same automaton state.  Replacing the upper one by
+the lower one strictly reduces the term while preserving the root state by
+Lemma~\ref{lem:tw-replacement}.  Iterate until depth is at most \(n\).
+\end{proof}
+
+\begin{theorem}[TW Theorem 7: decidable emptiness]
+Given a finite \(\SigmaSym\)-automaton \(\Aut\) and final states \(A_F\), it is
+decidable whether \(\bh_\Aut(A_F)=\emptyset\).
+\end{theorem}
+
+\begin{proof}
+Enumerate the finitely many terms of depth at most the number of states and test
+whether any reaches a final state.  The bounded-depth lemma proves completeness
+of this finite search.
+\end{proof}
+
+\section{Regularity}
+
+\begin{definition}[Complex product and closure, TW \S3]
+Fix an individual symbol \(\lambda\in\SigmaSym_0\).  For
+\(U,V\subseteq\Term{\SigmaSym}\), the complex product
+\[
+  U\cdot_\lambda V
+\]
+is the set of all terms obtained from a term \(u\in U\) by replacing every
+occurrence of \(\lambda\) by an independently chosen term of \(V\).
+
+The \(\lambda\)-closure \(U^{*_\lambda}\) is defined by
+\[
+  X_0=\{\lambda\}, \qquad
+  X_{n+1}=X_n\cup(U\cdot_\lambda X_n), \qquad
+  U^{*_\lambda}=\bigcup_{n\ge0}X_n.
+\]
+\end{definition}
+
+\begin{definition}[Regular sets of terms]
+A set \(U\subseteq\Term{\SigmaSym}\) is regular if it belongs to the least class
+containing all finite sets and closed under finite union, complex products, and
+closures, after allowing the signature to be extended by additional constant
+symbols but not by additional positive-arity symbols.
+\end{definition}
+
+\begin{theorem}[TW Theorem 8: recognizable iff regular]
+For every finite species, \(U\subseteq\Term{\SigmaSym}\) is recognizable iff it
+is regular.
+\end{theorem}
+
+\begin{proof}[Proof structure]
+\TW{} split the proof into analysis and synthesis.
+
+Analysis (TW Theorem~9): every recognizable set is regular.  The proof adds one
+fresh constant \(\lambda_a\) for each automaton state \(a\).  Regular sets
+\(T^k_i\) are built by induction so that \(T^k_i\) contains exactly the terms
+whose partial automaton computation reaches state \(a_i\) using only the first
+\(k\) states as non-initial transition targets.  The induction step is expressed
+using complex product and closure.
+
+Synthesis: finite sets are recognizable (Lemma~10), recognizable sets are closed
+under union (Theorem~2), complex product (Lemma~11), and closure (Lemma~12).
+\end{proof}
+
+\begin{lemma}[TW Lemma 10]
+Every finite subset of \(\Term{\SigmaSym}\) is recognizable.
+\end{lemma}
+
+\begin{proof}[Idea]
+Construct an automaton recognizing a singleton term by matching its finite tree
+shape bottom-up, then use Boolean closure for finite unions.
+\end{proof}
+
+\begin{lemma}[TW Lemma 11: closure under complex product]
+If \(U,V\subseteq\Term{\SigmaSym}\) are recognizable, then
+\[
+  U\cdot_\lambda V
+\]
+is recognizable for every \(\lambda\in\SigmaSym_0\).
+\end{lemma}
+
+\begin{proof}[Construction idea]
+Given automata for \(U\) and \(V\), construct a nondeterministic automaton that
+either simulates the \(U\)-automaton or, when it reaches a \(\lambda\)-hole,
+switches to a complete run of the \(V\)-automaton.  If the inserted \(V\)-term is
+accepted, the surrounding run may continue as though the \(\lambda\)-constant had
+been read.  The proof uses a simultaneous induction: one invariant describes
+states arising from the \(U\)-side, the other says the \(V\)-side simulation is
+faithful.
+\end{proof}
+
+\begin{lemma}[TW Lemma 12: closure under complex closure]
+If \(U\subseteq\Term{\SigmaSym}\) is recognizable, then \(U^{*_\lambda}\) is
+recognizable.
+\end{lemma}
+
+\begin{proof}[Construction idea]
+Use a nondeterministic automaton that simulates the automaton for \(U\), and
+whenever a completed subterm is accepted as an element of \(U\), it may collapse
+that subterm to the state corresponding to the constant \(\lambda\).  This
+implements iterated substitution at \(\lambda\).
+\end{proof}
+
+\begin{definition}[Truncation, TW \S3]
+For \(U,V\subseteq\Term{\SigmaSym}\), define
+\[
+  U/_{\lambda}V
+  =
+  \{t: ( \{t\}\cdot_\lambda V )\cap U\neq\emptyset\}.
+\]
+Intuitively, \(t\) is obtained from some term of \(U\) by replacing selected,
+non-overlapping subterms from \(V\) by \(\lambda\), with every occurrence of
+\(\lambda\) covered by one of the removed subterms.
+\end{definition}
+
+\begin{lemma}[TW Lemma 13: closure under truncation]\label{lem:tw-truncation}
+If \(U\subseteq\Term{\SigmaSym}\) is recognizable and
+\(V\subseteq\Term{\SigmaSym}\) is arbitrary, then \(U/_{\lambda}V\) is
+recognizable.
+\end{lemma}
+
+\begin{proof}[Construction]
+Let \(\Aut=(A,\alpha)\) recognize \(U\), and let
+\[
+  A_V=\{h_\Aut(t):t\in V\}.
+\]
+Construct a nondeterministic automaton with the same ordinary transitions as
+\(\Aut\), but with the constant \(\lambda\) allowed to start in any state of
+\(A_V\).  The proof is by induction on terms and establishes:
+\[
+  t'\in t\cdot_\lambda V \Rightarrow h_\Aut(t')\in h(t),
+\]
+and conversely, every state in the new run of \(t\) is realized by some
+\(t'\in t\cdot_\lambda V\).
+\end{proof}
+
+\section{Weak MSO Over the Binary Successor Tree}
+
+\TW{} apply the automata theory to the weak monadic second-order theory of
+multiple successors.  For Courcelle, this is the important logic-to-automata
+part of the paper.
+
+\begin{definition}[The tree \(N_2\)]
+Let \(N_2=\{1,2\}^*\), with empty word \(\epsilon\), and successor functions
+\[
+  r_i(w)=wi \qquad (i=1,2).
+\]
+The weak MSO language has first-order variables ranging over \(N_2\), set
+variables ranging over finite subsets of \(N_2\), equality, membership, and
+binary successor predicates \(R_i(x,y)\), interpreted as \(r_i(x)=y\).
+\end{definition}
+
+\begin{theorem}[TW Theorem 14, Doner]
+The weak monadic second-order theory of multiple successors is decidable.
+\end{theorem}
+
+\begin{proof}[TW proof plan]
+It suffices to treat \(N_2\).  The proof has three steps:
+\begin{enumerate}[leftmargin=*]
+  \item translate away first-order variables by replacing them with singleton set
+    variables;
+  \item encode \(n\)-tuples of finite subsets of \(N_2\) as finite terms over a
+    finite dyadic species;
+  \item prove that every relation definable in the set-only language is
+    recognizable under this encoding.
+\end{enumerate}
+Decidability then follows by effectively constructing the automaton associated
+to a sentence and applying the emptiness theorem.
+\end{proof}
+
+\section{Eliminating First-Order Variables}
+
+\begin{definition}[Set-only translation]
+Replace each first-order variable \(x\) by a set variable \(X_x\), constrained to
+be a singleton.  A convenient cleaned definition of singleton, using only
+\(\subseteq\), is:
+\[
+  \mathrm{Empty}(A) \;:\!\!\Longleftrightarrow\; \forall B,\ A\subseteq B,
+\]
+\[
+  \mathrm{Sing}(A) \;:\!\!\Longleftrightarrow\;
+  \neg\mathrm{Empty}(A)\ \wedge\
+  \forall B,\ B\subseteq A \to (\mathrm{Empty}(B)\vee A\subseteq B).
+\]
+The atomic translation is:
+\[
+  (x=y)^* \;=\; X_x\subseteq X_y\wedge\mathrm{Sing}(X_x)\wedge
+  \mathrm{Sing}(X_y),
+\]
+\[
+  (x\in A)^* \;=\; X_x\subseteq A\wedge\mathrm{Sing}(X_x),
+\]
+\[
+  (R_i(x,y))^* \;=\; \widehat R_i(X_x,X_y),
+\]
+where \(\widehat R_i\) is the successor relation restricted to singleton sets.
+The translation commutes with Boolean connectives and sends
+\[
+  (\exists x\,\varphi)^*
+  =
+  \exists X_x\,(\mathrm{Sing}(X_x)\wedge\varphi^*),
+  \qquad
+  (\exists A\,\varphi)^*=\exists A\,\varphi^*.
+\]
+\end{definition}
+
+\begin{remark}
+The PDF gives an equivalent formula for \(\mathrm{Sing}\), but the OCR in that
+line is especially noisy.  The formula above is the same idea in a form better
+suited to formalization.
+\end{remark}
+
+\section{Encoding Finite Subsets as Terms}
+
+\begin{definition}[Single-track encoding]
+Let \(\Sigma_1\) have one nullary symbol \(\lambda\) and two binary symbols
+\(0,1\).  Define
+\[
+  c:\Term{\Sigma_1}\to \powfin(N_2)
+\]
+by
+\[
+  c(\lambda)=\emptyset,
+\]
+\[
+  c(0(t_1,t_2))=1c(t_1)\cup 2c(t_2),
+\]
+\[
+  c(1(t_1,t_2))=\{\epsilon\}\cup 1c(t_1)\cup 2c(t_2),
+\]
+where \(ic(t)=\{iw:w\in c(t)\}\).  Thus a node labelled \(1\) marks the
+corresponding position as present in the finite subset of \(N_2\), and a node
+labelled \(0\) leaves it absent.
+\end{definition}
+
+\begin{definition}[Canonical encoding]
+The map \(c\) is onto but not one-to-one, since all-zero subtrees carry no set
+information.  For a finite set \(A\subseteq N_2\), let \(e(A)\) be the smallest
+term in \(c^{-1}(A)\), equivalently the unique representative with no subterm of
+the form \(0(\lambda,\lambda)\).
+\end{definition}
+
+\begin{lemma}[TW Lemma 15]\label{lem:tw-encoding-one}
+The set
+\[
+  U_1=\{e(A):A\in\powfin(N_2)\}
+\]
+of canonical encodings of finite subsets of \(N_2\) is recognizable.
+\end{lemma}
+
+\begin{proof}[TW proof idea]
+\TW{} exhibit \(U_1\) as a regular set.  Let \(U'_1\) be the finite set of
+one-step terms that can occur in a canonical encoding after a temporary hole
+symbol is allowed.  Its complex closure generates all candidate terms, and
+complex product with the empty set removes the temporary hole.  An induction on
+term depth proves that the generated terms are exactly the canonical encodings.
+Theorem~8 then gives recognizability.
+\end{proof}
+
+\begin{definition}[Multi-track encoding]
+For \(n\) set variables, use the species \(\Sigma_n\) with one nullary symbol
+\(\lambda\) and binary symbols \(\{0,1\}^n\).  The projection
+\[
+  \pi_i:\{0,1\}^n\to\{0,1\}
+\]
+selects the \(i\)-th track and extends to terms.  Define
+\[
+  c_n(t)=\bigl(c(\pi_1(t)),\ldots,c(\pi_n(t))\bigr).
+\]
+For \(\bar A=(A_1,\ldots,A_n)\), \(e(\bar A)\) is the smallest term in
+\(c_n^{-1}(\bar A)\), equivalently the representative with no subterm
+\[
+  (0,\ldots,0)(\lambda,\lambda).
+\]
+\end{definition}
+
+\begin{lemma}[TW Lemma 16]\label{lem:tw-encoding-n}
+The set
+\[
+  U_n=\{e(A_1,\ldots,A_n):(A_i\in\powfin(N_2))\}
+\]
+of canonical encodings of \(n\)-tuples of finite subsets of \(N_2\) is
+recognizable.
+\end{lemma}
+
+\begin{proof}[Idea]
+Same proof as Lemma~\ref{lem:tw-encoding-one}, using the all-zero \(n\)-track
+label in place of the single label \(0\).
+\end{proof}
+
+\section{Definable Relations Are Recognizable}
+
+\begin{definition}[Recognizable relation]
+A relation \(R\subseteq(\powfin(N_2))^n\) is recognizable if
+\[
+  e(R)=\{e(\bar A):\bar A\in R\}
+  \subseteq\Term{\Sigma_n}
+\]
+is recognizable.
+\end{definition}
+
+\begin{theorem}[TW Theorem 17]\label{thm:tw-definable-recognizable}
+Every relation definable in the set-only weak MSO language over \(N_2\) is
+recognizable.
+\end{theorem}
+
+\begin{proof}[Structure]
+Induct on formulas.  Lemma~\ref{lem:tw-atomic} handles atomic formulas.
+Lemma~\ref{lem:tw-logical-closure} handles conjunction, negation, and existential
+set quantification.  The construction is effective because each closure theorem
+gives an explicit automaton construction.
+\end{proof}
+
+\begin{lemma}[TW Lemma 18: atomic formulas]\label{lem:tw-atomic}
+The relations on \(\powfin(N_2)\) defined by atomic formulas in the set-only
+language are recognizable.
+\end{lemma}
+
+\begin{proof}[Working formalization version]
+The atomic relations are subset \(A\subseteq B\) and singleton-successor
+\(\widehat R_i(A,B)\).
+
+For \(A\subseteq B\), use the two-track alphabet.  A canonical term violates
+subset exactly at a node whose label is \((1,0)\).  Thus the subset relation is
+the recognizable set of canonical encodings that avoid label \((1,0)\); this can
+be recognized by a two-state bottom-up automaton tracking whether a violation
+has appeared.
+
+For \(\widehat R_i(A,B)\), first require that both tracks are singletons and then
+check that the unique \(B\)-position is the \(i\)-child of the unique
+\(A\)-position.  \TW{} prove this through explicit regular expressions and
+Theorem~8.  For Lean, a direct bottom-up automaton is probably cleaner: propagate
+whether zero, one, or many marked nodes occur on each track, together with the
+local parent/child relation needed for \(R_i\).
+\end{proof}
+
+\begin{lemma}[TW Lemma 19: logical closure]\label{lem:tw-logical-closure}
+If \(R\) and \(S\) are recognizable relations, then the following are
+recognizable:
+\[
+  R(\bar A,\bar B)\wedge S(\bar B,\bar C),\qquad
+  \neg R(\bar A),\qquad
+  \exists A_i\,R(A_1,\ldots,A_m,\bar B).
+\]
+\end{lemma}
+
+\begin{proof}[Constructions]
+For conjunction, pull both relations back to a common product alphabet by inverse
+projection, then intersect.
+
+For negation, complement the recognizable set inside all canonical encodings:
+\[
+  e(\neg R)=\bigl(\Term{\Sigma_n}\setminus e(R)\bigr)\cap U_n.
+\]
+Use Boolean closure and Lemma~\ref{lem:tw-encoding-n}.
+
+For existential quantification, project away the quantified track.  The image may
+contain noncanonical terms because deleting a track can introduce all-zero
+subtrees.  \TW{} repair this by truncation:
+\[
+  e(\exists A\,R)
+  =
+  \bigl(\pi(e(R))/_{\lambda}\{(0,\ldots,0)(\lambda,\lambda)\}^{*_\lambda}\bigr)
+  \cap U_{n-1}.
+\]
+The exact all-zero term depends on the remaining number of tracks.  The
+important formal point is that projection plus truncation plus intersection with
+canonical encodings implements existential set quantification.
+\end{proof}
+
+\begin{corollary}[Effective MSO-to-automata theorem over \(N_2\)]
+For every weak MSO formula over the binary successor tree, one can effectively
+construct a finite tree automaton accepting exactly the canonical encodings of
+its satisfying finite-set assignments.
+\end{corollary}
+
+\begin{proof}
+Translate away first-order variables, then apply
+Theorem~\ref{thm:tw-definable-recognizable}.  Determinize with
+Theorem~\ref{thm:tw-subset} if a deterministic automaton is desired.
+\end{proof}
+
+\section{Lean-Oriented Decomposition}
+
+For the Courcelle formalization, this paper suggests the following modules or
+proof blocks.
+\begin{enumerate}[leftmargin=*]
+  \item Ranked signatures and finite terms.
+  \item Deterministic bottom-up tree automata and runs.
+  \item Nondeterministic automata and subset construction.
+  \item Boolean closure, projection, and inverse projection constructions.
+  \item Atomic automata for labelled tree vocabularies.
+  \item Formula induction compiling MSO formulas to automata.
+  \item Optional: canonical-encoding machinery from \TW{} \S4 if we choose to
+    formalize the \(N_2\)-subset version literally.
+\end{enumerate}
+
+The Courcelle proof itself can use a simpler finite-labelled-tree version of
+\TW{}'s Section~4: assignments to MSO variables are represented as extra tracks
+on the input tree, and existential quantification erases a track by projection.
+In that setting, the truncation machinery is unnecessary unless we introduce a
+separate canonicalization step.
+
+\begin{thebibliography}{9}
+
+\bibitem{TW}
+James W. Thatcher and Jesse B. Wright.
+\newblock Generalized finite automata theory with an application to a decision
+problem of second-order logic.
+\newblock \emph{Mathematical Systems Theory}, 2(1):57--81, 1968.
+
+\end{thebibliography}
+
+\end{document}
