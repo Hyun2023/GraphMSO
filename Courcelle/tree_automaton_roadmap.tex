@@ -3,83 +3,141 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{enumitem}
-\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
 
 \newcommand{\MSO}{\ensuremath{\mathrm{MSO}}}
 \newcommand{\MSOtwo}{\ensuremath{\mathrm{MSO}_2}}
 
 \title{Toward a Self-Contained Tree-Automaton Theorem\\
-  \large Components needed for \texttt{lecture\_note\_expanded.tex}}
+  \large Components for \texttt{lecture\_note\_expanded.tex}, keyed to
+  Thatcher--Wright (1968)}
 \author{}
 \date{}
 
 \begin{document}
 \maketitle
 
-The main note \texttt{lecture\_note\_expanded.tex} isolates the effective
-\MSO{}--tree-automaton correspondence (Thatcher--Wright, Doner) as a cited
-external theorem.  At present neither \textsc{mathlib} nor \textsc{cslib} provides
-a tree-automata API, so a fully self-contained (and eventually formalised)
-development must build this theorem from scratch.  Only the direction used by
-Courcelle's algorithm is needed: from an \MSO{} sentence over the tree vocabulary
-one computes a \emph{deterministic} bottom-up tree automaton recognising its
-models, runnable in linear time; the converse (automaton \(\Rightarrow\)
-\MSO{}-definable) is not required.  The components below should eventually be added
-to \texttt{lecture\_note\_expanded.tex}.
+\section*{Purpose and setting}
+
+The main note isolates the effective \MSO{}--tree-automaton correspondence as a
+cited theorem.  Neither \textsc{mathlib} nor \textsc{cslib} currently provides a
+tree-automata API, so a self-contained (and eventually formalised) development
+must build it from scratch.  This file lists the required components and, for each
+one, points to the corresponding result in Thatcher and Wright~\cite{TW}, whose
+\S\,2--3 develop finite tree-automata theory and whose \S\,4 carries the induction
+from logic to automata.
+
+Two remarks keep the citations honest.
+\begin{enumerate}[leftmargin=*,label=(\arabic*)]
+  \item Only one direction is needed for Courcelle's algorithm: from an \MSO{}
+    sentence over the tree vocabulary, compute a \emph{deterministic} bottom-up
+    tree automaton recognising its models, and run it.  The converse
+    (recognisable \(\Rightarrow\) definable) is not required.
+  \item Reference~\cite{TW} proves decidability of the weak monadic second-order
+    theory of \(k\) successors (Theorem~14, due to Doner): its ``trees'' are terms
+    \(T_\Sigma\) of a dyadic species that \emph{encode finite subsets of}
+    \(N_k\).  The note instead works with finite \emph{labelled} binary trees,
+    which are already terms of a dyadic species.  Hence the finite-tree-automata
+    core (\S\,2--3) and the logic-to-automata induction (\S\,4) transfer directly,
+    while the \(N_k\)-subset encoding of \S\,4 (the maps \(c\), \(e\) and
+    Lemmas~15--16) is replaced by reading the labelled tree itself.
+\end{enumerate}
 
 \section{Objects and definitions}
 \begin{itemize}[leftmargin=*]
-  \item Ranked trees, in particular full binary trees, and the encoding of a
-    \(\Sigma\)-tree of outdegree at most two as a full binary ranked tree by
-    padding each absent child with a null symbol \(\bot\).
-  \item Nondeterministic and deterministic bottom-up finite tree automata:
-    states, transition function, run, and accepted language.
-  \item The \emph{extended alphabet} \(\Sigma\times\{0,1\}^k\), encoding an
-    assignment of \(k\) free variables as extra label tracks; a first-order
-    variable is encoded by a track required to carry exactly one \(1\).
+  \item \emph{Species} \((\Sigma,\sigma)\); a \(\Sigma\)-algebra
+    \(\mathcal A=(A,\alpha)\), i.e.\ a deterministic bottom-up tree automaton; the
+    term set \(T_\Sigma\) (finite \(\Sigma\)-labelled trees); the run/homomorphism
+    \(h_{\mathcal A}\); the behaviour \(\mathrm{bh}_{\mathcal A}(A_F)\); and the
+    notion of a \emph{recognisable} set.
+    \hfill\emph{Source:} \cite[\S\,2, pp.~59--61]{TW}.
+  \item Nondeterministic tree automata (relational algebras) and their runs.
+    \hfill\emph{Source:} \cite[\S\,2, pp.~60--61]{TW}.
+  \item Encoding an assignment of \(n\) free set variables as extra label tracks:
+    the product species \(\Sigma^{n}\) with \(\Sigma^{n}_2=\{0,1\}^n\), one
+    \(\{0,1\}\)-track per set variable.
+    \hfill\emph{Source:} \cite[\S\,4, step~(II) p.~74; Lemma~16 p.~78]{TW}.
 \end{itemize}
 
 \section{Base automata (atomic formulas)}
-Automata recognising each atomic constraint over the extended alphabet:
-\(\operatorname{child}_1(x,y)\), \(\operatorname{child}_2(x,y)\), membership
-\(x\in X\), equality \(x=y\), the label predicates \(P_a\), and the
-``singleton'' constraint that a first-order track carries exactly one \(1\).
+A tree automaton for each atomic constraint over the track alphabet: membership
+\(x\in X\), the label predicates \(P_a\), the child relations
+\(\operatorname{child}_1,\operatorname{child}_2\) (the successor relations
+\(R_\sigma\)), and equality.  First-order variables are eliminated by treating
+them as singleton set variables through a definable \(\mathrm{Sing}\) predicate,
+so that \(x\in X\) and \(x=y\) become inclusion/singleton conditions on tracks.
+\hfill\emph{Source:} translation and \(\mathrm{Sing}\), \cite[\S\,4,
+pp.~74--75]{TW}; recognisability of the atomic relations, \cite[Lemma~18,
+pp.~78--79]{TW} (via regular sets and Theorem~8).
 
 \section{Closure operations (the technical core)}
 \begin{itemize}[leftmargin=*]
-  \item Product construction for \(\wedge\) and \(\vee\).
-  \item Projection (erasing one track) for \(\exists\), which introduces
-    nondeterminism.
-  \item \textbf{Determinisation} by the bottom-up subset construction, with the
-    finiteness of the powerset state space.  This is the crux, needed both for
-    complementation and for the final deterministic automaton.
-  \item Complementation for \(\neg\), via determinisation followed by swapping
-    the accepting set.
+  \item Conjunction and disjunction by the product automaton.
+    \hfill\emph{Source:} \cite[Theorem~2(ii), p.~62]{TW}.
+  \item \textbf{Determinisation} by the bottom-up subset construction (equivalence
+    of nondeterministic and deterministic tree automata), with the finite
+    powerset state space.
+    \hfill\emph{Source:} \cite[Theorem~1, pp.~61--62]{TW}.
+  \item Negation by complementing a \emph{deterministic} automaton
+    (\(A_F\mapsto A\setminus A_F\)); thus \(\neg\) depends on determinisation.
+    \hfill\emph{Source:} \cite[Theorem~2(i), p.~62]{TW}.
+  \item Existential set quantification \(\exists X\) by projection (erasing one
+    track), which yields a nondeterministic automaton.
+    \hfill\emph{Source:} \cite[Theorem~3, pp.~62--63]{TW}; the dual inverse
+    projection (adding a track) is \cite[Theorem~4, pp.~63--64]{TW}.
 \end{itemize}
 
-\section{Compilation theorem}
-By induction on the structure of an \MSO{} formula \(\varphi\) with \(k\) free
-variables, construct an automaton \(A_\varphi\) over \(\Sigma\times\{0,1\}^k\)
-accepting exactly the pairs (tree, assignment) satisfying \(\varphi\), and prove
-correctness by the same induction from the base automata and the closure
-operations.  Determinising \(A_\varphi\) yields the required deterministic
-automaton.
+\section{Compilation theorem (definable \(\Rightarrow\) recognisable)}
+By induction on an \MSO{} formula with \(n\) free variables, build an automaton
+over \(\Sigma^{n}\) recognising exactly the (tree, assignment) pairs that satisfy
+it: atomic formulas by the base automata; \(\wedge\) and \(\neg\) by Theorem~2;
+\(\exists\) by the projection Theorem~3.  Determinise the resulting automaton by
+Theorem~1.
+\hfill\emph{Source:} \cite[Theorem~17, p.~78]{TW} (using Lemma~18 and
+Theorems~1--3).
 
-\section{Faithfulness of the ranked encoding}
-Show that under the \(\bot\)-padding encoding the relations
-\(\operatorname{child}_1,\operatorname{child}_2\) and the label predicates are
-first-order definable, so satisfaction is preserved between a \(\Sigma\)-tree and
-its ranked encoding.
+\section{Faithfulness of the tree encoding}
+Match the note's ordered, labelled binary trees to terms of a dyadic species, so
+that \(\operatorname{child}_1,\operatorname{child}_2\) and the label predicates
+are read off the term structure.  In \cite{TW} this is the correspondence between
+dyadic-species terms and finite (prefix-closed) subsets of \(N_2\): the
+characteristic map \(c\), the canonical encoding \(e\) (the smallest term), and
+the recognisability of the set of encodings.
+\hfill\emph{Source:} \cite[\S\,4, pp.~75--78; Lemmas~15--16]{TW}.  For finite
+labelled trees this step is light, since the tree is already the term.
 
-\section{Execution and complexity}
-A computable deterministic bottom-up evaluation function together with a proof
-that it decides acceptance.  The linear-time bound on the run is a metatheoretic
-claim about this evaluation; making it precise rather than merely ``computable''
-requires a cost model and is the least mechanisable part.
+\section{Execution, emptiness, and complexity}
+Acceptance is decided by computing the run \(h_{\mathcal A}\) bottom-up.  Emptiness
+of the behaviour is decidable---needed for the decision procedure, though not for
+model-checking a single fixed tree---via the replacement lemma and a depth bound.
+\hfill\emph{Source:} run \(h_{\mathcal A}\), \cite[\S\,2, pp.~60--61]{TW};
+replacement, \cite[Lemma~5, p.~65; Lemma~6, p.~65]{TW}; emptiness,
+\cite[Theorem~7, pp.~65--66]{TW}.  The \emph{linear-time} bound on a single
+bottom-up pass of a deterministic automaton is not addressed in \cite{TW} and
+remains a metatheoretic claim requiring a cost model.
+
+\section{Optional: the regularity characterisation}
+Reference~\cite{TW} also proves ``recognisable \(\Leftrightarrow\) regular'' (a
+Kleene-type theorem for trees), used there to exhibit the atomic automata.  It is
+convenient but not strictly required if the atomic automata are constructed
+directly.
+\hfill\emph{Source:} \cite[Theorem~8, pp.~66--67; Theorem~9, pp.~67--69;
+Lemmas~10--13, pp.~69--72]{TW}.
 
 \section{Scope remark}
-The development is sizeable---essentially the tree version of the
-B\"uchi--Elgot--Trakhtenbrot theorem.  Until it is carried out, the cited theorem
-should be regarded as the single substantial external dependency of the note.
+The development is sizeable---essentially the finite-tree form of the
+B\"uchi--Elgot--Trakhtenbrot theorem, namely \S\,2--3 of \cite{TW} together with
+the \S\,4 induction.  Until it is carried out, the cited correspondence should be
+regarded as the single substantial external dependency of the note.
+
+\begin{thebibliography}{9}
+
+\bibitem{TW}
+James W. Thatcher and Jesse B. Wright.
+\newblock Generalized finite automata theory with an application to a decision
+problem of second-order logic.
+\newblock \emph{Mathematical Systems Theory}, 2(1):57--81, 1968.
+
+\end{thebibliography}
 
 \end{document}
