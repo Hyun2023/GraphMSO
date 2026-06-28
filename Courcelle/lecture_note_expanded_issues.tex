@@ -711,13 +711,14 @@ treewidth at most \(\omega\) has \(O(\omega|V(G)|)\) edges (for example via
 size.  Without that sentence, the runtime conclusion does not follow from the
 incidence construction alone.
 
-\paragraph{Status (2026-06).} Partially resolved in
-\texttt{lecture\_note\_expanded.tex}.  The \MSOtwo{} corollary proof now includes
-the needed sentence: a simple graph of treewidth at most \(\omega\) is
-\(\omega\)-degenerate, hence has \(O(\omega|V(G)|)\) edges, so the coloured
-incidence graph has \(O_\omega(|V(G)|)\) vertices.  The detailed proof or
-citation for this standard edge-count fact is intentionally left as a red
-\textsc{TODO} comment in the main note.
+\paragraph{Status (2026-06).} Resolved in \texttt{lecture\_note\_expanded.tex}.
+The \MSOtwo{} corollary proof now cites a new lemma proving that a simple graph
+with a tree-decomposition of width at most \(\omega\) has at most
+\(\omega|V(G)|\) edges, so the coloured incidence graph has \(O_\omega(|V(G)|)\)
+vertices.  The lemma is proved from scratch: at a leaf bag of a width-\(\omega\)
+decomposition there is a vertex lying in a single bag, hence of degree at most
+\(\omega\) (so \(G\) is \(\omega\)-degenerate), and an induction on \(|V(G)|\)
+that removes such a vertex gives the edge bound.
 
 \section{Suggested order of repair}
 

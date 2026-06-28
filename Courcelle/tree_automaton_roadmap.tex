@@ -1,0 +1,85 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\MSO}{\ensuremath{\mathrm{MSO}}}
+\newcommand{\MSOtwo}{\ensuremath{\mathrm{MSO}_2}}
+
+\title{Toward a Self-Contained Tree-Automaton Theorem\\
+  \large Components needed for \texttt{lecture\_note\_expanded.tex}}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+The main note \texttt{lecture\_note\_expanded.tex} isolates the effective
+\MSO{}--tree-automaton correspondence (Thatcher--Wright, Doner) as a cited
+external theorem.  At present neither \textsc{mathlib} nor \textsc{cslib} provides
+a tree-automata API, so a fully self-contained (and eventually formalised)
+development must build this theorem from scratch.  Only the direction used by
+Courcelle's algorithm is needed: from an \MSO{} sentence over the tree vocabulary
+one computes a \emph{deterministic} bottom-up tree automaton recognising its
+models, runnable in linear time; the converse (automaton \(\Rightarrow\)
+\MSO{}-definable) is not required.  The components below should eventually be added
+to \texttt{lecture\_note\_expanded.tex}.
+
+\section{Objects and definitions}
+\begin{itemize}[leftmargin=*]
+  \item Ranked trees, in particular full binary trees, and the encoding of a
+    \(\Sigma\)-tree of outdegree at most two as a full binary ranked tree by
+    padding each absent child with a null symbol \(\bot\).
+  \item Nondeterministic and deterministic bottom-up finite tree automata:
+    states, transition function, run, and accepted language.
+  \item The \emph{extended alphabet} \(\Sigma\times\{0,1\}^k\), encoding an
+    assignment of \(k\) free variables as extra label tracks; a first-order
+    variable is encoded by a track required to carry exactly one \(1\).
+\end{itemize}
+
+\section{Base automata (atomic formulas)}
+Automata recognising each atomic constraint over the extended alphabet:
+\(\operatorname{child}_1(x,y)\), \(\operatorname{child}_2(x,y)\), membership
+\(x\in X\), equality \(x=y\), the label predicates \(P_a\), and the
+``singleton'' constraint that a first-order track carries exactly one \(1\).
+
+\section{Closure operations (the technical core)}
+\begin{itemize}[leftmargin=*]
+  \item Product construction for \(\wedge\) and \(\vee\).
+  \item Projection (erasing one track) for \(\exists\), which introduces
+    nondeterminism.
+  \item \textbf{Determinisation} by the bottom-up subset construction, with the
+    finiteness of the powerset state space.  This is the crux, needed both for
+    complementation and for the final deterministic automaton.
+  \item Complementation for \(\neg\), via determinisation followed by swapping
+    the accepting set.
+\end{itemize}
+
+\section{Compilation theorem}
+By induction on the structure of an \MSO{} formula \(\varphi\) with \(k\) free
+variables, construct an automaton \(A_\varphi\) over \(\Sigma\times\{0,1\}^k\)
+accepting exactly the pairs (tree, assignment) satisfying \(\varphi\), and prove
+correctness by the same induction from the base automata and the closure
+operations.  Determinising \(A_\varphi\) yields the required deterministic
+automaton.
+
+\section{Faithfulness of the ranked encoding}
+Show that under the \(\bot\)-padding encoding the relations
+\(\operatorname{child}_1,\operatorname{child}_2\) and the label predicates are
+first-order definable, so satisfaction is preserved between a \(\Sigma\)-tree and
+its ranked encoding.
+
+\section{Execution and complexity}
+A computable deterministic bottom-up evaluation function together with a proof
+that it decides acceptance.  The linear-time bound on the run is a metatheoretic
+claim about this evaluation; making it precise rather than merely ``computable''
+requires a cost model and is the least mechanisable part.
+
+\section{Scope remark}
+The development is sizeable---essentially the tree version of the
+B\"uchi--Elgot--Trakhtenbrot theorem.  Until it is carried out, the cited theorem
+should be regarded as the single substantial external dependency of the note.
+
+\end{document}

@@ -142,6 +142,32 @@ new width bound.  Since \(\omega\) is a parameter, changing the width bound only
 changes the computable parameter function \(f\).
 \end{proof}
 
+\begin{lemma}\label{lem:tw-edges}
+If a simple graph \(G\) admits a tree-decomposition of width at most \(\omega\),
+then \(|E(G)|\le\omega\,|V(G)|\).
+\end{lemma}
+
+\begin{proof}
+First, if \(V(G)\ne\varnothing\) then \(G\) has a vertex of degree at most
+\(\omega\).  Choose a tree-decomposition \((T,\beta)\) of width at most \(\omega\)
+with the fewest nodes, and root \(T\).  If \(T\) is a single node \(r\), then
+\(V(G)\subseteq\beta(r)\), so \(|V(G)|\le\omega+1\) and every vertex has degree at
+most \(\omega\).  Otherwise let \(t\) be a leaf with parent \(s\).  By minimality
+\(\beta(t)\not\subseteq\beta(s)\), since otherwise deleting \(t\) would give a
+smaller decomposition; fix \(v\in\beta(t)\setminus\beta(s)\).  The nodes whose bag
+contains \(v\) form a connected subtree containing the leaf \(t\), and its only
+neighbour \(s\) omits \(v\), so that subtree is \(\{t\}\).  Every neighbour of
+\(v\) lies in a common bag with \(v\), necessarily \(\beta(t)\); hence
+\(\deg(v)\le|\beta(t)|-1\le\omega\).
+
+We conclude by induction on \(|V(G)|\) that \(|E(G)|\le\omega|V(G)|\).  The case
+\(V(G)=\varnothing\) is clear.  Otherwise pick \(v\) of degree at most \(\omega\)
+as above; the induced subgraph \(G-v\) inherits the tree-decomposition obtained by
+deleting \(v\) from every bag, again of width at most \(\omega\), so by induction
+\(|E(G-v)|\le\omega(|V(G)|-1)\).  Hence
+\(|E(G)|=\deg(v)+|E(G-v)|\le\omega+\omega(|V(G)|-1)=\omega|V(G)|\).
+\end{proof}
+
 \begin{corollary}[\MSOtwo{} properties]
 Let \(\mathcal G\) be an \MSOtwo{}-definable graph property.  On every class of
 graphs of treewidth at most \(\omega\), membership in \(\mathcal G\) can be
@@ -201,11 +227,8 @@ most \(\max(\omega,2)\): for every edge \(e=uv\), choose a bag containing \(u,v\
 and attach a new leaf bag \(\{u,v,e\}\).  The old bags cover the original
 vertices; the new leaf bags cover incidence edges; the bags containing every
 old vertex remain connected; and each edge-object appears in one new leaf bag.
-Unary predicates do not affect treewidth.  Also, a simple graph of treewidth at
-most \(\omega\) is \(\omega\)-degenerate, hence has \(O(\omega|V(G)|)\) edges.
-\TODO{Add a proof or citation for the standard edge-count fact: every simple
-graph of treewidth at most \(\omega\) is \(\omega\)-degenerate, hence has at most
-\(\omega|V(G)|\) edges.}
+Unary predicates do not affect treewidth.  Also, by Lemma~\ref{lem:tw-edges}, a
+simple graph of treewidth at most \(\omega\) has at most \(\omega|V(G)|\) edges.
 Therefore \(|V(\widehat I(G))|=|V(G)|+|E(G)|=O_\omega(|V(G)|)\).
 
 Apply the previous corollary to the \(\tau_I\)-graph \(\widehat I(G)\) and the
@@ -1206,6 +1229,13 @@ this encoding, so the translation of \(\Phi\) is faithful.  Over ranked trees th
 \cite{ThatcherWright1968,Doner1970,TATA}; determinising the resulting automaton by
 the bottom-up subset construction yields the deterministic \(\Aut_\Phi\), whose run
 is a single bottom-up pass.
+
+\TODO{This theorem is currently cited externally (Thatcher--Wright, Doner).
+Neither \texttt{mathlib} nor \texttt{cslib} provides a tree-automata API, so a
+self-contained proof must be developed from scratch (finite tree automata,
+determinisation/closure, and the \MSO{}-to-automaton compilation).  See the
+companion file \texttt{tree\_automaton\_roadmap.tex} for the list of required
+components.}
 
 \begin{proof}[Proof of Theorem~\ref{thm:courcelle}]
 Fix \(\omega\) and the finite unary vocabulary \(\Pred\).  Let \(G\) be a
