@@ -159,17 +159,100 @@ recognizable by a nondeterministic automaton.
 
 \begin{proof}[Construction]
 Every deterministic automaton is nondeterministic by replacing each transition
-function by its graph.  Conversely, for a nondeterministic automaton
-\(\NAut=(R,\rho)\), take the deterministic powerset automaton with state set
-\(\mathcal P(R)\).  The transition for \(f\in\SigmaSym_n\) maps
-\((S_1,\ldots,S_n)\) to the set of all states reachable by an \(f\)-transition
-from \(S_1,\ldots,S_n\).  If \(R_F\) is the nondeterministic accepting set, the
-deterministic accepting states are
+function by its graph.  More explicitly, if \(\Aut=(A,\alpha)\) is deterministic,
+define a nondeterministic automaton on the same state set by
 \[
-  \{S\subseteq R:S\cap R_F\neq\emptyset\}.
+  \rho_f(a_1,\ldots,a_n,a)
+  \quad\Longleftrightarrow\quad
+  \alpha_f(a_1,\ldots,a_n)=a
 \]
-An induction on terms proves that the powerset run returns exactly the set of
-nondeterministic states reachable on the same term.
+for every \(f\in\SigmaSym_n\).  For \(n=0\) this says that the only possible
+state at the constant \(f\) is \(\alpha_f\).  A structural induction on \(t\)
+shows that the nondeterministic run is always the singleton
+\[
+  h_\NAut(t)=\{h_\Aut(t)\},
+\]
+so the same final states recognize the same language.
+
+Conversely, let \(\NAut=(R,\rho)\) be a nondeterministic automaton.  Define the
+deterministic powerset automaton
+\[
+  \widehat{\NAut}=(\mathcal P(R),\widehat\rho)
+\]
+as follows.  For \(f\in\SigmaSym_n\), set
+\[
+  \widehat\rho_f(S_1,\ldots,S_n)
+  =
+  \{r\in R:\exists r_1\in S_1,\ldots,\exists r_n\in S_n,\,
+      \rho_f(r_1,\ldots,r_n,r)\}.
+\]
+When \(n=0\), the right hand side is read using the unique empty tuple:
+\[
+  \widehat\rho_f
+  =
+  \{r\in R:\rho_f(r)\}.
+\]
+Since \(R\) is finite, \(\mathcal P(R)\) is finite, so this is again a finite
+automaton.  If \(R_F\) is the nondeterministic accepting set, take the accepting
+states of the powerset automaton to be
+\[
+  \widehat R_F=\{S\subseteq R:S\cap R_F\neq\emptyset\}.
+\]
+
+It remains to prove that this construction has the same run semantics as the
+original nondeterministic automaton.  We prove, by induction on terms, that
+\[
+  h_{\widehat{\NAut}}(t)=h_\NAut(t)       \tag{\(*\)}
+\]
+for every \(t\in\Term{\SigmaSym}\).
+
+For the base case, let \(t=f\) with \(f\in\SigmaSym_0\).  By the definition of
+the deterministic run in \(\widehat{\NAut}\),
+\[
+  h_{\widehat{\NAut}}(f)=\widehat\rho_f
+  =
+  \{r\in R:\rho_f(r)\}.
+\]
+This is exactly the definition of the nondeterministic run \(h_\NAut(f)\) at the
+constant \(f\), so \((*)\) holds.
+
+For the inductive step, let \(t=f(t_1,\ldots,t_n)\), and assume
+\[
+  h_{\widehat{\NAut}}(t_i)=h_\NAut(t_i)
+  \qquad (1\le i\le n).
+\]
+Then
+\begin{align*}
+  h_{\widehat{\NAut}}(t)
+  &=
+  \widehat\rho_f\bigl(h_{\widehat{\NAut}}(t_1),\ldots,
+    h_{\widehat{\NAut}}(t_n)\bigr) \\
+  &=
+  \{r\in R:\exists r_1\in h_{\widehat{\NAut}}(t_1),\ldots,
+      \exists r_n\in h_{\widehat{\NAut}}(t_n),\,
+      \rho_f(r_1,\ldots,r_n,r)\} \\
+  &=
+  \{r\in R:\exists r_1\in h_\NAut(t_1),\ldots,
+      \exists r_n\in h_\NAut(t_n),\,
+      \rho_f(r_1,\ldots,r_n,r)\} \\
+  &=
+  h_\NAut(f(t_1,\ldots,t_n)).
+\end{align*}
+The third equality is the induction hypothesis, and the last equality is the
+definition of \(h_\NAut\).  This proves \((*)\) for all terms.
+
+Finally, for every term \(t\),
+\[
+  t\in\bh_{\widehat{\NAut}}(\widehat R_F)
+  \Longleftrightarrow
+  h_{\widehat{\NAut}}(t)\cap R_F\neq\emptyset
+  \Longleftrightarrow
+  h_\NAut(t)\cap R_F\neq\emptyset
+  \Longleftrightarrow
+  t\in\bh_\NAut(R_F).
+\]
+Thus the powerset automaton recognizes exactly the same set of terms as
+\(\NAut\), completing the nontrivial direction.
 \end{proof}
 
 \begin{theorem}[TW Theorem 2: Boolean closure]\label{thm:tw-boolean}
@@ -178,11 +261,119 @@ If \(U,V\subseteq\Term{\SigmaSym}\) are recognizable, then so are
 \end{theorem}
 
 \begin{proof}[Construction]
-Use deterministic automata.  Complement is obtained by replacing \(A_F\) by
-\(A\setminus A_F\).  Intersection is obtained by the product automaton with
-state set \(A\times B\) and accepting states \(A_F\times B_F\).  Union follows
-from complement and intersection, or directly by the product automaton with
-accepting set \((A_F\times B)\cup(A\times B_F)\).
+By Theorem~\ref{thm:tw-subset}, we may assume the recognizing automata are
+deterministic.  Let
+\[
+  \Aut=(A,\alpha),\qquad \mathcal B=(B,\beta)
+\]
+be deterministic \(\SigmaSym\)-automata with final-state sets
+\(A_F\subseteq A\) and \(B_F\subseteq B\), and suppose
+\[
+  \bh_\Aut(A_F)=U,\qquad \bh_{\mathcal B}(B_F)=V.
+\]
+
+\emph{Complement.}  Use the same automaton \(\Aut\), but replace the accepting
+set \(A_F\) by \(A\setminus A_F\).  For every term \(t\),
+\[
+  t\in\bh_\Aut(A\setminus A_F)
+  \Longleftrightarrow
+  h_\Aut(t)\in A\setminus A_F
+  \Longleftrightarrow
+  h_\Aut(t)\notin A_F
+  \Longleftrightarrow
+  t\notin\bh_\Aut(A_F).
+\]
+Thus
+\[
+  \bh_\Aut(A\setminus A_F)=\Term{\SigmaSym}\setminus U.
+\]
+This is why determinism is useful here: each term has one state, so changing the
+final set really complements the language.  For a nondeterministic automaton,
+one must first determinize.
+
+\emph{Intersection.}  Define the product automaton
+\[
+  \mathcal C=(A\times B,\gamma).
+\]
+For a constant \(f\in\SigmaSym_0\), put
+\[
+  \gamma_f=(\alpha_f,\beta_f)\in A\times B.
+\]
+For \(f\in\SigmaSym_n\) with \(n>0\), define
+\[
+  \gamma_f\bigl((a_1,b_1),\ldots,(a_n,b_n)\bigr)
+  =
+  \bigl(\alpha_f(a_1,\ldots,a_n),\beta_f(b_1,\ldots,b_n)\bigr).
+\]
+Equivalently, the same formula also covers \(n=0\) if one reads the empty tuple
+correctly.
+
+The crucial fact is that the product automaton computes both original runs at
+the same time:
+\[
+  h_{\mathcal C}(t)=\bigl(h_\Aut(t),h_{\mathcal B}(t)\bigr)       \tag{\(*\)}
+\]
+for every \(t\in\Term{\SigmaSym}\).  We prove this by structural induction on
+\(t\).
+
+If \(t=f\) is a constant, then
+\[
+  h_{\mathcal C}(f)=\gamma_f=(\alpha_f,\beta_f)
+  =
+  \bigl(h_\Aut(f),h_{\mathcal B}(f)\bigr).
+\]
+For the inductive step, let \(t=f(t_1,\ldots,t_n)\), and assume \((*)\) holds
+for each \(t_i\).  Then
+\begin{align*}
+  h_{\mathcal C}(t)
+  &=
+  \gamma_f\bigl(h_{\mathcal C}(t_1),\ldots,h_{\mathcal C}(t_n)\bigr) \\
+  &=
+  \gamma_f\bigl((h_\Aut(t_1),h_{\mathcal B}(t_1)),\ldots,
+    (h_\Aut(t_n),h_{\mathcal B}(t_n))\bigr) \\
+  &=
+  \bigl(\alpha_f(h_\Aut(t_1),\ldots,h_\Aut(t_n)),
+        \beta_f(h_{\mathcal B}(t_1),\ldots,h_{\mathcal B}(t_n))\bigr) \\
+  &=
+  \bigl(h_\Aut(f(t_1,\ldots,t_n)),
+        h_{\mathcal B}(f(t_1,\ldots,t_n))\bigr).
+\end{align*}
+This proves \((*)\).
+
+Now take final states \(A_F\times B_F\) in the product automaton.  Using
+\((*)\), for every term \(t\),
+\begin{align*}
+  t\in\bh_{\mathcal C}(A_F\times B_F)
+  &\Longleftrightarrow
+  h_{\mathcal C}(t)\in A_F\times B_F \\
+  &\Longleftrightarrow
+  h_\Aut(t)\in A_F \text{ and } h_{\mathcal B}(t)\in B_F \\
+  &\Longleftrightarrow
+  t\in U \text{ and } t\in V.
+\end{align*}
+Therefore
+\[
+  \bh_{\mathcal C}(A_F\times B_F)=U\cap V.
+\]
+This proves that the product automaton with accepting set \(A_F\times B_F\) is
+the desired automaton for intersection.
+
+\emph{Union.}  Use the same product automaton \(\mathcal C\), but take accepting
+states
+\[
+  (A_F\times B)\cup(A\times B_F).
+\]
+Again using \((*)\), for every term \(t\),
+\begin{align*}
+  t\in\bh_{\mathcal C}\bigl((A_F\times B)\cup(A\times B_F)\bigr)
+  &\Longleftrightarrow
+  h_\Aut(t)\in A_F \text{ or } h_{\mathcal B}(t)\in B_F \\
+  &\Longleftrightarrow
+  t\in U \text{ or } t\in V.
+\end{align*}
+Hence this product automaton recognizes \(U\cup V\).  This also follows from
+complement and intersection by De Morgan's laws, but the direct final-state set
+makes the automaton construction explicit.
 \end{proof}
 
 \section{Projection}
@@ -208,25 +399,229 @@ map, then \(\pi(U)\subseteq\Term{\Gamma}\) is recognizable.
 \end{theorem}
 
 \begin{proof}[Construction]
-Let \(\Aut=(A,\alpha)\) recognize \(U\).  Build a nondeterministic
-\(\Gamma\)-automaton on the same state set.  For a \(\Gamma\)-symbol \(g\), allow
-all transitions of \(\Aut\) labelled by symbols \(f\) with \(\pi(f)=g\).  For a
-constant \(g\), the initial state set is the set of \(\alpha_f\) over all
-constants \(f\) with \(\pi(f)=g\).  The proof is by induction on terms: every
-source run projects to a target run, and every target nondeterministic run can
-be lifted to some source term.
+By Theorem~\ref{thm:tw-subset}, assume \(U\) is recognized by a deterministic
+\(\SigmaSym\)-automaton
+\[
+  \Aut=(A,\alpha)
+\]
+with final states \(A_F\).  We build a nondeterministic \(\Gamma\)-automaton
+\[
+  \mathcal N=(A,\eta)
+\]
+on the same state set.  Its transitions are obtained by forgetting which
+\(\SigmaSym\)-symbol was used before projection.
+
+For a constant \(g\in\Gamma_0\), define the possible initial states by
+\[
+  \eta_g
+  =
+  \{\alpha_f:f\in\SigmaSym_0\text{ and }\pi(f)=g\}.
+\]
+For \(g\in\Gamma_n\) with \(n>0\), define
+\[
+  \eta_g(a_1,\ldots,a_n,a)
+  \quad\Longleftrightarrow\quad
+  \exists f\in\SigmaSym_n,\ \pi(f)=g
+  \text{ and }
+  \alpha_f(a_1,\ldots,a_n)=a.
+\]
+Thus a \(g\)-transition of \(\mathcal N\) is allowed exactly when it comes from
+some source transition whose label projects to \(g\).  We use the same final
+states \(A_F\) for \(\mathcal N\).
+
+We prove two structural-induction facts.  The first says that every source run
+survives after projection:
+\[
+  \text{for all }s\in\Term{\SigmaSym},\qquad
+  h_\Aut(s)\in h_{\mathcal N}(\pi(s)).            \tag{P1}
+\]
+If \(s=f\) is a constant, then \(\pi(s)=\pi(f)\) and
+\[
+  h_\Aut(f)=\alpha_f\in\eta_{\pi(f)}=h_{\mathcal N}(\pi(f))
+\]
+by the definition of the initial states of \(\mathcal N\).  For the inductive
+step, write \(s=f(s_1,\ldots,s_n)\), and assume
+\[
+  h_\Aut(s_i)\in h_{\mathcal N}(\pi(s_i))
+  \qquad (1\le i\le n).
+\]
+Let
+\[
+  a_i=h_\Aut(s_i),\qquad
+  a=h_\Aut(s)=\alpha_f(a_1,\ldots,a_n).
+\]
+Since \(\pi(f)\) is the label of the projected term and \(f\) is one of the
+symbols projecting to \(\pi(f)\), the definition of \(\eta_{\pi(f)}\) gives
+\[
+  \eta_{\pi(f)}(a_1,\ldots,a_n,a).
+\]
+Together with the induction hypotheses \(a_i\in h_{\mathcal N}(\pi(s_i))\),
+this says exactly that
+\[
+  a\in h_{\mathcal N}\bigl(\pi(f)(\pi(s_1),\ldots,\pi(s_n))\bigr)
+  =
+  h_{\mathcal N}(\pi(s)).
+\]
+So (P1) holds for \(s\).
+
+The second fact is the converse lifting property: every state reached by the
+projected nondeterministic automaton comes from some source term.
+\[
+  \text{for all }t\in\Term{\Gamma}\text{ and }a\in A,\qquad
+  a\in h_{\mathcal N}(t)
+  \Rightarrow
+  \exists s\in\Term{\SigmaSym},\ \pi(s)=t\text{ and }h_\Aut(s)=a.       \tag{P2}
+\]
+Again prove this by induction on \(t\).  If \(t=g\) is a constant and
+\(a\in h_{\mathcal N}(g)=\eta_g\), then by definition of \(\eta_g\) there is a
+constant \(f\in\SigmaSym_0\) with \(\pi(f)=g\) and \(\alpha_f=a\).  Taking
+\(s=f\), we get \(\pi(s)=g=t\) and \(h_\Aut(s)=a\).
+
+For the inductive step, let \(t=g(t_1,\ldots,t_n)\), and suppose
+\(a\in h_{\mathcal N}(t)\).  By the definition of the nondeterministic run,
+there are states \(a_i\in h_{\mathcal N}(t_i)\) such that
+\[
+  \eta_g(a_1,\ldots,a_n,a).
+\]
+By the definition of \(\eta_g\), there is some \(f\in\SigmaSym_n\) with
+\[
+  \pi(f)=g
+  \quad\text{and}\quad
+  \alpha_f(a_1,\ldots,a_n)=a.
+\]
+By the induction hypothesis applied to \(t_i\) and \(a_i\), choose source terms
+\(s_i\in\Term{\SigmaSym}\) such that
+\[
+  \pi(s_i)=t_i
+  \quad\text{and}\quad
+  h_\Aut(s_i)=a_i.
+\]
+Now define
+\[
+  s=f(s_1,\ldots,s_n).
+\]
+Then
+\[
+  \pi(s)
+  =
+  \pi(f)(\pi(s_1),\ldots,\pi(s_n))
+  =
+  g(t_1,\ldots,t_n)
+  =
+  t,
+\]
+and
+\[
+  h_\Aut(s)
+  =
+  \alpha_f(h_\Aut(s_1),\ldots,h_\Aut(s_n))
+  =
+  \alpha_f(a_1,\ldots,a_n)
+  =
+  a.
+\]
+This proves (P2).
+
+We can now identify the language recognized by \(\mathcal N\).  First, if
+\(t\in\pi(U)\), then \(t=\pi(s)\) for some \(s\in U\).  Since
+\(s\in U=\bh_\Aut(A_F)\), we have \(h_\Aut(s)\in A_F\).  By (P1),
+\[
+  h_\Aut(s)\in h_{\mathcal N}(\pi(s))=h_{\mathcal N}(t),
+\]
+so \(h_{\mathcal N}(t)\cap A_F\neq\emptyset\), and \(t\in\bh_{\mathcal N}(A_F)\).
+
+Conversely, if \(t\in\bh_{\mathcal N}(A_F)\), then choose
+\[
+  a\in h_{\mathcal N}(t)\cap A_F.
+\]
+By (P2), there is \(s\in\Term{\SigmaSym}\) with \(\pi(s)=t\) and
+\(h_\Aut(s)=a\).  Since \(a\in A_F\), we have \(s\in U\), hence
+\[
+  t=\pi(s)\in\pi(U).
+\]
+Thus
+\[
+  \bh_{\mathcal N}(A_F)=\pi(U),
+\]
+so \(\pi(U)\) is recognizable.
 \end{proof}
 
-\begin{theorem}[TW Theorem 4: closure under inverse projection]
+\begin{theorem}[TW Theorem 4: closure under inverse projection]\label{thm:tw-inverse-projection}
 If \(U\subseteq\Term{\Gamma}\) is recognizable and
 \(\pi:\Term{\SigmaSym}\to\Term{\Gamma}\) is induced by an arity-preserving symbol
 map, then \(\pi^{-1}(U)\subseteq\Term{\SigmaSym}\) is recognizable.
 \end{theorem}
 
 \begin{proof}[Construction]
-Given a \(\Gamma\)-automaton \((A,\alpha)\), define a \(\SigmaSym\)-automaton by
-using the transition \(\alpha_{\pi(f)}\) for each \(f\in\SigmaSym\).  An induction
-on terms proves \(h(t)=h(\pi(t))\).
+By Theorem~\ref{thm:tw-subset}, assume \(U\) is recognized by a deterministic
+\(\Gamma\)-automaton
+\[
+  \Aut=(A,\alpha)
+\]
+with final states \(A_F\).  Define a deterministic \(\SigmaSym\)-automaton
+\[
+  \mathcal D=(A,\beta)
+\]
+on the same state set by reusing the transition of the projected symbol:
+\[
+  \beta_f=\alpha_{\pi(f)}
+  \qquad (f\in\SigmaSym).
+\]
+This is well typed because \(\pi\) preserves arities.
+
+The key invariant is
+\[
+  h_{\mathcal D}(s)=h_\Aut(\pi(s))
+  \qquad\text{for every }s\in\Term{\SigmaSym}.       \tag{\(*\)}
+\]
+We prove it by structural induction on \(s\).  If \(s=f\) is a constant, then
+\[
+  h_{\mathcal D}(f)
+  =
+  \beta_f
+  =
+  \alpha_{\pi(f)}
+  =
+  h_\Aut(\pi(f)).
+\]
+For the inductive step, let \(s=f(s_1,\ldots,s_n)\), and assume
+\[
+  h_{\mathcal D}(s_i)=h_\Aut(\pi(s_i))
+  \qquad (1\le i\le n).
+\]
+Then
+\begin{align*}
+  h_{\mathcal D}(s)
+  &=
+  \beta_f\bigl(h_{\mathcal D}(s_1),\ldots,h_{\mathcal D}(s_n)\bigr) \\
+  &=
+  \alpha_{\pi(f)}
+    \bigl(h_\Aut(\pi(s_1)),\ldots,h_\Aut(\pi(s_n))\bigr) \\
+  &=
+  h_\Aut\bigl(\pi(f)(\pi(s_1),\ldots,\pi(s_n))\bigr) \\
+  &=
+  h_\Aut(\pi(s)).
+\end{align*}
+This proves \((*)\).
+
+Use the same accepting set \(A_F\) for \(\mathcal D\).  For every
+\(\SigmaSym\)-term \(s\),
+\[
+  s\in\bh_{\mathcal D}(A_F)
+  \Longleftrightarrow
+  h_{\mathcal D}(s)\in A_F
+  \Longleftrightarrow
+  h_\Aut(\pi(s))\in A_F
+  \Longleftrightarrow
+  \pi(s)\in U
+  \Longleftrightarrow
+  s\in\pi^{-1}(U).
+\]
+Therefore
+\[
+  \bh_{\mathcal D}(A_F)=\pi^{-1}(U),
+\]
+so the inverse image is recognizable.
 \end{proof}
 
 \section{Replacement and Emptiness}
