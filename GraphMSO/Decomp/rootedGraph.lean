@@ -1,5 +1,5 @@
 import GraphMSO.Decomp.tree_decomp
-import GraphMSO.Decomp.KRootedPGraph
+import GraphMSO.language.tau_graph
 
 /-!
 This file keeps the rooted-graph side of the Courcelle construction separate
@@ -24,7 +24,7 @@ proofs to unpack the concrete maps into the glued graph when needed.
 /-- A `k`-rooted `τ_P`-graph: a `τ_P`-structure (`KRootedPGraph P`) together with a
 root/boundary set and a partial injective labeling whose domain contains the
 root. -/
-structure KRootedGraph (P : Type*) (k : ℕ) extends KRootedPGraph P where
+structure KRootedGraph (P : Type*) (k : ℕ) extends τPGraph P where
   R : Set V
   labelDom : Set V
   label : labelDom -> Fin k
