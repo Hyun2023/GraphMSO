@@ -322,6 +322,15 @@ theorem exists_bagColoring_of_hasWidth [Fintype V] (T : RootedTreeDecomposition 
   exact T.exists_bagColoring_of_hasWidth_of_top_claim omega hwidth
     (fun huv hle => T.mem_bag_topBAGSNode_of_conflict_of_depth_le huv hle)
 
+theorem exists_bagColoring_of_hasWidth' [Fintype V] (T : RootedTreeDecomposition G) (omega : ℕ)
+    (hwidth : T.decomp.HasWidth omega) :
+    ∃ color : V -> BagColorSet omega, T.decomp.IsBagColoring color:= by
+  have := T.exists_bagColoring_of_hasWidth_of_top_claim omega hwidth
+    (fun huv hle => T.mem_bag_topBAGSNode_of_conflict_of_depth_le huv hle)
+  cases this;expose_names;cases val;expose_names
+  exists val
+
+
 theorem eq_of_mem_bag_of_color_eq {T : RootedTreeDecomposition G} {k : ℕ}
     {color : V -> Fin k} (hcolor : T.IsBagColoring color)
     {t : T.decomp.Node} {u v : V} (hu : u ∈ T.bag t) (hv : v ∈ T.bag t)
