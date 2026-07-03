@@ -9,6 +9,7 @@
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}[theorem]{Lemma}
 \newtheorem{corollary}[theorem]{Corollary}
+\newtheorem*{theorem*}{Theorem}
 \theoremstyle{definition}
 \newtheorem{definition}[theorem]{Definition}
 \newtheorem{remark}[theorem]{Remark}
@@ -26,6 +27,7 @@
 \newcommand{\child}{\mathrm{child}}
 \newcommand{\dom}{\mathrm{dom}}
 \newcommand{\arity}{\mathrm{arity}}
+\newcommand{\enc}{\mathrm{enc}}
 \newcommand{\TODO}[1]{\textcolor{red}{\textbf{TODO:} #1}}
 
 \title{Working TeX Extraction of Thatcher--Wright}
@@ -88,6 +90,80 @@ induction below therefore produces a bottom-up automaton for the padded ranked
 terms.  Determinization gives the deterministic automaton in
 Theorem~\ref{thm:mso-tree-automata}, and its run is linear because it performs
 one transition per node of a padded term whose size is \(O(|T|)\).
+
+\medskip
+\noindent\textbf{Derivation of Theorem~\ref{thm:mso-tree-automata} from \TW{}.}
+Let \(\Gamma_\Sigma\) be the ranked alphabet with one nullary symbol \(\bot\)
+and one binary symbol \(\widehat a\) for each \(a\in\Sigma\).  A finite
+\(\Sigma\)-labelled binary tree \(T\) is represented by the
+\(\Gamma_\Sigma\)-term \(\enc(T)\) obtained by putting \(\widehat a\) at every
+real \(a\)-labelled node and \(\bot\) at every missing child.
+
+Now let
+\[
+  n=1+|\Sigma|.
+\]
+The first track will represent the domain \(D\) of real nodes, and the remaining
+tracks will represent the label sets \(P_a\).  Let \(\Sigma_n\) be the
+\(n\)-track alphabet from Section~8.  Define an arity-preserving map
+\[
+  \iota:\Gamma_\Sigma\to\Sigma_n
+\]
+by
+\[
+  \iota(\bot)=\lambda,
+\]
+and
+\[
+  \iota(\widehat a)=\ell_a,
+\]
+where \(\ell_a\in\{0,1\}^n\) has domain-track value \(1\), has \(a\)-track value
+\(1\), and has every other label-track value \(0\).  Then
+\[
+  \iota(\enc(T))=e(D_T,(P_a^T)_{a\in\Sigma}),
+\]
+where \(D_T\subseteq N_2\) is the finite prefix-closed set of positions of
+nodes of \(T\), and \(P_a^T\subseteq D_T\) is the set of positions labelled
+\(a\).  This encoding is canonical because absent subtrees are represented by
+\(\lambda\), and every real node has domain-track value \(1\).
+
+Given a tree \(\MSO\) sentence \(\Phi\) over
+\(\{\child_1,\child_2\}\cup\{P_a:a\in\Sigma\}\), form a weak MSO formula
+\[
+  \Theta_\Phi(D,(P_a)_{a\in\Sigma})
+\]
+over \(N_2\) as follows.  Add a well-formedness formula saying that \(D\) is a
+finite prefix-closed binary-tree domain and that the \(P_a\)'s partition \(D\).
+Then relativize \(\Phi\) to \(D\): first-order quantifiers range over elements of
+\(D\), set quantifiers range over subsets of \(D\), the child predicates are the
+successor predicates \(R_i\) of \(N_2\), and each label predicate \(P_a(x)\) is
+interpreted as \(x\in P_a\).  By induction on \(\Phi\),
+\[
+  T\models\Phi
+  \quad\Longleftrightarrow\quad
+  (D_T,(P_a^T)_{a\in\Sigma})\models\Theta_\Phi.        \tag{1}
+\]
+
+By the effective MSO-to-automata result over \(N_2\), namely
+Theorem~\ref{thm:tw-definable-recognizable} together with the first-order
+elimination of Section~\ref{sec:tw-eliminate-first-order}, the set
+\[
+  L_\Phi=
+  \{e(D,(P_a)_{a\in\Sigma}):
+      (D,(P_a)_{a\in\Sigma})\models\Theta_\Phi\}
+  \subseteq\Term{\Sigma_n}
+\]
+is recognizable, effectively in \(\Phi\).  By closure under inverse projection
+(Theorem~\ref{thm:tw-inverse-projection}),
+\[
+  \iota^{-1}(L_\Phi)\subseteq\Term{\Gamma_\Sigma}
+\]
+is recognizable.  By (1), this language contains exactly the padded terms
+\(\enc(T)\) for finite \(\Sigma\)-trees satisfying \(\Phi\).  Finally,
+Theorem~\ref{thm:tw-subset} determinizes the resulting automaton.  The
+deterministic bottom-up run performs one transition per symbol of \(\enc(T)\),
+and \(|\enc(T)|\le 2|T|+1\), so the running time is linear in the number of
+nodes of \(T\).
 
 \section{Generalized Automata}
 
@@ -648,37 +724,206 @@ then
 \end{lemma}
 
 \begin{proof}
-Induct on the context around the replaced subterm.  At the replaced node the two
-states are equal by hypothesis; every ancestor computes the same transition from
-the same tuple of child states.
+We prove the statement by structural induction on the term \(t\).  The induction
+statement is: for every occurrence of \(t_2\) in \(t\), if \(t'\) is obtained by
+replacing that occurrence by \(t_1\), and if \(h_\Aut(t_1)=h_\Aut(t_2)\), then
+\(h_\Aut(t')=h_\Aut(t)\).
+
+First suppose \(t=c\) is a constant symbol.  A constant term has only one
+occurrence, namely the whole term itself.  Therefore the replaced occurrence must
+be the root, so \(t_2=t=c\) and \(t'=t_1\).  Hence
+\[
+  h_\Aut(t')
+  =
+  h_\Aut(t_1)
+  =
+  h_\Aut(t_2)
+  =
+  h_\Aut(t).
+\]
+
+Now suppose
+\[
+  t=f(u_1,\ldots,u_n).
+\]
+There are two cases.
+
+If the replaced occurrence is the root of \(t\), then \(t_2=t\) and \(t'=t_1\).
+The same calculation as in the base case gives
+\[
+  h_\Aut(t')=h_\Aut(t_1)=h_\Aut(t_2)=h_\Aut(t).
+\]
+
+Otherwise the occurrence lies inside exactly one child \(u_j\).  Then there is a
+term \(u'_j\) obtained from \(u_j\) by replacing that occurrence of \(t_2\) by
+\(t_1\), and
+\[
+  t'=f(u_1,\ldots,u_{j-1},u'_j,u_{j+1},\ldots,u_n).
+\]
+By the induction hypothesis applied to \(u_j\),
+\[
+  h_\Aut(u'_j)=h_\Aut(u_j).
+\]
+Therefore
+\begin{align*}
+  h_\Aut(t')
+  &=
+  \alpha_f\bigl(h_\Aut(u_1),\ldots,h_\Aut(u_{j-1}),
+    h_\Aut(u'_j),h_\Aut(u_{j+1}),\ldots,h_\Aut(u_n)\bigr) \\
+  &=
+  \alpha_f\bigl(h_\Aut(u_1),\ldots,h_\Aut(u_{j-1}),
+    h_\Aut(u_j),h_\Aut(u_{j+1}),\ldots,h_\Aut(u_n)\bigr) \\
+  &=
+  h_\Aut(f(u_1,\ldots,u_n))
+  =
+  h_\Aut(t).
+\end{align*}
+This completes the induction.
 \end{proof}
 
 \begin{corollary}[TW corollary to Lemma 5]
-The same conclusion holds when finitely many pairwise incomparable occurrences
-are replaced by terms with the same automaton states.
+Let \(u_1,\ldots,u_m\) be pairwise incomparable occurrences of subterms of a term
+\(t\).  For each \(i\), let \(v_i\) be a term satisfying
+\[
+  h_\Aut(v_i)=h_\Aut(u_i).
+\]
+If \(t'\) is obtained from \(t\) by simultaneously replacing each occurrence
+\(u_i\) by \(v_i\), then
+\[
+  h_\Aut(t')=h_\Aut(t).
+\]
 \end{corollary}
 
-\begin{lemma}[TW Lemma 6: bounded-depth witness]
+\begin{proof}
+Enumerate the incomparable occurrences in any order.  Define a sequence of terms
+\[
+  t=t^{(0)},t^{(1)},\ldots,t^{(m)}=t',
+\]
+where \(t^{(k)}\) is obtained from \(t^{(k-1)}\) by replacing the \(k\)-th
+selected occurrence \(u_k\) by \(v_k\).
+
+The reason this sequential replacement is legitimate is exactly the
+incomparability hypothesis.  Since no selected occurrence is inside another,
+replacing one selected occurrence neither deletes nor changes any of the other
+selected occurrences.  Thus, when we pass from \(t^{(k-1)}\) to \(t^{(k)}\), the
+subterm being replaced is still the original \(u_k\), and its replacement \(v_k\)
+has the same automaton state:
+\[
+  h_\Aut(v_k)=h_\Aut(u_k).
+\]
+Applying Lemma~\ref{lem:tw-replacement} to the \(k\)-th step gives
+\[
+  h_\Aut(t^{(k)})=h_\Aut(t^{(k-1)}).
+\]
+Chaining these equalities yields
+\[
+  h_\Aut(t')
+  =
+  h_\Aut(t^{(m)})
+  =
+  h_\Aut(t^{(m-1)})
+  =
+  \cdots
+  =
+  h_\Aut(t^{(0)})
+  =
+  h_\Aut(t).
+\]
+\end{proof}
+
+\begin{lemma}[TW Lemma 6: bounded-depth witness]\label{lem:tw-bounded-depth}
 Let \(\Aut\) have \(n\) states.  If some term \(t\) has \(h_\Aut(t)=a\), then
 there is a term \(t'\) with \(d(t')\le n\) and \(h_\Aut(t')=a\).
 \end{lemma}
 
 \begin{proof}
-If \(d(t)>n\), choose a root-to-leaf chain of more than \(n\) subterms.  Two
-subterms on the chain have the same automaton state.  Replacing the upper one by
-the lower one strictly reduces the term while preserving the root state by
-Lemma~\ref{lem:tw-replacement}.  Iterate until depth is at most \(n\).
+Let \(|s|\) denote the number of symbols in a term \(s\).  Among all terms
+reaching the state \(a\), choose one, say \(s\), of minimal size:
+\[
+  h_\Aut(s)=a
+  \qquad\text{and}\qquad
+  |s|\le |r| \text{ whenever } h_\Aut(r)=a.
+\]
+Such a term exists because the original term \(t\) reaches \(a\), and sizes are
+natural numbers.
+
+We claim that \(d(s)\le n\).  Suppose not, so \(d(s)>n\).  By the definition of
+depth, there is a longest root-to-leaf chain of subterm occurrences
+\[
+  s=s_0 \succ s_1 \succ \cdots \succ s_{d(s)-1},
+\]
+where each \(s_{i+1}\) is a proper child-subterm somewhere below \(s_i\).  This
+chain contains \(d(s)\) subterms.  Since \(d(s)>n\) and the automaton has only
+\(n\) states, the pigeonhole principle gives indices \(i<j\) such that
+\[
+  h_\Aut(s_i)=h_\Aut(s_j).
+\]
+Here \(s_j\) is a proper subterm of \(s_i\), hence \(|s_j|<|s_i|\).
+
+Let \(s^\star\) be the term obtained from \(s\) by replacing the occurrence
+\(s_i\) by the smaller term \(s_j\).  Lemma~\ref{lem:tw-replacement}, applied
+with \(t_1=s_j\) and \(t_2=s_i\), gives
+\[
+  h_\Aut(s^\star)=h_\Aut(s)=a.
+\]
+But the replacement strictly decreases size:
+\[
+  |s^\star|=|s|-|s_i|+|s_j|<|s|.
+\]
+This contradicts the minimality of \(s\) among terms reaching \(a\).  Therefore
+\(d(s)\le n\).  Taking \(t'=s\) proves the lemma.
 \end{proof}
 
-\begin{theorem}[TW Theorem 7: decidable emptiness]
+\begin{theorem}[TW Theorem 7: decidable emptiness]\label{thm:tw-emptiness}
 Given a finite \(\SigmaSym\)-automaton \(\Aut\) and final states \(A_F\), it is
 decidable whether \(\bh_\Aut(A_F)=\emptyset\).
 \end{theorem}
 
 \begin{proof}
-Enumerate the finitely many terms of depth at most the number of states and test
-whether any reaches a final state.  The bounded-depth lemma proves completeness
-of this finite search.
+By Theorem~\ref{thm:tw-subset}, it is enough to describe the procedure for a
+deterministic automaton.  Let \(n\) be the number of states of \(\Aut\).
+
+First observe that the set of terms of depth at most \(n\) is finite and can be
+effectively enumerated.  Define finite sets \(D_k\subseteq\Term{\SigmaSym}\) by
+\[
+  D_1=\SigmaSym_0,
+\]
+and
+\[
+  D_{k+1}
+  =
+  D_k\cup
+  \{f(t_1,\ldots,t_m):
+    f\in\SigmaSym_m,\ t_1,\ldots,t_m\in D_k\}.
+\]
+Because the species is finite, each \(\SigmaSym_m\) is finite, and because the
+automaton has finite arities appearing in \(\SigmaSym\), each \(D_k\) is finite.
+An induction on \(k\) shows that \(D_k\) is exactly the set of terms of depth at
+most \(k\).
+
+The decision procedure is now:
+\begin{enumerate}[leftmargin=*]
+  \item enumerate \(D_n\);
+  \item compute \(h_\Aut(s)\) for every \(s\in D_n\);
+  \item answer ``nonempty'' iff \(h_\Aut(s)\in A_F\) for some \(s\in D_n\).
+\end{enumerate}
+
+The procedure is sound: if it finds such an \(s\), then
+\[
+  s\in\bh_\Aut(A_F),
+\]
+so \(\bh_\Aut(A_F)\neq\emptyset\).
+
+It is also complete.  Suppose \(\bh_\Aut(A_F)\neq\emptyset\).  Then there is a
+term \(t\) such that \(h_\Aut(t)=a\in A_F\).  By
+Lemma~\ref{lem:tw-bounded-depth}, there is a term \(t'\) with
+\[
+  d(t')\le n
+  \qquad\text{and}\qquad
+  h_\Aut(t')=a.
+\]
+Thus \(t'\in D_n\), and the finite search will find an accepting term.  Hence
+the procedure answers ``empty'' exactly when \(\bh_\Aut(A_F)=\emptyset\).
 \end{proof}
 
 \section{Regularity}
@@ -707,35 +952,253 @@ closures, after allowing the signature to be extended by additional constant
 symbols but not by additional positive-arity symbols.
 \end{definition}
 
-\begin{theorem}[TW Theorem 8: recognizable iff regular]
+\begin{theorem*}[TW Theorem 9: analysis theorem]
+Every recognizable subset of \(\Term{\SigmaSym}\) is regular.
+\end{theorem*}
+
+\begin{proof}
+Let \(U=\bh_\Aut(A_F)\), where \(\Aut=(A,\alpha)\) is a deterministic
+\(\SigmaSym\)-automaton.  Write the finite state set as
+\[
+  A=\{a_1,\ldots,a_m\}.
+\]
+Introduce fresh constant symbols
+\[
+  \lambda_1,\ldots,\lambda_m,
+\]
+one for each state.  Let \(\Sigma^+\) be the species with the same
+positive-arity symbols as \(\SigmaSym\), but with constants
+\(\lambda_1,\ldots,\lambda_m\).  Define a \(\Sigma^+\)-automaton
+\(\Aut^+=(A,\alpha^+)\) by
+\[
+  \alpha^+_{\lambda_i}=a_i,
+  \qquad
+  \alpha^+_f=\alpha_f
+  \quad(f\in\SigmaSym_n,\ n>0).
+\]
+The fresh constant \(\lambda_i\) should be read as a placeholder for ``some
+term whose automaton state is \(a_i\).''
+
+For \(j=1,\ldots,m\), let
+\[
+  L_j=\{t\in\Term{\Sigma^+}:h_{\Aut^+}(t)=a_j\}.
+\]
+We first prove that every \(L_j\) is regular.  This is the analysis part of
+TW's proof.
+
+For each state \(a_j\), define the finite set of one-step transition patterns
+\[
+  U_j=
+  \{f(\lambda_{i_1},\ldots,\lambda_{i_r}):
+      f\in\SigmaSym_r,\ r>0,
+      \alpha_f(a_{i_1},\ldots,a_{i_r})=a_j\}.
+\]
+Each \(U_j\) is finite, hence regular.
+
+We now approximate \(\Aut^+\) by allowing non-leaf transitions only into the
+first \(k\) states.  Define \(T_j^k\) to be the set of \(\Sigma^+\)-terms whose
+\(\Aut^+\)-run has root state \(a_j\) and in which every non-leaf transition
+result belongs to \(\{a_1,\ldots,a_k\}\).  Constants \(\lambda_i\) are always
+allowed, since they are leaves rather than non-leaf transitions.  Thus
+\[
+  T_j^m=L_j.
+\]
+We prove by induction on \(k\) that all sets \(T_j^k\) are regular.
+
+For \(k=1\), no non-leaf transition may produce any state except \(a_1\).  If
+\(j\ne1\), the only way to get state \(a_j\) is the leaf \(\lambda_j\), so
+\[
+  T_j^1=\{\lambda_j\}.
+\]
+For \(j=1\), a term in \(T_1^1\) is obtained by iterating transition patterns
+from \(U_1\) at holes labelled \(\lambda_1\).  In other words,
+\[
+  T_1^1=U_1^{*_{\lambda_1}}.
+\]
+The inclusion \(U_1^{*_{\lambda_1}}\subseteq T_1^1\) follows by induction on
+the closure stage: every pattern in \(U_1\) has root state \(a_1\), and replacing
+a \(\lambda_1\)-hole by a term whose state is \(a_1\) preserves the surrounding
+state by the replacement lemma.  Conversely, induction on the term shows that
+any \(T_1^1\)-term is built by exactly this iteration, since every non-leaf node
+must be one of the patterns in \(U_1\).  Hence the base case is regular.
+
+Assume now that all \(T_j^k\) are regular.  We construct the sets \(T_j^{k+1}\).
+First form
+\[
+  V_{k+1}
+  =
+  (((U_{k+1}\cdot_{\lambda_1}T_1^k)
+      \cdot_{\lambda_2}T_2^k)\cdots
+      \cdot_{\lambda_m}T_m^k).
+\]
+The set \(V_{k+1}\) consists of terms whose root is one new non-leaf transition
+to \(a_{k+1}\), while all proper subcomputations use only the first \(k\) states
+as non-leaf transition results.  By the induction hypothesis and closure of
+regular sets under complex product, \(V_{k+1}\) is regular.  Let
+\[
+  W_{k+1}=V_{k+1}^{*_{\lambda_{k+1}}}.
+\]
+This is regular by closure under \(\lambda_{k+1}\)-closure.
+
+We claim that, for \(j\le k+1\),
+\[
+  T_j^{k+1}=T_j^k\cdot_{\lambda_{k+1}}W_{k+1}.       \tag{\(*\)}
+\]
+The inclusion from right to left is the easy replacement direction.  Every term
+of \(W_{k+1}\) has \(\Aut^+\)-state \(a_{k+1}\), proved by induction on the
+closure stage defining \(W_{k+1}\): each element of \(V_{k+1}\) has root state
+\(a_{k+1}\), and replacing \(\lambda_{k+1}\)-holes by terms of state
+\(a_{k+1}\) preserves state.  Therefore replacing \(\lambda_{k+1}\)-leaves in a
+term from \(T_j^k\) by elements of \(W_{k+1}\) preserves the root state \(a_j\)
+and introduces only allowed non-leaf transitions to \(a_{k+1}\).  Hence the
+result lies in \(T_j^{k+1}\).
+
+For the converse inclusion, let \(X_0=\{\lambda_{k+1}\}\) and
+\[
+  X_{r+1}=X_r\cup (V_{k+1}\cdot_{\lambda_{k+1}}X_r).
+\]
+Thus \(W_{k+1}=\bigcup_r X_r\).  We prove, by induction on the number \(r\) of
+non-leaf transitions to \(a_{k+1}\) occurring in the computation of a term
+\(t\in T_j^{k+1}\), that
+\[
+  t\in T_j^k\cdot_{\lambda_{k+1}}X_r.        \tag{\(**\)}
+\]
+If \(r=0\), then no non-leaf transition to \(a_{k+1}\) occurs, so the same
+computation already satisfies the definition of \(T_j^k\).  Hence
+\[
+  t\in T_j^k=T_j^k\cdot_{\lambda_{k+1}}\{\lambda_{k+1}\}
+  =T_j^k\cdot_{\lambda_{k+1}}X_0.
+\]
+For the inductive step, choose a lowest occurrence whose root transition is a
+non-leaf transition to \(a_{k+1}\).  Call this subterm \(v\).  Its immediate
+children have no non-leaf transition to \(a_{k+1}\) below them, so each child
+belongs to some \(T_i^k\).  Therefore \(v\in V_{k+1}\).  Replace this occurrence
+of \(v\) in \(t\) by \(\lambda_{k+1}\), obtaining a term \(t_0\).  The term
+\(t_0\) has one fewer non-leaf transition to \(a_{k+1}\), so by induction
+\[
+  t_0\in T_j^k\cdot_{\lambda_{k+1}}X_r.
+\]
+Restoring \(v\) means replacing one \(\lambda_{k+1}\)-hole by an element of
+\(V_{k+1}\), hence
+\[
+  t\in (T_j^k\cdot_{\lambda_{k+1}}X_r)
+        \cdot_{\lambda_{k+1}}V_{k+1}
+  \subseteq T_j^k\cdot_{\lambda_{k+1}}X_{r+1}.
+\]
+This proves \((**)\), and therefore \(T_j^{k+1}\subseteq
+T_j^k\cdot_{\lambda_{k+1}}W_{k+1}\).  The claim \((*)\) follows.
+
+For \(j>k+1\), still no non-leaf transition may produce \(a_j\), so
+\[
+  T_j^{k+1}=\{\lambda_j\}.
+\]
+Thus all \(T_j^{k+1}\) are regular, completing the induction on \(k\).  Hence
+all \(L_j=T_j^m\) are regular.
+
+It remains to translate this back from the fresh constants to the original
+constants of \(\SigmaSym\).  For each state \(a_i\), let
+\[
+  C_i=\{c\in\SigmaSym_0:\alpha_c=a_i\}.
+\]
+Each \(C_i\) is finite.  Let
+\[
+  L_F=\bigcup_{a_i\in A_F}L_i.
+\]
+Then
+\[
+  U
+  =
+  (((L_F\cdot_{\lambda_1}C_1)\cdot_{\lambda_2}C_2)\cdots
+    \cdot_{\lambda_m}C_m).       \tag{\(\dagger\)}
+\]
+Indeed, replacing every fresh constant \(\lambda_i\) by an original constant
+from \(C_i\) preserves the state by the replacement lemma, so the right hand
+side is contained in \(U\).  Conversely, if \(s\in U\), replace each original
+constant \(c\) in \(s\) by the fresh constant \(\lambda_i\) such that
+\(\alpha_c=a_i\).  The resulting \(\Sigma^+\)-term has the same root state and
+therefore lies in \(L_F\), and \(s\) is recovered by the displayed iterated
+complex product.  Since the right hand side of \((\dagger)\) is regular,
+\(U\) is regular.
+\end{proof}
+
+\begin{theorem}[TW Theorem 8: recognizable iff regular]\label{thm:tw-recognizable-regular}
 For every finite species, \(U\subseteq\Term{\SigmaSym}\) is recognizable iff it
 is regular.
 \end{theorem}
 
-\begin{proof}[Proof structure]
-\TW{} split the proof into analysis and synthesis.
+\begin{proof}
+The forward implication is exactly the analysis theorem above.
 
-Analysis (TW Theorem~9): every recognizable set is regular.  The proof adds one
-fresh constant \(\lambda_a\) for each automaton state \(a\).  Regular sets
-\(T^k_i\) are built by induction so that \(T^k_i\) contains exactly the terms
-whose partial automaton computation reaches state \(a_i\) using only the first
-\(k\) states as non-initial transition targets.  The induction step is expressed
-using complex product and closure.
-
-Synthesis: finite sets are recognizable (Lemma~10), recognizable sets are closed
-under union (Theorem~2), complex product (Lemma~11), and closure (Lemma~12).
+For the converse, argue by induction on the construction of a regular set.
+Finite sets are recognizable by Lemma~\ref{lem:tw-finite-recognizable}.
+Recognizable sets are closed under finite union by Theorem~\ref{thm:tw-boolean}.
+They are closed under complex product by
+Lemma~\ref{lem:tw-complex-product}, and under complex closure by
+Lemma~\ref{lem:tw-complex-closure}.  These are precisely the operations used to
+generate regular sets, even after adding finitely many fresh constants.  Hence
+every regular set is recognizable.
 \end{proof}
 
-\begin{lemma}[TW Lemma 10]
+\begin{lemma}[TW Lemma 10]\label{lem:tw-finite-recognizable}
 Every finite subset of \(\Term{\SigmaSym}\) is recognizable.
 \end{lemma}
 
-\begin{proof}[Idea]
-Construct an automaton recognizing a singleton term by matching its finite tree
-shape bottom-up, then use Boolean closure for finite unions.
+\begin{proof}
+It is enough to recognize singleton languages, because finite unions of
+recognizable sets are recognizable by Theorem~\ref{thm:tw-boolean}.
+
+Fix a term \(s\).  Let \(\mathrm{Sub}(s)\) be the finite set of subterms of
+\(s\), and add one extra state \(\bot\).  Define a deterministic automaton
+\(\Aut_s\) with state set
+\[
+  \mathrm{Sub}(s)\cup\{\bot\}.
+\]
+For a constant \(c\in\SigmaSym_0\), set
+\[
+  \alpha_c=
+  \begin{cases}
+    c, & c\in\mathrm{Sub}(s),\\
+    \bot, & c\notin\mathrm{Sub}(s).
+  \end{cases}
+\]
+For \(f\in\SigmaSym_n\) with \(n>0\), define
+\[
+  \alpha_f(q_1,\ldots,q_n)=
+  \begin{cases}
+    f(q_1,\ldots,q_n),
+      & q_i\in\mathrm{Sub}(s)\text{ for all }i
+        \text{ and }f(q_1,\ldots,q_n)\in\mathrm{Sub}(s),\\
+    \bot, & \text{otherwise}.
+  \end{cases}
+\]
+Here the expression \(f(q_1,\ldots,q_n)\) is used only in the first case, where
+the \(q_i\)'s are genuine subterms.
+
+We claim that for every input term \(t\),
+\[
+  h_{\Aut_s}(t)=
+  \begin{cases}
+    t, & t\in\mathrm{Sub}(s),\\
+    \bot, & t\notin\mathrm{Sub}(s).
+  \end{cases}        \tag{\(*\)}
+\]
+This is proved by structural induction on \(t\).  The constant case is exactly
+the definition of \(\alpha_c\).  For \(t=f(t_1,\ldots,t_n)\), the induction
+hypothesis says that each child state is either the child term \(t_i\), if
+\(t_i\in\mathrm{Sub}(s)\), or \(\bot\), otherwise.  If any child is \(\bot\), the
+transition returns \(\bot\).  If all children are subterms, the transition
+returns \(f(t_1,\ldots,t_n)=t\) exactly when \(t\in\mathrm{Sub}(s)\), and returns
+\(\bot\) otherwise.  Thus \((*)\) holds.
+
+Taking the unique final state to be \(s\), we get
+\[
+  \bh_{\Aut_s}(\{s\})=\{s\}.
+\]
+Therefore every singleton is recognizable, and hence every finite set is
+recognizable.
 \end{proof}
 
-\begin{lemma}[TW Lemma 11: closure under complex product]
+\begin{lemma}[TW Lemma 11: closure under complex product]\label{lem:tw-complex-product}
 If \(U,V\subseteq\Term{\SigmaSym}\) are recognizable, then
 \[
   U\cdot_\lambda V
@@ -743,26 +1206,350 @@ If \(U,V\subseteq\Term{\SigmaSym}\) are recognizable, then
 is recognizable for every \(\lambda\in\SigmaSym_0\).
 \end{lemma}
 
-\begin{proof}[Construction idea]
-Given automata for \(U\) and \(V\), construct a nondeterministic automaton that
-either simulates the \(U\)-automaton or, when it reaches a \(\lambda\)-hole,
-switches to a complete run of the \(V\)-automaton.  If the inserted \(V\)-term is
-accepted, the surrounding run may continue as though the \(\lambda\)-constant had
-been read.  The proof uses a simultaneous induction: one invariant describes
-states arising from the \(U\)-side, the other says the \(V\)-side simulation is
-faithful.
+\begin{proof}
+Let deterministic automata \(\Aut=(A,\alpha)\) and \(\mathcal B=(B,\beta)\)
+recognize \(U\) and \(V\), with final sets \(A_F\) and \(B_F\).  We may assume
+the state sets are disjoint, replacing them by tagged copies if necessary.
+
+Construct a nondeterministic automaton \(\mathcal N\) with state set
+\[
+  A\cup B.
+\]
+The \(B\)-states simulate the automaton for \(V\).  The \(A\)-states simulate
+the outer automaton for \(U\).  Whenever a subtree is accepted by the
+\(V\)-automaton, \(\mathcal N\) may also treat the whole subtree as one
+\(\lambda\)-leaf for the \(U\)-automaton.
+
+For a constant \(c\in\SigmaSym_0\), put \(\beta_c\) into the set of possible
+states.  If \(c\ne\lambda\), also put \(\alpha_c\) into the set of possible
+states.  Finally, if \(\beta_c\in B_F\), also put \(\alpha_\lambda\) into the
+set of possible states.  Thus an accepted \(V\)-constant can be collapsed to a
+\(\lambda\)-hole for the outer computation.
+
+For \(f\in\SigmaSym_n\), \(n>0\), the transition relation contains:
+\begin{itemize}[leftmargin=*]
+  \item the \(B\)-simulation transition
+  \[
+    (\beta_f(b_1,\ldots,b_n))
+    \quad\text{from }(b_1,\ldots,b_n)\in B^n;
+  \]
+  \item the \(A\)-simulation transition
+  \[
+    \alpha_f(a_1,\ldots,a_n)
+    \quad\text{from }(a_1,\ldots,a_n)\in A^n;
+  \]
+  \item the collapse transition to \(\alpha_\lambda\) from
+  \((b_1,\ldots,b_n)\in B^n\) whenever
+  \[
+    \beta_f(b_1,\ldots,b_n)\in B_F.
+  \]
+\end{itemize}
+Use \(A_F\) as the accepting set of \(\mathcal N\).
+
+We prove two invariants by induction on the input term \(t\).
+\[
+  b\in h_{\mathcal N}(t)\cap B
+  \quad\Longleftrightarrow\quad
+  h_{\mathcal B}(t)=b.                       \tag{B}
+\]
+For constants this is just the definition of the initial \(B\)-state
+\(\beta_c\).  For \(t=f(t_1,\ldots,t_n)\), a \(B\)-state can be produced only
+by the \(B\)-simulation transition, so it has the form
+\[
+  \beta_f(b_1,\ldots,b_n)
+\]
+with \(b_i\in h_{\mathcal N}(t_i)\cap B\).  By the induction hypothesis,
+\(b_i=h_{\mathcal B}(t_i)\), hence the produced state is exactly
+\[
+  \beta_f(h_{\mathcal B}(t_1),\ldots,h_{\mathcal B}(t_n))
+  =
+  h_{\mathcal B}(t).
+\]
+The converse direction is obtained by taking the unique \(B\)-states
+\(h_{\mathcal B}(t_i)\) in the children and applying the \(B\)-simulation
+transition.  Thus (B) holds.
+
+The \(A\)-state invariant is:
+\[
+  a\in h_{\mathcal N}(t)\cap A
+  \quad\Longleftrightarrow\quad
+  \exists u\in\Term{\SigmaSym},\
+    t\in\{u\}\cdot_\lambda V
+    \text{ and } h_\Aut(u)=a.                \tag{A}
+\]
+For constants, there are two ways to produce an \(A\)-state.  If
+\(c\ne\lambda\), the ordinary \(A\)-state \(\alpha_c\) is produced; the witness
+is \(u=c\), and \(c\in\{c\}\cdot_\lambda V\).  If \(\beta_c\in B_F\), then
+\(\mathcal N\) may produce \(\alpha_\lambda\); by (B), \(c\in V\), so the witness
+is \(u=\lambda\), since \(c\in\{\lambda\}\cdot_\lambda V\).  Conversely, these
+are the only possibilities for a constant input: if
+\[
+  c\in\{u\}\cdot_\lambda V,
+\]
+then either \(u=c\ne\lambda\), or \(u=\lambda\) and \(c\in V\).
+
+For the inductive step, let \(t=f(t_1,\ldots,t_n)\).  If \(\mathcal N\) produces
+an \(A\)-state by an \(A\)-simulation transition, then the child states have
+witnesses \(u_i\) by the induction hypothesis.  Taking
+\[
+  u=f(u_1,\ldots,u_n)
+\]
+gives \(t\in\{u\}\cdot_\lambda V\), and the produced state is
+\[
+  \alpha_f(h_\Aut(u_1),\ldots,h_\Aut(u_n))=h_\Aut(u).
+\]
+If \(\mathcal N\) produces \(\alpha_\lambda\) by a collapse transition, then by
+(B) the whole term \(t\) is accepted by \(\mathcal B\), so \(t\in V\); take
+\(u=\lambda\).  This proves the left-to-right direction of (A).
+
+For the converse direction of (A), suppose
+\[
+  t\in\{u\}\cdot_\lambda V
+  \qquad\text{and}\qquad
+  h_\Aut(u)=a.
+\]
+If \(u=\lambda\), then \(t\in V\), so \(h_{\mathcal B}(t)\in B_F\).  By (B), the
+\(B\)-run of \(t\) is available in \(\mathcal N\), and the collapse rule produces
+\[
+  \alpha_\lambda=h_\Aut(\lambda)=a.
+\]
+If \(u=c\ne\lambda\) is a constant, then \(t=c\) and the initial \(A\)-state
+\(\alpha_c=a\) is present.  Finally, if \(u=f(u_1,\ldots,u_n)\), then
+\[
+  t=f(t_1,\ldots,t_n)
+\]
+with \(t_i\in\{u_i\}\cdot_\lambda V\) for each \(i\).  By induction, each child
+run contains the state \(h_\Aut(u_i)\).  The \(A\)-simulation transition then
+produces
+\[
+  \alpha_f(h_\Aut(u_1),\ldots,h_\Aut(u_n))
+  =
+  h_\Aut(u)
+  =
+  a.
+\]
+This completes the proof of (A).
+
+Now
+\[
+  t\in\bh_{\mathcal N}(A_F)
+  \Longleftrightarrow
+  \exists a\in A_F,\ a\in h_{\mathcal N}(t)
+  \Longleftrightarrow
+  \exists u\in U,\ t\in\{u\}\cdot_\lambda V
+  \Longleftrightarrow
+  t\in U\cdot_\lambda V.
+\]
+Therefore \(U\cdot_\lambda V\) is recognizable.
 \end{proof}
 
-\begin{lemma}[TW Lemma 12: closure under complex closure]
+\begin{lemma}[TW Lemma 12: closure under complex closure]\label{lem:tw-complex-closure}
 If \(U\subseteq\Term{\SigmaSym}\) is recognizable, then \(U^{*_\lambda}\) is
 recognizable.
 \end{lemma}
 
-\begin{proof}[Construction idea]
-Use a nondeterministic automaton that simulates the automaton for \(U\), and
-whenever a completed subterm is accepted as an element of \(U\), it may collapse
-that subterm to the state corresponding to the constant \(\lambda\).  This
-implements iterated substitution at \(\lambda\).
+\begin{proof}
+Let \(\Aut=(A,\alpha)\) recognize \(U\), with final set \(A_F\).  We use a
+tagged copy of \(A\), written
+\[
+  \widehat A=\{\widehat a:a\in A\},
+\]
+and one fresh state \(q_\lambda\).  The state \(q_\lambda\) means ``this subtree
+has already been proved to lie in the closure and may be used as a
+\(\lambda\)-replacement.''  Define
+\[
+  \mathrm{val}(\widehat a)=a,
+  \qquad
+  \mathrm{val}(q_\lambda)=\alpha_\lambda.
+\]
+Construct a nondeterministic automaton \(\mathcal N\) with state set
+\[
+  \widehat A\cup\{q_\lambda\}.
+\]
+
+For constants \(c\in\SigmaSym_0\), the initial states are:
+\[
+  q_\lambda \quad\text{if } c=\lambda,
+\]
+\[
+  \widehat{\alpha_c} \quad\text{if } c\ne\lambda,
+\]
+and also
+\[
+  q_\lambda \quad\text{if } c\ne\lambda\text{ and }\alpha_c\in A_F.
+\]
+The last clause says that an input constant already accepted as a member of
+\(U\) may be collapsed to a \(\lambda\)-replacement.  The first clause supplies
+the base element \(\lambda\in U^{*_\lambda}\).  We deliberately do not use
+\(\widehat{\alpha_\lambda}\) as the accepting marker; \(q_\lambda\) is fresh, so
+no unrelated term can be accepted merely because its ordinary automaton state is
+\(\alpha_\lambda\).
+
+For \(f\in\SigmaSym_n\), \(n>0\), and child states \(r_1,\ldots,r_n\), let
+\[
+  a=\alpha_f(\mathrm{val}(r_1),\ldots,\mathrm{val}(r_n)).
+\]
+The transition relation allows output \(\widehat a\).  If \(a\in A_F\), it also
+allows output \(q_\lambda\).  The final set is the singleton
+\[
+  \{q_\lambda\}.
+\]
+
+Let \(X_0=\{\lambda\}\) and
+\[
+  X_{r+1}=X_r\cup(U\cdot_\lambda X_r),
+  \qquad
+  U^{*_\lambda}=\bigcup_r X_r.
+\]
+The sequence is monotone, since \(X_r\subseteq X_{r+1}\) for every \(r\).
+We use the following elementary consequence of the definition: if
+\[
+  C=U^{*_\lambda},
+\]
+then
+\[
+  U\cdot_\lambda C\subseteq C.              \tag{1}
+\]
+Indeed, if \(t\in U\cdot_\lambda C\), then \(t\) is obtained from some
+\(u\in U\) by replacing the finitely many \(\lambda\)-occurrences of \(u\) by
+terms \(s_1,\ldots,s_m\in C\).  Choose stages \(r_i\) with \(s_i\in X_{r_i}\),
+and let \(r=\max_i r_i\) (with \(r=0\) if there are no such occurrences).  Then
+all \(s_i\in X_r\), so
+\[
+  t\in U\cdot_\lambda X_r\subseteq X_{r+1}\subseteq C.
+\]
+
+We now prove, by induction on \(r\), that
+\[
+  t\in X_r \quad\Longrightarrow\quad q_\lambda\in h_{\mathcal N}(t).      \tag{3}
+\]
+For \(r=0\), \(t=\lambda\), and \(q_\lambda\) is an initial state at
+\(\lambda\).  Suppose the claim is known for \(X_r\).  We first derive the
+auxiliary assertion
+\[
+  u\ne\lambda\text{ and }t\in\{u\}\cdot_\lambda X_r
+  \quad\Longrightarrow\quad
+  \widehat{h_\Aut(u)}\in h_{\mathcal N}(t),        \tag{2}
+\]
+by structural induction on \(u\).
+
+If \(u=c\ne\lambda\) is a constant, then \(t=c\), and the initial state
+\(\widehat{\alpha_c}\) is present.  If
+\[
+  u=f(u_1,\ldots,u_n),
+\]
+then \(t=f(t_1,\ldots,t_n)\), where
+\[
+  t_i\in\{u_i\}\cdot_\lambda X_r
+\]
+for each \(i\).  For a child \(u_i=\lambda\), this says \(t_i\in X_r\), so the
+induction hypothesis on the stage gives
+\[
+  q_\lambda\in h_{\mathcal N}(t_i).
+\]
+For a child \(u_i\ne\lambda\), the structural induction hypothesis gives
+\[
+  \widehat{h_\Aut(u_i)}\in h_{\mathcal N}(t_i).
+\]
+In both cases we have chosen a child state \(r_i\) with
+\[
+  \mathrm{val}(r_i)=h_\Aut(u_i).
+\]
+The transition for \(f\) therefore produces
+\[
+  \widehat{\alpha_f(h_\Aut(u_1),\ldots,h_\Aut(u_n))}
+  =
+  \widehat{h_\Aut(u)}.
+\]
+This proves (2) under the induction hypothesis for \(X_r\).
+
+Now let \(t\in X_{r+1}\).
+If \(t\in X_r\), we are done.  Otherwise
+\[
+  t\in U\cdot_\lambda X_r.
+\]
+Choose \(u\in U\) with \(t\in\{u\}\cdot_\lambda X_r\).  If \(u=\lambda\), then
+\(t\in X_r\), so the induction hypothesis applies.  If \(u\ne\lambda\), (2)
+gives \(\widehat{h_\Aut(u)}\in h_{\mathcal N}(t)\).  Since \(u\in U\), we have
+\[
+  h_\Aut(u)\in A_F.
+\]
+If \(u=c\ne\lambda\) is a constant, then \(t=c\), and the extra initial-state
+clause for final constants gives \(q_\lambda\).  If \(u\) has positive arity,
+the last transition used in the proof of (2) computes the value \(h_\Aut(u)\);
+because this value is final, the same child states also allow the output
+\(q_\lambda\).  This proves (3).
+
+It remains to prove the converse implication
+\[
+  q_\lambda\in h_{\mathcal N}(t)
+  \quad\Longrightarrow\quad
+  t\in U^{*_\lambda}.                         \tag{4}
+\]
+The reverse implication follows already from (3), since
+\(U^{*_\lambda}=\bigcup_r X_r\).
+
+To prove (4), we prove simultaneously, by structural
+induction on \(t\), the following two assertions:
+\[
+  q_\lambda\in h_{\mathcal N}(t)\Rightarrow t\in C,             \tag{Q}
+\]
+and
+\[
+  \widehat a\in h_{\mathcal N}(t)
+  \Rightarrow
+  \exists u\ne\lambda,\ t\in\{u\}\cdot_\lambda C
+    \text{ and } h_\Aut(u)=a.                                  \tag{A}
+\]
+For a constant \(c\), assertion (Q) holds because \(q_\lambda\) is initial only
+when either \(c=\lambda\), hence \(c\in X_0\), or \(c\ne\lambda\) and
+\(\alpha_c\in A_F\), hence \(c\in U\cdot_\lambda X_0\subseteq C\).  Assertion
+(A) holds because the only tagged initial state is \(\widehat{\alpha_c}\) with
+\(c\ne\lambda\), witnessed by \(u=c\).
+
+Let \(t=f(t_1,\ldots,t_n)\).  If \(\widehat a\in h_{\mathcal N}(t)\), then it is
+produced from child states \(r_i\in h_{\mathcal N}(t_i)\).  If
+\(r_i=q_\lambda\), use (Q) for \(t_i\) and set \(u_i=\lambda\).  If
+\(r_i=\widehat{a_i}\), use (A) for \(t_i\) to choose \(u_i\ne\lambda\) with
+\[
+  t_i\in\{u_i\}\cdot_\lambda C
+  \quad\text{and}\quad
+  h_\Aut(u_i)=a_i.
+\]
+Set \(u=f(u_1,\ldots,u_n)\).  Then \(u\ne\lambda\),
+\[
+  t\in\{u\}\cdot_\lambda C,
+\]
+by the defining, coordinatewise clause for the complex product, and, by the
+definition of \(\mathrm{val}\),
+\[
+  h_\Aut(u)=\alpha_f(\mathrm{val}(r_1),\ldots,\mathrm{val}(r_n))=a.
+\]
+This proves (A) for \(t\).
+
+If \(q_\lambda\in h_{\mathcal N}(t)\), then it is produced by a collapse rule
+from some child states \(r_i\), and the corresponding value
+\[
+  a=\alpha_f(\mathrm{val}(r_1),\ldots,\mathrm{val}(r_n))
+\]
+lies in \(A_F\).  By the previous paragraph, applied to the tagged state
+\(\widehat a\) produced by the same child states, there is \(u\ne\lambda\) with
+\[
+  t\in\{u\}\cdot_\lambda C
+  \quad\text{and}\quad
+  h_\Aut(u)=a\in A_F.
+\]
+Thus \(u\in U\), so \(t\in U\cdot_\lambda C\subseteq C\) by (1).  This proves
+(Q), and hence (4).
+
+Therefore
+\[
+  q_\lambda\in h_{\mathcal N}(t)
+  \quad\Longleftrightarrow\quad
+  t\in U^{*_\lambda},
+\]
+so \(\mathcal N\), with final state \(q_\lambda\), recognizes
+\(U^{*_\lambda}\).
 \end{proof}
 
 \begin{definition}[Truncation, TW \S3]
@@ -783,19 +1570,186 @@ If \(U\subseteq\Term{\SigmaSym}\) is recognizable and
 recognizable.
 \end{lemma}
 
-\begin{proof}[Construction]
-Let \(\Aut=(A,\alpha)\) recognize \(U\), and let
+\begin{proof}
+Let \(\Aut=(A,\alpha)\) recognize \(U\), with final set \(A_F\), so
 \[
-  A_V=\{h_\Aut(t):t\in V\}.
+  U=\bh_\Aut(A_F).
 \]
-Construct a nondeterministic automaton with the same ordinary transitions as
-\(\Aut\), but with the constant \(\lambda\) allowed to start in any state of
-\(A_V\).  The proof is by induction on terms and establishes:
+Although \(V\) is arbitrary, we only need to remember which states of
+\(\Aut\) are reached by terms of \(V\).  Put
 \[
-  t'\in t\cdot_\lambda V \Rightarrow h_\Aut(t')\in h(t),
+  A_V=\{h_\Aut(v):v\in V\}\subseteq A.
 \]
-and conversely, every state in the new run of \(t\) is realized by some
-\(t'\in t\cdot_\lambda V\).
+This is a finite set because \(A\) is finite.
+
+Construct a nondeterministic automaton \(\mathcal N=(A,\rho)\) on the same state
+set \(A\).  For constants \(c\in\SigmaSym_0\), define the initial-state
+relation by
+\[
+  \rho_c=
+  \begin{cases}
+    \{\alpha_c\}, & c\ne\lambda,\\
+    A_V,          & c=\lambda.
+  \end{cases}
+\]
+For a positive-arity symbol \(f\in\SigmaSym_n\), \(n>0\), let \(\rho_f\) be the
+graph of the original deterministic transition:
+\[
+  \rho_f(a_1,\ldots,a_n,a)
+  \quad\Longleftrightarrow\quad
+  \alpha_f(a_1,\ldots,a_n)=a.
+\]
+Thus \(\mathcal N\) behaves exactly like \(\Aut\) except at a visible
+\(\lambda\)-leaf, where it may guess the state of some term from \(V\).  We use
+the same accepting set \(A_F\).
+
+We prove two statements by structural induction on the visible term \(t\):
+\[
+  s\in\{t\}\cdot_\lambda V
+  \quad\Longrightarrow\quad
+  h_\Aut(s)\in h_{\mathcal N}(t),             \tag{I}
+\]
+and
+\[
+  a\in h_{\mathcal N}(t)
+  \quad\Longrightarrow\quad
+  \exists s\in\{t\}\cdot_\lambda V,\ h_\Aut(s)=a.   \tag{II}
+\]
+Statement (I) says that every genuine expansion of \(t\) by \(V\)-terms is
+simulated by the nondeterministic run on the truncated term \(t\).  Statement
+(II) says that every nondeterministic choice made by \(\mathcal N\) is realized
+by some such expansion.
+
+First let \(t=c\) be a constant.  If \(c\ne\lambda\), then
+\[
+  \{c\}\cdot_\lambda V=\{c\}
+\]
+and
+\[
+  h_{\mathcal N}(c)=\{\alpha_c\}.
+\]
+Hence (I) and (II) both hold with the unique witness \(s=c\).  If
+\(c=\lambda\), then
+\[
+  \{\lambda\}\cdot_\lambda V=V
+  \qquad\text{and}\qquad
+  h_{\mathcal N}(\lambda)=A_V.
+\]
+For (I), if \(s\in V\), then \(h_\Aut(s)\in A_V=h_{\mathcal N}(\lambda)\).
+For (II), if \(a\in h_{\mathcal N}(\lambda)=A_V\), then by definition of
+\(A_V\) there is some \(s\in V=\{\lambda\}\cdot_\lambda V\) with
+\[
+  h_\Aut(s)=a.
+\]
+
+Now let
+\[
+  t=f(t_1,\ldots,t_n)
+\]
+with \(n>0\), and assume (I) and (II) for \(t_1,\ldots,t_n\).
+
+For (I), suppose
+\[
+  s\in\{t\}\cdot_\lambda V.
+\]
+By the recursive definition of complex product, \(s\) has the form
+\[
+  s=f(s_1,\ldots,s_n)
+\]
+with
+\[
+  s_i\in\{t_i\}\cdot_\lambda V
+  \qquad (i=1,\ldots,n).
+\]
+By the induction hypothesis for (I),
+\[
+  h_\Aut(s_i)\in h_{\mathcal N}(t_i)
+  \qquad (i=1,\ldots,n).
+\]
+Since \(\rho_f\) is the graph of \(\alpha_f\), these child states produce the
+root state
+\[
+  \alpha_f(h_\Aut(s_1),\ldots,h_\Aut(s_n))
+  =
+  h_\Aut(s)
+\]
+in the nondeterministic run of \(t\).  Therefore
+\[
+  h_\Aut(s)\in h_{\mathcal N}(t).
+\]
+
+For (II), suppose \(a\in h_{\mathcal N}(t)\).  By the definition of the
+nondeterministic run, there are states
+\[
+  a_i\in h_{\mathcal N}(t_i)
+  \qquad (i=1,\ldots,n)
+\]
+such that
+\[
+  \rho_f(a_1,\ldots,a_n,a).
+\]
+Because \(\rho_f\) is the graph of \(\alpha_f\), this means
+\[
+  a=\alpha_f(a_1,\ldots,a_n).
+\]
+By the induction hypothesis for (II), for each \(i\) choose
+\[
+  s_i\in\{t_i\}\cdot_\lambda V
+  \qquad\text{with}\qquad
+  h_\Aut(s_i)=a_i.
+\]
+Set
+\[
+  s=f(s_1,\ldots,s_n).
+\]
+Then, again by the recursive definition of complex product,
+\[
+  s\in\{t\}\cdot_\lambda V,
+\]
+and
+\[
+  h_\Aut(s)
+  =
+  \alpha_f(h_\Aut(s_1),\ldots,h_\Aut(s_n))
+  =
+  \alpha_f(a_1,\ldots,a_n)
+  =
+  a.
+\]
+This proves (II).
+Therefore the simultaneous structural induction establishes (I) and (II) for
+all terms \(t\).
+
+It remains to identify the accepted language of \(\mathcal N\).  If
+\[
+  t\in U/_{\lambda}V,
+\]
+then by definition there is some
+\[
+  s\in(\{t\}\cdot_\lambda V)\cap U.
+\]
+Since \(s\in U=\bh_\Aut(A_F)\), we have \(h_\Aut(s)\in A_F\).  By (I),
+\[
+  h_\Aut(s)\in h_{\mathcal N}(t),
+\]
+so \(h_{\mathcal N}(t)\cap A_F\neq\emptyset\), and \(t\) is accepted by
+\(\mathcal N\).
+
+Conversely, suppose \(t\) is accepted by \(\mathcal N\).  Then there is some
+\[
+  a\in h_{\mathcal N}(t)\cap A_F.
+\]
+By (II), choose \(s\in\{t\}\cdot_\lambda V\) with \(h_\Aut(s)=a\).  Since
+\(a\in A_F\), the term \(s\) lies in \(U\).  Hence
+\[
+  s\in(\{t\}\cdot_\lambda V)\cap U,
+\]
+so \((\{t\}\cdot_\lambda V)\cap U\neq\emptyset\), and therefore
+\[
+  t\in U/_{\lambda}V.
+\]
+Thus \(\bh_{\mathcal N}(A_F)=U/_{\lambda}V\), so \(U/_{\lambda}V\) is
+recognizable.
 \end{proof}
 
 \section{Weak MSO Over the Binary Successor Tree}
@@ -814,25 +1768,16 @@ variables ranging over finite subsets of \(N_2\), equality, membership, and
 binary successor predicates \(R_i(x,y)\), interpreted as \(r_i(x)=y\).
 \end{definition}
 
-\begin{theorem}[TW Theorem 14, Doner]
+\begin{theorem}[TW Theorem 14, Doner]\label{thm:tw-doner}
 The weak monadic second-order theory of multiple successors is decidable.
 \end{theorem}
 
-\begin{proof}[TW proof plan]
-It suffices to treat \(N_2\).  The proof has three steps:
-\begin{enumerate}[leftmargin=*]
-  \item translate away first-order variables by replacing them with singleton set
-    variables;
-  \item encode \(n\)-tuples of finite subsets of \(N_2\) as finite terms over a
-    finite dyadic species;
-  \item prove that every relation definable in the set-only language is
-    recognizable under this encoding.
-\end{enumerate}
-Decidability then follows by effectively constructing the automaton associated
-to a sentence and applying the emptiness theorem.
-\end{proof}
+\noindent
+\TW{} state this theorem before developing the machinery used in its proof.  We
+follow that order: the proof is given at the end of this section, after the
+set-only translation, the finite-set encoding, and Theorem~\ref{thm:tw-definable-recognizable}.
 
-\section{Eliminating First-Order Variables}
+\section{Eliminating First-Order Variables}\label{sec:tw-eliminate-first-order}
 
 \begin{definition}[Set-only translation]
 Replace each first-order variable \(x\) by a set variable \(X_x\), constrained to
@@ -848,7 +1793,8 @@ be a singleton.  A convenient cleaned definition of singleton, using only
 \]
 The atomic translation is:
 \[
-  (x=y)^* \;=\; X_x\subseteq X_y\wedge\mathrm{Sing}(X_x)\wedge
+  (x=y)^* \;=\; X_x\subseteq X_y\wedge X_y\subseteq X_x\wedge
+  \mathrm{Sing}(X_x)\wedge
   \mathrm{Sing}(X_y),
 \]
 \[
@@ -873,6 +1819,72 @@ The PDF gives an equivalent formula for \(\mathrm{Sing}\), but the OCR in that
 line is especially noisy.  The formula above is the same idea in a form better
 suited to formalization.
 \end{remark}
+
+\medskip
+\noindent\textbf{Verification of the translation.}
+There are two facts to check.
+
+First, the auxiliary predicates have the intended meanings.  For any finite
+set \(A\subseteq N_2\),
+\[
+  \mathrm{Empty}(A)
+  \quad\Longleftrightarrow\quad
+  A=\emptyset.
+\]
+Indeed, if \(A\subseteq B\) for every \(B\), take \(B=\emptyset\).  Conversely,
+\(\emptyset\subseteq B\) for every \(B\).  Also
+\[
+  \mathrm{Sing}(A)
+  \quad\Longleftrightarrow\quad
+  \exists w\in N_2,\ A=\{w\}.
+\]
+If \(\mathrm{Sing}(A)\) holds, then \(A\) is nonempty, so choose \(w\in A\).
+The subset \(\{w\}\subseteq A\) is not empty, so the defining condition for
+\(\mathrm{Sing}\) gives \(A\subseteq\{w\}\), hence \(A=\{w\}\).  Conversely, if
+\(A=\{w\}\), then \(A\) is not empty, and every subset of \(A\) is either
+\(\emptyset\) or \(A\) itself.
+
+Second, the translation preserves truth.  Fix a formula
+\[
+  \varphi(x_1,\ldots,x_r,A_1,\ldots,A_m)
+\]
+of the original weak MSO language.  Given an assignment
+\[
+  x_j\mapsto w_j\in N_2,\qquad A_\ell\mapsto B_\ell\in\powfin(N_2),
+\]
+let the translated assignment send
+\[
+  X_{x_j}\mapsto \{w_j\},\qquad A_\ell\mapsto B_\ell.
+\]
+Then
+\[
+  (w_1,\ldots,w_r,B_1,\ldots,B_m)\models\varphi
+  \quad\Longleftrightarrow\quad
+  (\{w_1\},\ldots,\{w_r\},B_1,\ldots,B_m)\models\varphi^*.       \tag{1}
+\]
+This is proved by structural induction on \(\varphi\).  For atomic formulas,
+\[
+  x=y
+\]
+is equivalent to
+\[
+  \{w_x\}\subseteq\{w_y\}\wedge \{w_y\}\subseteq\{w_x\},
+\]
+membership \(x\in A\) is equivalent to \(\{w_x\}\subseteq A\), and
+\[
+  R_i(x,y)
+\]
+is equivalent to \(\widehat R_i(\{w_x\},\{w_y\})\) by definition of
+\(\widehat R_i\).  Boolean connectives are immediate from the induction
+hypothesis.  For \(\exists x\,\psi\), a witness \(w\in N_2\) corresponds to the
+singleton witness \(\{w\}\) satisfying \(\mathrm{Sing}\), and conversely any
+set satisfying \(\mathrm{Sing}\) is \(\{w\}\) for a unique \(w\).  Existential
+set quantifiers are unchanged.  In particular, if \(S\) is a sentence, then
+\[
+  S\text{ is true}
+  \quad\Longleftrightarrow\quad
+  S^*\text{ is true}.
+\]
 
 \section{Encoding Finite Subsets as Terms}
 
@@ -912,13 +1924,92 @@ The set
 of canonical encodings of finite subsets of \(N_2\) is recognizable.
 \end{lemma}
 
-\begin{proof}[TW proof idea]
-\TW{} exhibit \(U_1\) as a regular set.  Let \(U'_1\) be the finite set of
-one-step terms that can occur in a canonical encoding after a temporary hole
-symbol is allowed.  Its complex closure generates all candidate terms, and
-complex product with the empty set removes the temporary hole.  An induction on
-term depth proves that the generated terms are exactly the canonical encodings.
-Theorem~8 then gives recognizability.
+\begin{proof}
+We prove that \(U_1\) is regular.  By
+Theorem~\ref{thm:tw-recognizable-regular}, this implies recognizability.
+
+Add one fresh constant \(\delta\), used as a temporary hole.  Let \(P_1\) be the
+finite set of one-step patterns
+\[
+  P_1=
+  \{f(x_1,x_2):
+      f\in\{0,1\},\ x_1,x_2\in\{\lambda,\delta\},
+      \text{ and } f(x_1,x_2)\ne 0(\lambda,\lambda)\}.
+\]
+Thus \(P_1\) contains all one-node \(0/1\)-terms with children
+\(\lambda\) or \(\delta\), except for the forbidden redundant subtree
+\(0(\lambda,\lambda)\).  Put
+\[
+  W_1=P_1^{*_\delta}.
+\]
+Equivalently, if
+\[
+  X_0=\{\delta\},\qquad
+  X_{r+1}=X_r\cup(P_1\cdot_\delta X_r),
+\]
+then \(W_1=\bigcup_r X_r\).  We claim that
+\[
+  U_1=(W_1\cdot_\delta\emptyset)\cup\{\lambda\}.        \tag{1}
+\]
+
+First let \(t\in W_1\cdot_\delta\emptyset\).  Since no term can be substituted
+for \(\delta\) from the empty set, this means that \(t\in W_1\) and \(t\) has no
+\(\delta\)-occurrence.  We show that no term of \(W_1\) has
+\(0(\lambda,\lambda)\) as a subterm.  This is by induction on the closure stage
+of \(W_1\).  The base term \(\delta\) has no such subterm.  In the step, a term
+is obtained from a pattern in \(P_1\) by replacing its \(\delta\)-leaves by
+previous-stage terms.  The root pattern is not \(0(\lambda,\lambda)\), by the
+definition of \(P_1\), and the inserted terms have no forbidden subterm by the
+induction hypothesis.  Hence \(t\) has no forbidden subterm.  Since \(t\) also
+contains no \(\delta\), it is a genuine \(\Sigma_1\)-term with no subterm
+\(0(\lambda,\lambda)\), so by the characterization of canonical encodings,
+\[
+  t\in U_1.
+\]
+Also \(\lambda=e(\emptyset)\), so \(\lambda\in U_1\).  This proves the
+right-to-left inclusion in (1).
+
+Conversely, let \(t\in U_1\).  If \(t=\lambda\), then \(t\) belongs to the
+right hand side of (1).  Suppose \(t\ne\lambda\).  We prove by structural
+induction that every non-\(\lambda\) canonical term lies in \(W_1\).  Write
+\[
+  t=f(t_1,t_2),\qquad f\in\{0,1\}.
+\]
+Since \(t\) is canonical, it is not the forbidden term \(0(\lambda,\lambda)\),
+and each non-\(\lambda\) child \(t_i\) is again canonical.  For each child set
+\[
+  y_i=
+  \begin{cases}
+    \lambda, & t_i=\lambda,\\
+    \delta, & t_i\ne\lambda.
+  \end{cases}
+\]
+Then
+\[
+  p=f(y_1,y_2)\in P_1.
+\]
+For every child with \(t_i\ne\lambda\), the induction hypothesis gives
+\[
+  t_i\in W_1.
+\]
+Using \(p\), and replacing its \(\delta\)-occurrences by the corresponding
+non-\(\lambda\) children, gives
+\[
+  t\in P_1\cdot_\delta W_1\subseteq W_1.
+\]
+The last inclusion follows from the definition of complex closure: if the
+finitely many inserted terms lie in stages \(X_{r_i}\), choose
+\(r=\max_i r_i\), and then the resulting term lies in \(X_{r+1}\).  Since the
+original canonical term \(t\) contains no \(\delta\), we also have
+\[
+  t\in W_1\cdot_\delta\emptyset.
+\]
+This proves (1).
+
+The right hand side of (1) is regular: \(P_1\), \(\emptyset\), and
+\(\{\lambda\}\) are finite, and regular sets are closed under complex closure,
+complex product, and finite union.  Therefore \(U_1\) is regular, hence
+recognizable.
 \end{proof}
 
 \begin{definition}[Multi-track encoding]
@@ -947,9 +2038,86 @@ of canonical encodings of \(n\)-tuples of finite subsets of \(N_2\) is
 recognizable.
 \end{lemma}
 
-\begin{proof}[Idea]
-Same proof as Lemma~\ref{lem:tw-encoding-one}, using the all-zero \(n\)-track
-label in place of the single label \(0\).
+\begin{proof}
+The proof is the same as Lemma~\ref{lem:tw-encoding-one}, with the all-zero
+\(n\)-track label replacing the one-track label \(0\).  We spell it out to make
+the induction explicit.
+
+Let
+\[
+  \mathbf 0=(0,\ldots,0)\in\{0,1\}^n,
+\]
+and add a fresh constant \(\delta\).  Define the finite pattern set
+\[
+  P_n=
+  \{\ell(x_1,x_2):
+      \ell\in\{0,1\}^n,\ x_1,x_2\in\{\lambda,\delta\},
+      \text{ and } \ell(x_1,x_2)\ne
+        \mathbf 0(\lambda,\lambda)\}.
+\]
+Put
+\[
+  W_n=P_n^{*_\delta}.
+\]
+We claim that
+\[
+  U_n=(W_n\cdot_\delta\emptyset)\cup\{\lambda\}.       \tag{2}
+\]
+
+For the inclusion from right to left, the same closure-stage induction as above
+shows that no term of \(W_n\) contains the forbidden subterm
+\[
+  \mathbf 0(\lambda,\lambda).
+\]
+Indeed, the base term \(\delta\) has no such subterm; in the induction step, the
+root pattern belongs to \(P_n\), so it is not the forbidden all-zero leaf, and
+the inserted terms satisfy the induction hypothesis.  Thus any term in
+\(W_n\cdot_\delta\emptyset\) is a genuine \(\Sigma_n\)-term with no
+\(\delta\)-occurrence and no forbidden all-zero leaf.  By the characterization of
+canonical \(n\)-track encodings, it belongs to \(U_n\).  The term \(\lambda\) is
+the encoding of the empty \(n\)-tuple
+\[
+  (\emptyset,\ldots,\emptyset),
+\]
+so \(\lambda\in U_n\).
+
+For the converse inclusion, let \(t\in U_n\).  If \(t=\lambda\), then \(t\) is
+in the right hand side of (2).  Otherwise write
+\[
+  t=\ell(t_1,t_2),\qquad \ell\in\{0,1\}^n.
+\]
+We prove, by structural induction, that every non-\(\lambda\) canonical
+\(n\)-track term lies in \(W_n\).  Since \(t\) is canonical, it is not
+\[
+  \mathbf 0(\lambda,\lambda),
+\]
+and each non-\(\lambda\) child \(t_i\) is canonical.  Define
+\[
+  y_i=
+  \begin{cases}
+    \lambda, & t_i=\lambda,\\
+    \delta, & t_i\ne\lambda.
+  \end{cases}
+\]
+Then
+\[
+  p=\ell(y_1,y_2)\in P_n.
+\]
+For every non-\(\lambda\) child, the induction hypothesis gives
+\[
+  t_i\in W_n.
+\]
+Replacing the \(\delta\)-occurrences of \(p\) by those children yields
+\[
+  t\in P_n\cdot_\delta W_n\subseteq W_n,
+\]
+where the last inclusion follows from the stage definition of
+\(\delta\)-closure, just as in Lemma~\ref{lem:tw-encoding-one}.  Since \(t\) has
+no \(\delta\)-occurrence, \(t\in W_n\cdot_\delta\emptyset\).  This proves (2).
+
+The right hand side of (2) is regular, because it is built from finite sets by
+complex closure, complex product, and finite union.  Hence \(U_n\) is regular
+and therefore recognizable by Theorem~\ref{thm:tw-recognizable-regular}.
 \end{proof}
 
 \section{Definable Relations Are Recognizable}
@@ -968,34 +2136,122 @@ Every relation definable in the set-only weak MSO language over \(N_2\) is
 recognizable.
 \end{theorem}
 
-\begin{proof}[Structure]
-Induct on formulas.  Lemma~\ref{lem:tw-atomic} handles atomic formulas.
-Lemma~\ref{lem:tw-logical-closure} handles conjunction, negation, and existential
-set quantification.  The construction is effective because each closure theorem
-gives an explicit automaton construction.
-\end{proof}
+\noindent
+As in \TW{}, the proof is obtained from the two lemmas below: atomic formulas
+are recognizable, and recognizable relations are closed under the logical
+operations.  The proof is given after Lemma~\ref{lem:tw-logical-closure}.
 
 \begin{lemma}[TW Lemma 18: atomic formulas]\label{lem:tw-atomic}
 The relations on \(\powfin(N_2)\) defined by atomic formulas in the set-only
 language are recognizable.
 \end{lemma}
 
-\begin{proof}[Working formalization version]
+\begin{proof}
 The atomic relations are subset \(A\subseteq B\) and singleton-successor
 \(\widehat R_i(A,B)\).
 
-For \(A\subseteq B\), use the two-track alphabet.  A canonical term violates
-subset exactly at a node whose label is \((1,0)\).  Thus the subset relation is
-the recognizable set of canonical encodings that avoid label \((1,0)\); this can
-be recognized by a two-state bottom-up automaton tracking whether a violation
-has appeared.
+For subset, work over the two-track alphabet \(\Sigma_2\).  Let \(N_{10}\) be
+the set of all terms over \(\Sigma_2\) in which the binary label \((1,0)\) never
+occurs.  This set is recognizable by the two-state deterministic automaton with
+states
+\[
+  \mathrm{ok},\mathrm{bad}.
+\]
+The constant \(\lambda\) has state \(\mathrm{ok}\).  At a binary node with label
+\(\ell\in\{0,1\}^2\), the transition returns \(\mathrm{bad}\) if
+\(\ell=(1,0)\) or if one of the children is already \(\mathrm{bad}\); otherwise
+it returns \(\mathrm{ok}\).  The unique accepting state is \(\mathrm{ok}\).
 
-For \(\widehat R_i(A,B)\), first require that both tracks are singletons and then
-check that the unique \(B\)-position is the \(i\)-child of the unique
-\(A\)-position.  \TW{} prove this through explicit regular expressions and
-Theorem~8.  For Lean, a direct bottom-up automaton is probably cleaner: propagate
-whether zero, one, or many marked nodes occur on each track, together with the
-local parent/child relation needed for \(R_i\).
+For a canonical two-track encoding \(e(A,B)\), the label at a position \(w\) is
+\[
+  (1,0)
+  \quad\Longleftrightarrow\quad
+  w\in A \text{ and } w\notin B.
+\]
+Hence
+\[
+  A\subseteq B
+  \quad\Longleftrightarrow\quad
+  e(A,B)\in N_{10}.
+\]
+Therefore
+\[
+  e(\subseteq)=N_{10}\cap U_2,
+\]
+which is recognizable by Boolean closure and Lemma~\ref{lem:tw-encoding-n}.
+
+Now consider \(\widehat R_i(A,B)\).  This relation says that \(A\) and \(B\) are
+singletons, say
+\[
+  A=\{w\},\qquad B=\{wi\}.
+\]
+\TW{} describe this relation by a regular expression.  We spell out the
+construction because it is a useful induction pattern.
+
+Introduce a fresh constant \(\delta\), used only as a temporary hole.  Let
+\[
+  H=\{(0,0)(\delta,\lambda),\ (0,0)(\lambda,\delta)\}.
+\]
+Thus \(H^{*_\delta}\) is the set of chains of \((0,0)\)-nodes with one
+\(\delta\)-hole at the bottom and \(\lambda\)-side branches.  Define the two base
+terms
+\[
+  B_1=(1,0)((0,1)(\lambda,\lambda),\lambda),
+\]
+\[
+  B_2=(1,0)(\lambda,(0,1)(\lambda,\lambda)).
+\]
+Finally set
+\[
+  S_i=H^{*_\delta}\cdot_\delta\{B_i\}.
+\]
+The set \(H\) is finite, hence recognizable; by Lemmas
+\ref{lem:tw-complex-closure} and \ref{lem:tw-complex-product}, each \(S_i\) is
+recognizable.
+
+We claim that
+\[
+  S_i=e(\widehat R_i).
+\]
+For the inclusion \(S_i\subseteq e(\widehat R_i)\), induct on the stage in the
+\(\delta\)-closure defining \(H^{*_\delta}\).  At stage \(0\), substituting
+\(B_i\) for the hole gives the encoding of
+\[
+  (\{\epsilon\},\{i\}).
+\]
+At the next stages, the only new operations are
+\[
+  t\mapsto (0,0)(t,\lambda)
+  \qquad\text{and}\qquad
+  t\mapsto (0,0)(\lambda,t).
+\]
+The first operation prefixes both singleton positions by \(1\), and the second
+prefixes both singleton positions by \(2\).  Therefore, if the old pair is
+\((\{w\},\{wi\})\), the new pair is either
+\[
+  (\{1w\},\{1wi\})
+  \qquad\text{or}\qquad
+  (\{2w\},\{2wi\}),
+\]
+so the successor relation is preserved.  The side branch is \(\lambda\), and
+the active child is not an all-zero redundant subtree, so the resulting term is
+canonical.
+
+Conversely, suppose \(e(A,B)\) satisfies \(\widehat R_i\), say
+\[
+  A=\{w\},\qquad B=\{wi\}.
+\]
+Induct on the length of \(w\).  If \(w=\epsilon\), then the canonical encoding is
+exactly \(B_i\), hence belongs to \(S_i\).  If \(w=1u\), then the canonical
+encoding has the form
+\[
+  (0,0)(t,\lambda),
+\]
+where \(t=e(\{u\},\{ui\})\).  By induction \(t\in S_i\), and the left wrapper
+\((0,0)(\delta,\lambda)\in H\) shows that
+\((0,0)(t,\lambda)\in S_i\).  The case \(w=2u\) is identical, using the right
+wrapper \((0,0)(\lambda,\delta)\).  Thus \(e(\widehat R_i)=S_i\), and
+\(\widehat R_i\) is recognizable.
 \end{proof}
 
 \begin{lemma}[TW Lemma 19: logical closure]\label{lem:tw-logical-closure}
@@ -1008,28 +2264,233 @@ recognizable:
 \]
 \end{lemma}
 
-\begin{proof}[Constructions]
-For conjunction, pull both relations back to a common product alphabet by inverse
-projection, then intersect.
-
-For negation, complement the recognizable set inside all canonical encodings:
+\begin{proof}
+For \(k\ge 0\), let \(\mathbf 0_k\in\{0,1\}^k\) be the all-zero tuple; when
+\(k=0\), this is the unique empty tuple.  Write
 \[
-  e(\neg R)=\bigl(\Term{\Sigma_n}\setminus e(R)\bigr)\cap U_n.
+  z_k=\mathbf 0_k(\lambda,\lambda)\in\Term{\Sigma_k}
 \]
-Use Boolean closure and Lemma~\ref{lem:tw-encoding-n}.
-
-For existential quantification, project away the quantified track.  The image may
-contain noncanonical terms because deleting a track can introduce all-zero
-subtrees.  \TW{} repair this by truncation:
+for the one-node all-zero binary term.  For \(k=0\), \(\Sigma_0\) is understood
+as the zero-track species with the nullary symbol \(\lambda\) and the single
+binary label \(\mathbf 0_0\).  Put
 \[
-  e(\exists A\,R)
+  Z_k=\{z_k\}^{*_\lambda}.
+\]
+Thus \(Z_k\) is the set of all all-zero \(k\)-track terms, including
+\(\lambda\).  This is proved by induction on the closure stage in one direction
+and by structural induction on all-zero terms in the other.  In particular,
+substituting a term from \(Z_k\) into a \(\lambda\)-leaf never changes the
+encoded \(k\)-tuple of finite subsets.  The set \(Z_k\) is recognizable by
+Lemma~\ref{lem:tw-finite-recognizable} and
+Lemma~\ref{lem:tw-complex-closure}.
+
+We will use one elementary lifting fact.  Let
+\[
+  I=(i_1,\ldots,i_k)
+\]
+be a list of distinct coordinates from \(\{1,\ldots,m\}\), and let
+\[
+  \pi_I:\Sigma_m\to\Sigma_k
+\]
+be the arity-preserving map that selects these coordinates from each
+\(\{0,1\}^m\)-label and sends \(\lambda\) to \(\lambda\).  If
+\(R\subseteq(\powfin(N_2))^k\) is recognizable, then the lifted relation
+\[
+  R^I(\bar A)
+  \quad\Longleftrightarrow\quad
+  (A_{i_1},\ldots,A_{i_k})\in R
+\]
+on \(m\)-tuples is recognizable.
+
+Indeed, since \(e(R)\) and \(Z_k\) are recognizable,
+\[
+  e(R)\cdot_\lambda Z_k
+\]
+is recognizable by Lemma~\ref{lem:tw-complex-product}.  By inverse projection,
+\[
+  \pi_I^{-1}(e(R)\cdot_\lambda Z_k)
+\]
+is recognizable over \(\Sigma_m\), and so is
+\[
+  L_I=\pi_I^{-1}(e(R)\cdot_\lambda Z_k)\cap U_m.       \tag{1}
+\]
+For a canonical \(m\)-track term \(t=e(A_1,\ldots,A_m)\), the projection
+\(\pi_I(t)\) encodes \((A_{i_1},\ldots,A_{i_k})\), but it may contain redundant
+all-zero subtrees created by deleting the other tracks.  Removing exactly those
+redundant subtrees gives the canonical encoding
+\[
+  e(A_{i_1},\ldots,A_{i_k}).
+\]
+Equivalently,
+\[
+  \pi_I(t)\in
+  \{e(A_{i_1},\ldots,A_{i_k})\}\cdot_\lambda Z_k.       \tag{2}
+\]
+This equivalence is proved by structural induction on the canonical term \(t\):
+at a node whose selected coordinates and selected children are all zero, the
+projection contributes an element of \(Z_k\); otherwise one applies the induction
+hypothesis to the children.  From (1) and (2) we get
+\[
+  t\in L_I
+  \quad\Longleftrightarrow\quad
+  (A_{i_1},\ldots,A_{i_k})\in R.
+\]
+Thus \(L_I=e(R^I)\), proving the lifting fact.
+
+We now prove the three closure claims.
+
+For conjunction, put all variables occurring in
+\[
+  R(\bar A,\bar B)\wedge S(\bar B,\bar C)
+\]
+into one common list.  By the lifting fact, \(R\) and \(S\) can both be viewed as
+recognizable relations on this common list.  Their conjunction is then
+recognized by intersecting the two lifted recognizable sets, using
+Theorem~\ref{thm:tw-boolean}.
+
+For negation, if \(R\subseteq(\powfin(N_2))^n\), then the complement relation is
+taken only over canonical encodings:
+\[
+  e(\neg R)
   =
-  \bigl(\pi(e(R))/_{\lambda}\{(0,\ldots,0)(\lambda,\lambda)\}^{*_\lambda}\bigr)
-  \cap U_{n-1}.
+  U_n\cap\bigl(\Term{\Sigma_n}\setminus e(R)\bigr).
 \]
-The exact all-zero term depends on the remaining number of tracks.  The
-important formal point is that projection plus truncation plus intersection with
-canonical encodings implements existential set quantification.
+For \(n>0\), the right hand side is recognizable by
+Lemma~\ref{lem:tw-encoding-n} and Boolean closure.  For \(n=0\), the canonical
+set is \(U_0=\{\lambda\}\), so the same conclusion is immediate from finite
+recognizability and Boolean closure.
+
+For existential quantification, it is enough to consider the first coordinate.
+Any other coordinate can be moved there by a permutation of tracks; such a
+permutation is an arity-preserving bijection of species, so recognizability is
+transported by Theorems~\ref{thm:tw-projection} and
+\ref{thm:tw-inverse-projection}.  Let
+\[
+  R(A,\bar B)
+  \subseteq
+  \powfin(N_2)\times(\powfin(N_2))^{m-1}
+\]
+be recognizable, and let
+\[
+  \pi:\Sigma_m\to\Sigma_{m-1}
+\]
+delete the first coordinate of each label.  By Theorem~\ref{thm:tw-projection},
+\[
+  \pi(e(R))
+\]
+is recognizable.  Define
+\[
+  L=
+  \bigl(\pi(e(R))/_{\lambda}Z_{m-1}\bigr)\cap U_{m-1}.       \tag{3}
+\]
+This set is recognizable by Lemma~\ref{lem:tw-truncation} and, if
+\(m-1>0\), Lemma~\ref{lem:tw-encoding-n}.  If \(m-1=0\), then
+\[
+  U_0=\{\lambda\}
+\]
+is finite, so the same conclusion follows from
+Lemma~\ref{lem:tw-finite-recognizable}.
+
+We claim that \(L=e(\exists A\,R(A,\bar B))\).  First suppose
+\[
+  \bar B\in \exists A\,R(A,\bar B).
+\]
+Choose \(A\) with \(R(A,\bar B)\), and set
+\[
+  t=e(A,\bar B).
+\]
+Then \(t\in e(R)\), so \(\pi(t)\in\pi(e(R))\).  The term \(\pi(t)\) encodes
+\(\bar B\), but it may have all-zero subtrees left over from the deleted
+coordinate.  As in (2),
+\[
+  \pi(t)\in\{e(\bar B)\}\cdot_\lambda Z_{m-1}.
+\]
+Therefore \(e(\bar B)\in \pi(e(R))/_{\lambda}Z_{m-1}\), and since
+\(e(\bar B)\in U_{m-1}\), we get \(e(\bar B)\in L\).
+
+Conversely, suppose \(q=e(\bar B)\in L\).  By the definition of truncation,
+there is a term
+\[
+  r\in \pi(e(R))
+  \quad\text{with}\quad
+  r\in\{q\}\cdot_\lambda Z_{m-1}.
+\]
+Choose \(t\in e(R)\) with \(\pi(t)=r\).  Since \(t\in e(R)\), there are
+\(A\) and \(\bar B'\) such that
+\[
+  t=e(A,\bar B')
+  \qquad\text{and}\qquad
+  R(A,\bar B').
+\]
+The equality \(r=\pi(t)\) implies that \(r\) encodes \(\bar B'\).  On the other
+hand, \(r\in\{q\}\cdot_\lambda Z_{m-1}\), and inserting all-zero terms does not
+change the encoded tuple, so \(r\) also encodes \(\bar B\).  Hence
+\(\bar B'=\bar B\).  Thus \(R(A,\bar B)\) for some \(A\), proving
+\[
+  \bar B\in\exists A\,R(A,\bar B).
+\]
+This proves the equality in (3), and hence existential quantification preserves
+recognizability.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:tw-definable-recognizable}]
+Let \(\varphi(A_1,\ldots,A_n)\) be a formula of the set-only language, and let
+\[
+  R_\varphi
+  =
+  \{(B_1,\ldots,B_n)\in(\powfin(N_2))^n:
+      (B_1,\ldots,B_n)\models\varphi\}.
+\]
+We prove, by structural induction on \(\varphi\), that \(R_\varphi\) is
+recognizable.
+
+For atomic formulas, the set-only language has the relation
+\[
+  A\subseteq B
+\]
+and the singleton-successor relations
+\[
+  \widehat R_i(A,B) \qquad (i=1,2).
+\]
+These are recognizable by Lemma~\ref{lem:tw-atomic}.  Equality of set variables,
+if used as primitive notation, is handled as
+\[
+  A=B \quad\Longleftrightarrow\quad A\subseteq B\wedge B\subseteq A.
+\]
+
+Assume the induction hypothesis for the immediate subformulas.  If
+\[
+  \varphi=\psi\wedge\theta,
+\]
+then \(R_\psi\) and \(R_\theta\) are recognizable, after viewing them over the
+common list of free variables of \(\varphi\).  Lemma~\ref{lem:tw-logical-closure}
+gives recognizability of their intersection, which is exactly \(R_\varphi\).
+
+If
+\[
+  \varphi=\neg\psi,
+\]
+then \(R_\psi\) is recognizable by induction, and
+Lemma~\ref{lem:tw-logical-closure} gives recognizability of its complement
+inside the canonical encodings \(U_n\).  This complement is \(R_\varphi\).
+
+Finally, if
+\[
+  \varphi=\exists A_i\,\psi(A_1,\ldots,A_i,\ldots,A_n),
+\]
+then \(R_\psi\) is recognizable by induction.  The existentially quantified
+relation is the projection of \(R_\psi\) away from the \(i\)-th coordinate, with
+the result recanonicalized; Lemma~\ref{lem:tw-logical-closure} proves that this
+operation preserves recognizability.  Hence \(R_\varphi\) is recognizable.
+
+The Boolean connective \(\vee\) and universal quantification may either be
+treated as abbreviations, or derived from the cases above.  Thus every formula
+defines a recognizable relation.
+
+The construction is effective: Lemma~\ref{lem:tw-atomic} gives explicit base
+automata or regular descriptions, and every step in
+Lemma~\ref{lem:tw-logical-closure} uses one of the effective closure
+constructions from Sections 2 and 3.
 \end{proof}
 
 \begin{corollary}[Effective MSO-to-automata theorem over \(N_2\)]
@@ -1042,6 +2503,135 @@ its satisfying finite-set assignments.
 Translate away first-order variables, then apply
 Theorem~\ref{thm:tw-definable-recognizable}.  Determinize with
 Theorem~\ref{thm:tw-subset} if a deterministic automaton is desired.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:tw-doner}]
+We give the proof for \(N_2=\{1,2\}^*\), as \TW{} do.  The same argument works
+for \(N_k\): one replaces the binary terms below by \(k\)-ary terms and uses one
+successor direction for each letter of the \(k\)-letter alphabet.
+
+The decision procedure has three effective translations.
+
+First, eliminate individual variables.  Given a weak MSO formula
+\[
+  F(x_1,\ldots,x_r,A_1,\ldots,A_m),
+\]
+introduce a set variable \(X_{x_j}\) for each individual variable \(x_j\).  This
+new set variable is intended to denote the singleton \(\{x_j\}\).  The
+set-only language therefore has set variables only, the subset relation
+\(\subseteq\), and the singleton-successor predicates \(\widehat R_i\), where
+\[
+  \widehat R_i(A,B)
+  \quad\Longleftrightarrow\quad
+  A=\{w\},\ B=\{wi\}
+  \text{ for some }w\in N_2.
+\]
+Using the definable predicate \(\mathrm{Sing}\), the translation is:
+\[
+  (x=y)^*
+  =
+  X_x\subseteq X_y\wedge X_y\subseteq X_x
+    \wedge \mathrm{Sing}(X_x)\wedge\mathrm{Sing}(X_y),
+\]
+\[
+  (x\in A)^*
+  =
+  X_x\subseteq A\wedge \mathrm{Sing}(X_x),
+\]
+\[
+  (R_i(x,y))^*
+  =
+  \widehat R_i(X_x,X_y).
+\]
+It commutes with Boolean connectives, and quantifiers are translated by
+\[
+  (\exists x\,G)^*
+  =
+  \exists X_x\,(\mathrm{Sing}(X_x)\wedge G^*),
+  \qquad
+  (\exists A\,G)^*
+  =
+  \exists A\,G^*.
+\]
+The verification in Section~\ref{sec:tw-eliminate-first-order} proves, by
+structural induction on formulas, that this translation preserves truth when
+each replacement variable \(X_x\) is interpreted as the singleton \(\{x\}\).
+Thus every sentence \(S\) of the original language has an effectively computable
+set-only sentence \(S^*\) with the same truth value.
+
+Second, encode finite-set assignments as terms.  For \(n\) free set variables,
+use the species \(\Sigma_n\) with one nullary symbol \(\lambda\) and binary
+symbols \(\{0,1\}^n\).  A term over \(\Sigma_n\) is read as an \(n\)-track
+characteristic function on a finite prefix-closed part of \(N_2\).  The map
+\[
+  c_n:\Term{\Sigma_n}\to(\powfin(N_2))^n
+\]
+is defined trackwise, and each tuple \(\bar A\) has a canonical representative
+\[
+  e(\bar A)
+\]
+obtained by deleting redundant all-zero subtrees.  Lemmas
+\ref{lem:tw-encoding-one} and \ref{lem:tw-encoding-n} show that the set
+\[
+  U_n=\{e(\bar A):\bar A\in(\powfin(N_2))^n\}
+\]
+of canonical representatives is recognizable.  The proof of those lemmas is
+also effective: it describes \(U_n\) by regular operations, and Theorem
+\ref{thm:tw-recognizable-regular} turns this description into a finite
+automaton.
+
+Third, compile set-only formulas to automata.  If
+\(\varphi(A_1,\ldots,A_n)\) is a set-only formula, let
+\[
+  R_\varphi
+  =
+  \{\bar A\in(\powfin(N_2))^n:\bar A\models\varphi\}.
+\]
+Theorem~\ref{thm:tw-definable-recognizable} proves, by induction on
+\(\varphi\), that \(R_\varphi\) is recognizable, meaning that
+\[
+  e(R_\varphi)=\{e(\bar A):\bar A\models\varphi\}
+\]
+is a recognizable subset of \(\Term{\Sigma_n}\).  The induction is effective:
+atomic formulas are handled by Lemma~\ref{lem:tw-atomic}; conjunction,
+negation, and existential set quantification are handled by
+Lemma~\ref{lem:tw-logical-closure}, using the effective closure constructions
+for Boolean operations, projection, inverse projection, and truncation.
+
+We can now decide a sentence.  Given \(S\), compute the equivalent set-only
+sentence \(S^*\).  Apply the effective construction above to \(S^*\), regarded
+as a formula with no free variables.  The zero-track alphabet has \(\lambda\)
+and one binary all-zero label, and its canonical part is just
+\[
+  U_0=\{\lambda\}.
+\]
+Thus the automaton constructed for \(S^*\) recognizes either \(\{\lambda\}\), if
+\(S^*\) is true, or \(\emptyset\), if \(S^*\) is false.  Theorem
+\ref{thm:tw-emptiness} decides which case holds.
+
+This is the same emptiness test described explicitly by \TW{}.  If the final
+set-only sentence is written in the form
+\[
+  \exists A\,T(A)
+  \qquad\text{or}\qquad
+  \forall A\,T(A),
+\]
+construct an automaton \(\Aut=(A,\alpha)\) and final set \(A_F\) recognizing
+\[
+  e(\{B:T(B)\})\subseteq U_1.
+\]
+If the sentence is existential, it is true exactly when
+\[
+  \bh_\Aut(A_F)\ne\emptyset.
+\]
+If the sentence is universal, it is true exactly when there is no canonical
+encoding of a counterexample:
+\[
+  U_1\cap\bigl(\Term{\Sigma_1}\setminus\bh_\Aut(A_F)\bigr)=\emptyset.
+\]
+The latter set is recognizable by Lemma~\ref{lem:tw-encoding-one} and Boolean
+closure, and Theorem~\ref{thm:tw-emptiness} decides the required emptiness
+question.  Therefore the truth of \(S\) is decidable.
 \end{proof}
 
 \section{Lean-Oriented Decomposition}
