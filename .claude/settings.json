@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./build.sh Thatcher-Wright-expanding-issues.tex)",
+      "Bash(mdls -name kMDItemNumberOfPages Thatcher-Wright-expanding-issues.pdf)"
+    ]
+  }
+}

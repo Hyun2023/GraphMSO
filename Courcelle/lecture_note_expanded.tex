@@ -715,6 +715,101 @@ letter at \(t\) is \((H_t,R_t)=\rho(t)\), so re-encoding the decoded triple retu
 \((T,\rho)\).
 \end{proof}
 
+Lemma~\ref{lem:legal-iff-enc} shows that re-encoding is a left inverse of
+decoding on legal trees.  The next lemma is the companion statement in the
+opposite direction: decoding the encoding of a triple returns that triple, up
+to a canonical isomorphism.  It is this lemma that allows statements made
+about the decoding of a legal tree to be transferred to the graph one started
+from.
+
+\begin{lemma}[Decoding inverts encoding]\label{lem:decode-enc}
+Let \((T,\beta)\) be a binary tree-decomposition of a \(\tau_{\Pred}\)-graph
+\(G\) of width at most \(\omega\), let \(c:V(G)\to C_\omega\) be injective on
+every bag, and let \((T,\rho)\) be the encoding of \((G,c,(T,\beta))\); it is
+legal by Lemma~\ref{lem:legal-iff-enc}, and we write
+\((\bar G,\bar c,(T,\bar\beta))\) for its decoding.  For a slot \(v(t,i)\), let
+\(\phi(t,i)\) denote the unique vertex of color \(i\) in \(\beta(t)\).  Then
+\[
+  \Phi\bigl([v(t,i)]\bigr)\defeq\phi(t,i)
+\]
+is a well-defined map \(V(\bar G)\to V(G)\), and it is an isomorphism of
+\(\tau_{\Pred}\)-graphs \(\bar G\cong G\) such that
+\begin{enumerate}[label=\textup{(\roman*)}]
+  \item \(c(\Phi(w))=\bar c(w)\) for every \(w\in V(\bar G)\), and
+  \item for every node \(t\) and every \(w\in V(\bar G)\),
+    \(\Phi(w)\in\beta(t)\) iff \(w\in\bar\beta(t)\); in particular
+    \(\Phi(\bar\beta(t))=\beta(t)\), and \(\Bags(\Phi(w))=U_w\), where
+    \(U_w=\{s\in N(T):w\in\bar\beta(s)\}\) is the occurrence set of \(w\)
+    from Lemma~\ref{lem:decode-occ}.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Write \(\rho(t)=(H_t,R_t)\) for the letters of the encoding.  By construction,
+\(V(H_t)=c(\beta(t))\) and \(R_t=c(\adh(t))\); for \(i,j\in V(H_t)\), we have
+\(ij\in E(H_t)\) iff the color-\(i\) and color-\(j\) vertices of \(\beta(t)\)
+are adjacent in \(G\); and for \(Q\in\Pred\), \(i\in Q^{H_t}\) iff the
+color-\(i\) vertex of \(\beta(t)\) lies in \(Q^G\).
+
+\emph{The slot map.}  If \(i\in V(H_t)=c(\beta(t))\), then \(\beta(t)\)
+contains a vertex of color \(i\), which is unique by bag-injectivity; so
+\(\phi(t,i)\) is well defined, lies in \(\beta(t)\), and has color \(i\).
+
+\emph{\(\Phi\) is well defined, and (i) holds.}  It suffices to check that
+\(\phi\) is constant on the generators of \(\sim\).  Let \(x\) be a non-root
+node and \(i\in R_x=c(\adh(x))\).  The color-\(i\) vertex \(u\) of \(\adh(x)\)
+lies in both \(\beta(x)\) and \(\beta(p(x))\), and by bag-injectivity it is
+the unique color-\(i\) vertex of each; hence \(\phi(x,i)=u=\phi(p(x),i)\).
+Therefore \(\Phi\) is well defined, and
+\(c(\Phi([v(t,i)]))=c(\phi(t,i))=i=\bar c([v(t,i)])\).
+
+\emph{Surjectivity.}  Let \(v\in V(G)\).  By vertex coverage
+\(\Bags(v)\ne\varnothing\); pick \(t\in\Bags(v)\).  Then
+\(c(v)\in c(\beta(t))=V(H_t)\) and \(\phi(t,c(v))=v\), so
+\(v=\Phi([v(t,c(v))])\).
+
+\emph{Injectivity.}  Suppose \(\Phi([v(s,j)])=\Phi([v(t,i)])=v\).  By (i),
+\(j=c(v)=i\).  Since \(\phi(s,i)=v\), we have \(v\in\beta(s)\), and likewise
+\(v\in\beta(t)\); thus \(s,t\in\Bags(v)\).  By the running-intersection axiom
+\(\Bags(v)\) is connected, so the unique \(s\)--\(t\) path in \(T\) stays in
+\(\Bags(v)\).  For every edge \(\{x,p(x)\}\) on this path,
+\(v\in\beta(x)\cap\beta(p(x))=\adh(x)\), hence
+\(i=c(v)\in c(\adh(x))=R_x\), so the edge lies in \(\Gamma_i\).  By
+Lemma~\ref{lem:decode-occ}, \(v(s,i)\sim v(t,i)\), i.e.\
+\([v(s,j)]=[v(t,i)]\).
+
+\emph{Bags: part (ii).}  If \(w\in\bar\beta(t)\), say \(w=[v(t,i)]\), then
+\(\Phi(w)=\phi(t,i)\in\beta(t)\).  Conversely, suppose \(\Phi(w)\in\beta(t)\),
+and put \(i\defeq c(\Phi(w))=\bar c(w)\).  Then
+\(i\in c(\beta(t))=V(H_t)\), so the slot \(v(t,i)\) exists, and
+\(\phi(t,i)=\Phi(w)\), because \(\Phi(w)\) is a vertex of color \(i\) in
+\(\beta(t)\) and such a vertex is unique.  Thus \(\Phi([v(t,i)])=\Phi(w)\),
+and injectivity gives \(w=[v(t,i)]\in\bar\beta(t)\).  Consequently
+\(\Phi(\bar\beta(t))=\beta(t)\) and
+\(\Bags(\Phi(w))=\{t:\Phi(w)\in\beta(t)\}=\{t:w\in\bar\beta(t)\}=U_w\).
+
+\emph{Adjacency.}  Suppose \(w\) and \(w'\) are adjacent in \(\bar G\).  By
+the definition of decoded adjacency there are a node \(u\) and slots
+\(v(u,i)\in w\) and \(v(u,j)\in w'\) with \(ij\in E(H_u)\).  Then
+\(\Phi(w)=\phi(u,i)\) and \(\Phi(w')=\phi(u,j)\), and \(ij\in E(H_u)\) says
+precisely that \(\phi(u,i)\) and \(\phi(u,j)\) are adjacent in \(G\).
+Conversely, suppose \(\Phi(w)\Phi(w')\in E(G)\).  By the edge-coverage axiom
+there is a node \(u\) with \(\Phi(w),\Phi(w')\in\beta(u)\).  By (ii),
+\(w=[v(u,i)]\) and \(w'=[v(u,j)]\) with \(i=\bar c(w)\) and \(j=\bar c(w')\);
+then \(\phi(u,i)=\Phi(w)\) and \(\phi(u,j)=\Phi(w')\) are adjacent in \(G\),
+whence \(ij\in E(H_u)\), and \(w\), \(w'\) are adjacent in \(\bar G\) with
+witness \(u\).
+
+\emph{Predicates.}  Let \(Q\in\Pred\) and \(w=[v(t,i)]\).  By the definition
+of the decoded predicates, which are well defined by
+Lemma~\ref{lem:decode-wd}, \(Q\) holds of \(w\) in \(\bar G\) iff
+\(i\in Q^{H_t}\), which holds iff \(\phi(t,i)=\Phi(w)\in Q^G\).
+
+Hence \(\Phi\) is a bijection that preserves and reflects adjacency and every
+unary predicate, i.e.\ an isomorphism of \(\tau_{\Pred}\)-graphs, and it
+satisfies (i) and (ii).
+\end{proof}
+
 \section{Combinatorial properties of defining tuples}
 
 Recall the bag set \(\Bags(v)=\{t\in N(T):v\in\beta(t)\}\), a nonempty connected
@@ -1096,6 +1191,64 @@ any different color-\(i\) defining pair.  Hence one of the pieces is
 \(\Bags(v)\), so \(v\in S\).
 \end{proof}
 
+The recognition and atomic lemmas above are stated for a legal tree and its
+decoding.  Through the canonical isomorphism of Lemma~\ref{lem:decode-enc},
+they transfer verbatim to the situation in which the tree is the encoding of a
+given triple; this is the form in which they are used in the
+translation-correctness proof below.
+
+\begin{corollary}[Recognition over an encoding]\label{cor:recognition-enc}
+Let \((T,\beta)\) be a binary tree-decomposition of a \(\tau_{\Pred}\)-graph
+\(G\) of width at most \(\omega\), let \(c:V(G)\to C_\omega\) be injective on
+every bag, and let \((T,\rho)\) be the encoding of \((G,c,(T,\beta))\).  Then,
+with defining pairs and defining tuples taken with respect to
+\((G,c,(T,\beta))\):
+\begin{enumerate}[label=\textup{(\arabic*)}]
+  \item \((T,\rho)\models\varphi_{\vtx,i}(U)\) iff \((U,i)\) is the defining
+    pair of a vertex of \(G\);
+  \item \((T,\rho)\models\varphi_{\vtx}(\tuple U)\) iff
+    \(\tuple U=\tuple U^v\) for some vertex \(v\) of \(G\);
+  \item \((T,\rho)\models\varphi_{\set}(\tuple U)\) iff
+    \(\tuple U=\tuple U^S\) for some vertex set \(S\subseteq V(G)\);
+  \item for all vertices \(u,v\in V(G)\) and every vertex set
+    \(S\subseteq V(G)\):
+    \((T,\rho)\models\varphi_{\adj}(\tuple U^u,\tuple U^v)\) iff
+    \(uv\in E(G)\);
+    \((T,\rho)\models\varphi_Q(\tuple U^v)\) iff \(v\in Q^G\), for each
+    \(Q\in\Pred\);
+    \((T,\rho)\models\varphi_{\eq}(\tuple U^u,\tuple U^v)\) iff \(u=v\); and
+    \((T,\rho)\models\varphi_{\cont}(\tuple U^v,\tuple U^S)\) iff \(v\in S\).
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+The encoding is legal by Lemma~\ref{lem:legal-iff-enc}, so
+Lemmas~\ref{lem:vtx-i}, \ref{lem:vtx}, \ref{lem:set} and
+\ref{lem:adj}--\ref{lem:cont} apply to \((T,\rho)\) with respect to its
+decoding \((\bar G,\bar c,(T,\bar\beta))\).  Let \(\Phi:\bar G\cong G\) be the
+isomorphism of Lemma~\ref{lem:decode-enc}.  By parts (i) and (ii) of that
+lemma, \(\Phi\) matches colors and occurrence sets: for every
+\(w\in V(\bar G)\), the defining pair of \(w\) with respect to the decoding
+equals the defining pair of \(\Phi(w)\) with respect to \((G,c,(T,\beta))\).
+Consequently \(\tuple U^w=\tuple U^{\Phi(w)}\) and, taking coordinatewise
+unions over the vertices of a set,
+\(\tuple U^{\bar S}=\tuple U^{\Phi(\bar S)}\) for every
+\(\bar S\subseteq V(\bar G)\).  Since \(\Phi\) is a bijection onto \(V(G)\),
+the defining pairs and defining tuples arising from the decoding are exactly
+those arising from \((G,c,(T,\beta))\).  This proves (1)--(3).
+
+For (4), by the matching above,
+\(\tuple U^u=\tuple U^{\Phi^{-1}(u)}\), \(\tuple U^v=\tuple U^{\Phi^{-1}(v)}\)
+and \(\tuple U^S=\tuple U^{\Phi^{-1}(S)}\); that is, the given tuples are the
+defining tuples, in the decoding, of \(\Phi^{-1}(u)\), \(\Phi^{-1}(v)\) and
+\(\Phi^{-1}(S)\).  Lemmas~\ref{lem:adj}, \ref{lem:pred}, \ref{lem:eq} and
+\ref{lem:cont} then give the stated equivalences, because the
+\(\tau_{\Pred}\)-isomorphism \(\Phi\) preserves and reflects adjacency, each
+unary predicate \(Q\in\Pred\), equality, and membership: for instance,
+\(\Phi^{-1}(u)\Phi^{-1}(v)\in E(\bar G)\) iff \(uv\in E(G)\), and
+\(\Phi^{-1}(v)\in\Phi^{-1}(S)\) iff \(v\in S\).
+\end{proof}
+
 \subsection{The formula translation}
 
 Let \(\theta\) be an \MSO{} formula over the unary-expanded graph vocabulary
@@ -1143,10 +1296,14 @@ the substitutions defining \(\theta^\star\) are capture-free; formulas are read
 modulo \(\alpha\)-equivalence.
 
 \paragraph{Correctness of the translation.}
-Fix the encoding \((T,\rho)\) of \((G,c,(T,\beta))\); by
-Lemma~\ref{lem:legal-iff-enc} its decoded graph is \(G\), and every vertex \(v\)
-and vertex set \(S\) has the defining tuple \(\tuple U^v\), \(\tuple U^S\)
-introduced above.  Given a \(\tau_{\Pred}\)-MSO{} formula \(\theta\) and a
+Fix the encoding \((T,\rho)\) of \((G,c,(T,\beta))\).  It is legal by
+Lemma~\ref{lem:legal-iff-enc}, and by Corollary~\ref{cor:recognition-enc} the
+recognition and atomic formulas evaluate on \((T,\rho)\) directly with respect
+to \(G\): \(\varphi_{\vtx}\) and \(\varphi_{\set}\) recognize exactly the
+defining tuples \(\tuple U^v\), \(\tuple U^S\) of vertices and vertex sets of
+\(G\), and \(\varphi_{\adj}\), \(\varphi_Q\), \(\varphi_{\eq}\),
+\(\varphi_{\cont}\) evaluate on them according to \(G\).  Given a
+\(\tau_{\Pred}\)-MSO{} formula \(\theta\) and a
 \emph{graph assignment} \(\alpha\) mapping each free individual variable of
 \(\theta\) to a vertex and each free set variable to a vertex set, let the
 \emph{tree assignment} \(\alpha^\star\) map each tuple \(\tuple Z_x\) to
@@ -1166,9 +1323,10 @@ For every \(\tau_{\Pred}\)-MSO{} formula \(\theta\) and every graph assignment
 Induction on \(\theta\); throughout, \((T,\rho)\) is legal, being an encoding.
 
 \emph{Atomic formulas.}  Under \(\alpha^\star\) every tuple variable is assigned a
-defining tuple, so the atomic equivalences proved above apply directly:
-Lemma~\ref{lem:eq} for \(x=y\), Lemma~\ref{lem:adj} for \(\adj(x,y)\),
-Lemma~\ref{lem:pred} for \(Q(x)\), and Lemma~\ref{lem:cont} for \(x\in X\).  Each
+defining tuple of \((G,c,(T,\beta))\), so
+Corollary~\ref{cor:recognition-enc}(4) applies directly:
+\(\varphi_{\eq}\) for \(x=y\), \(\varphi_{\adj}\) for \(\adj(x,y)\),
+\(\varphi_Q\) for \(Q(x)\), and \(\varphi_{\cont}\) for \(x\in X\).  Each
 gives \(G\models\theta[\alpha]\) iff \((T,\rho)\models\theta^\star[\alpha^\star]\).
 
 \emph{Boolean connectives.}  The translation commutes with \(\neg,\wedge,\vee\)
@@ -1179,21 +1337,22 @@ induction hypothesis.
 \(\theta^\star=\exists Z^x_0\cdots\exists Z^x_\omega
 (\varphi_{\vtx}(\tuple Z_x)\wedge\psi^\star)\).  If \(G\models\theta[\alpha]\),
 choose a witness vertex \(a\); its defining tuple \(\tuple U^a\) satisfies
-\(\varphi_{\vtx}\) by Lemma~\ref{lem:vtx}, and the induction hypothesis for
+\(\varphi_{\vtx}\) by Corollary~\ref{cor:recognition-enc}(2), and the
+induction hypothesis for
 \(\psi\) and \(\alpha[x\mapsto a]\)---whose tree assignment is
 \(\alpha^\star[\tuple Z_x\mapsto\tuple U^a]\)---gives
 \((T,\rho)\models\psi^\star[\alpha^\star[\tuple Z_x\mapsto\tuple U^a]]\); thus
 \(\tuple U^a\) witnesses \(\theta^\star[\alpha^\star]\).  Conversely, if
 \((T,\rho)\models\theta^\star[\alpha^\star]\), a witnessing tuple \(W\) satisfies
-\(\varphi_{\vtx}(W)\); since \((T,\rho)\) is legal, Lemma~\ref{lem:vtx} gives
-\(W=\tuple U^a\) for some vertex \(a\).  The induction hypothesis for \(\psi\) and
+\(\varphi_{\vtx}(W)\); Corollary~\ref{cor:recognition-enc}(2) gives
+\(W=\tuple U^a\) for some vertex \(a\) of \(G\).  The induction hypothesis for \(\psi\) and
 \(\alpha[x\mapsto a]\) then yields \(G\models\psi[\alpha[x\mapsto a]]\), so
 \(G\models\theta[\alpha]\).
 
 \emph{Existential set quantifier} \(\theta=\exists X\,\psi\) is identical, using
-\(\varphi_{\set}\) and Lemma~\ref{lem:set}: every vertex set has a defining tuple
-satisfying \(\varphi_{\set}\), and every tuple satisfying \(\varphi_{\set}\) is the
-defining tuple of a vertex set.
+\(\varphi_{\set}\) and Corollary~\ref{cor:recognition-enc}(3): every vertex set
+of \(G\) has a defining tuple satisfying \(\varphi_{\set}\), and every tuple
+satisfying \(\varphi_{\set}\) is the defining tuple of a vertex set of \(G\).
 
 \emph{Universal quantifiers} reduce to the existential cases through
 \(\forall q\,\psi\equiv\neg\exists q\,\neg\psi\).

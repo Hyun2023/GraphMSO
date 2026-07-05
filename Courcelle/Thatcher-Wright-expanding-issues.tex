@@ -1,0 +1,448 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\TW}{Thatcher--Wright}
+\newcommand{\Nat}{\mathbb N}
+\newcommand{\powfin}{\mathcal P_{\mathrm{fin}}}
+\newcommand{\Term}[1]{T_{#1}}
+\newcommand{\Aut}{\mathcal A}
+\newcommand{\bh}{\mathrm{bh}}
+\newcommand{\MSO}{\ensuremath{\mathrm{MSO}}}
+\newcommand{\enc}{\mathrm{enc}}
+
+\title{Mathematical Issues and Review Notes for\\
+  \texttt{Thatcher-Wright-expanding.tex}}
+\author{}
+\date{Review of the version at commit \texttt{fa1cd04}
+  (\emph{expand\_all\_proof\_of\_tree\_automata}, July 4, 2026)\\
+  Compiled: July 5, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Scope and summary}
+
+This report reviews the mathematical content of
+\texttt{Thatcher-Wright-expanding.tex} against the source paper (Thatcher and
+Wright, \emph{Generalized finite automata theory with an application to a
+decision problem of second-order logic}, Math.\ Systems Theory 2 (1968),
+57--81; \texttt{Thatcher-Wright.pdf} in this directory).  Line numbers refer to
+\texttt{Thatcher-Wright-expanding.tex} at the commit named above.
+
+The overall verdict is positive.  The expanded proofs of Theorems~1--4,
+Lemmas~5--7, Lemma~10, Lemma~11, Lemma~12, Lemma~13, Lemmas~15--16, Lemma~18,
+Lemma~19, Theorem~17, the first-order elimination, the Doner decidability
+proof, and the derivation of lecture-note Theorem~26 were checked in detail and
+are correct.  Two findings from the previous review round (June 2026 review of
+the pre-expansion version) have been repaired, in both cases by deliberately
+\emph{correcting} the source paper; these deviations are documented in
+Section~\ref{sec:resolved} and should be kept.
+
+The findings of the present round are:
+\begin{enumerate}[label=\textbf{C\arabic*.},leftmargin=*]
+  \item the induction step in the expanded proof of the analysis theorem
+    (TW Theorem~9) is invalid as written: it restores a single removed subterm
+    using the complex product \(\cdot_\lambda\), which by definition
+    substitutes at \emph{every} \(\lambda\)-occurrence.  The statement being
+    proved is true; the proof step is not.  A repair is given in
+    Section~\ref{sec:critical}.
+\end{enumerate}
+The remaining findings (Sections~\ref{sec:obligations}--\ref{sec:path}) are not
+errors but load-bearing lemmas that the text uses without proof, plus one
+design decision that the added derivation of Theorem~26 forces on the Lean
+formalization.
+
+\section{Resolved findings and deliberate corrections of \TW{}}
+\label{sec:resolved}
+
+The June 2026 review of the pre-expansion draft reported two mathematical
+errors inherited from the source paper.  Both are now repaired.  Because the
+repairs silently deviate from \TW{}, we record them here so that later readers
+comparing against the paper do not mistake the corrections for transcription
+errors.  We recommend adding a short remark to the main file at each location.
+
+\subsection{TW Lemma 19(1): the literal conjunction equation is false}
+
+\TW{} (p.~79--80) prove closure of recognizable relations under conjunction by
+lifting a relation \(R(\alpha,\beta)\) to
+\(R'(\alpha,\beta,\gamma)\Leftrightarrow R(\alpha,\beta)\) via
+\[
+  \widehat\pi^{-1}(e(R))\cap U_3=e(R'),
+\]
+where \(\pi\) deletes the third track.  This equation is \emph{false} for
+canonical encodings.  Counterexample: take \(R=\{(\emptyset,\emptyset)\}\), so
+\(e(R)=\{\lambda\}\), and consider
+\[
+  t=e(\emptyset,\emptyset,\{1\})
+   =(0,0,0)\bigl((0,0,1)(\lambda,\lambda),\;\lambda\bigr).
+\]
+Then \(t\in e(R')\cap U_3\), but
+\(\pi(t)=(0,0)((0,0)(\lambda,\lambda),\lambda)\) contains the forbidden
+subterm \((0,0)(\lambda,\lambda)\), is therefore not canonical, and so does not
+lie in \(e(R)\).  Hence \(t\notin\widehat\pi^{-1}(e(R))\).  In general, a
+deleted-track projection of a canonical term need not be canonical, because the
+remaining tracks may not need the whole tree shape.
+
+The current file repairs this correctly (lines 2267--2338): it first
+\emph{saturates} \(e(R)\) by grafting all-zero trees,
+\(e(R)\cdot_\lambda Z_k\) with \(Z_k=\{\mathbf 0_k(\lambda,\lambda)\}^{*_\lambda}\),
+and only then pulls back and intersects with \(U_m\):
+\[
+  L_I=\pi_I^{-1}\bigl(e(R)\cdot_\lambda Z_k\bigr)\cap U_m .
+\]
+The counterexample above was re-checked against this definition and passes
+(\(\pi(t)\) is an all-zero term, hence lies in
+\(\{\lambda\}\cdot_\lambda Z_2\)).  The lifting fact and its use in the
+conjunction case are correct.  \textbf{Keep this construction; do not
+``simplify'' it back to the paper's version.}
+
+\subsection{TW Lemma 12: the paper's construction misses two edge cases}
+
+\TW{}'s automaton for \(U^{*_\delta}\) (p.~71) keeps the state set \(A\), sets
+\(\rho_c=\{\alpha_c\}\) for all constants, and uses \(A_F\) as final set.  This
+fails on two inputs:
+\begin{itemize}[leftmargin=*]
+  \item the bare term \(\delta\) lies in \(U^{*_\delta}\) by definition
+    (\(X_0=\{\delta\}\)), but the paper's automaton accepts it only when
+    \(\delta\in U\);
+  \item a constant \(c\in U\) can never collapse to the \(\delta\)-role,
+    because the collapse clause exists only at positive-arity transitions, so
+    terms of the form \(u[\delta:=c]\) are wrongly rejected.
+\end{itemize}
+The current file's construction (lines 1351--1553) repairs both: it uses a
+tagged copy \(\widehat A\) plus a fresh state \(q_\lambda\), makes
+\(q_\lambda\) initial at the constant \(\lambda\), adds the initial clause
+``\(q_\lambda\) if \(c\ne\lambda\) and \(\alpha_c\in A_F\)'', and accepts with
+final set \(\{q_\lambda\}\).  The four invariants (2), (3), (Q), (A) were
+checked and the proof is correct.  This is again a deliberate correction of the
+source paper and should be kept.
+
+\subsection{Other items now in order}
+
+The \(\cup\{\lambda\}\) case of Lemma~15 (encoding of the empty set, line
+1952), the zero-track sentence case \(U_0=\{\lambda\}\) in Lemma~19 and in the
+Doner proof, the explicit disjointness assumption in Lemma~11, and the
+rewritten minimal-size proof of Lemma~6 (lines 839--875, which replaces \TW{}'s
+iterative shrinking by a well-founded minimal-witness argument and is the
+preferable form for Lean) are all resolved or improved relative to the previous
+round.
+
+\section{Critical finding: the analysis-theorem induction step}
+\label{sec:critical}
+
+\paragraph{Location.} TW Theorem~9 (analysis theorem), converse inclusion of
+claim \((*)\), lines 1056--1089; the invalid step is lines 1081--1087.
+
+\paragraph{Statement being proved.} With
+\(X_0=\{\lambda_{k+1}\}\), \(X_{r+1}=X_r\cup(V_{k+1}\cdot_{\lambda_{k+1}}X_r)\),
+the text proves by induction on the number \(r\) of non-leaf transitions to
+\(a_{k+1}\) that
+\[
+  t\in T_j^{k+1}
+  \;\Longrightarrow\;
+  t\in T_j^k\cdot_{\lambda_{k+1}}X_r .   \tag{\(**\)}
+\]
+
+\paragraph{The problem.} In the inductive step, a lowest subterm occurrence
+\(v\in V_{k+1}\) is replaced by \(\lambda_{k+1}\), giving \(t_0\), and the
+induction hypothesis places \(t_0\in T_j^k\cdot_{\lambda_{k+1}}X_r\).  The text
+then concludes
+\[
+  t\in\bigl(T_j^k\cdot_{\lambda_{k+1}}X_r\bigr)
+        \cdot_{\lambda_{k+1}}V_{k+1}.
+\]
+This does not follow.  The complex product \(\cdot_{\lambda_{k+1}}\)
+substitutes at \emph{every} occurrence of \(\lambda_{k+1}\), whereas the
+restoration must substitute at exactly \emph{one} occurrence (the position of
+\(v\)) and leave all other \(\lambda_{k+1}\)-leaves of \(t_0\) unchanged.
+Since every element of \(V_{k+1}\) has a positive-arity root pattern from
+\(U_{k+1}\), we have \(\lambda_{k+1}\notin V_{k+1}\), so the other leaves
+cannot be preserved by choosing \(\lambda_{k+1}\) itself from \(V_{k+1}\).
+
+\paragraph{Counterexample to the step.} Consider any automaton containing a
+binary symbol \(g\) with \(\alpha_g(a_{k+1},a_{k+1})=a_j\), \(j\le k\), and a
+pattern \(v=f(\lambda_{i_1},\ldots,\lambda_{i_r})\in U_{k+1}\) none of whose
+leaves is \(\lambda_{k+1}\) (recall \(U_{k+1}\subseteq V_{k+1}\), since
+\(\lambda_i\in T_i^k\) for every \(i\)).  Let
+\[
+  t=g\bigl(v,\lambda_{k+1}\bigr).
+\]
+Then \(t\in T_j^{k+1}\) with exactly one non-leaf transition to \(a_{k+1}\),
+and \(t_0=g(\lambda_{k+1},\lambda_{k+1})\in T_j^k\).  But every element of
+\(T_j^k\cdot_{\lambda_{k+1}}V_{k+1}\) has \emph{both} holes of \(t_0\) filled
+with \(V_{k+1}\)-terms, and no element of any \(T_j^k\)-term substitution can
+produce the surviving right-hand leaf \(\lambda_{k+1}\).  Hence
+\(t\notin(T_j^k\cdot_{\lambda_{k+1}}X_0)\cdot_{\lambda_{k+1}}V_{k+1}\),
+although \((**)\) itself is true for \(t\):
+\(t=g(\lambda_{k+1},\lambda_{k+1})\cdot_{\lambda_{k+1}}\{v,\lambda_{k+1}\}\)
+using the per-hole independence of the product, so
+\(t\in T_j^k\cdot_{\lambda_{k+1}}X_1\).
+
+For historical accuracy: \TW{}'s own proof of their statement (III) contains
+the same one-occurrence-versus-all-occurrences slip, so the expansion is a
+faithful transcription of a flawed argument.  The claim \((*)\),
+\(T_j^{k+1}=T_j^k\cdot_{\lambda_{k+1}}W_{k+1}\), is true.
+
+\paragraph{Secondary defects of the same passage.}
+\begin{itemize}[leftmargin=*]
+  \item Even granting the restoration, the final inclusion
+    \((T_j^k\cdot X_r)\cdot V_{k+1}\subseteq T_j^k\cdot X_{r+1}\) needs
+    \(X_r\cdot_{\lambda}V\subseteq X_{r+1}\), while the stages are defined with
+    \(V\) on the \emph{left}, \(X_{r+1}=X_r\cup(V\cdot_\lambda X_r)\).  The
+    needed inclusion is provable, but only via same-symbol associativity,
+    monotonicity, and its own induction; it is not immediate.
+  \item The induction variable ``number of non-leaf transitions to
+    \(a_{k+1}\) occurring in the computation of \(t\)'' has no formal
+    definition in the file.  In Lean it would require instrumenting the run
+    with the multiset of produced states --- avoidable machinery.
+\end{itemize}
+
+\paragraph{Recommended repair (removes all three defects at once).}
+Replace the transition-counting induction by a \emph{topmost decomposition}
+and structural induction:
+\begin{enumerate}[leftmargin=*]
+  \item Given \(t\in T_j^{k+1}\), mark the \emph{topmost} subterm occurrences
+    of \(t\) whose root state is \(a_{k+1}\) (these are pairwise incomparable).
+    Replacing all of them \emph{simultaneously} by \(\lambda_{k+1}\) yields a
+    skeleton \(u\).  By maximality, no internal node of \(u\) produces
+    \(a_{k+1}\), so \(u\in T_j^k\); moreover every
+    \(\lambda_{k+1}\)-leaf of \(u\) is a marked position (an original
+    \(\lambda_{k+1}\)-leaf of \(t\) has state \(a_{k+1}\) and hence lies in a
+    topmost marked occurrence).
+  \item Show that each marked subterm \(w\) lies in
+    \(W_{k+1}=V_{k+1}^{*_{\lambda_{k+1}}}\), by strong induction on the size of
+    \(w\): either \(w=\lambda_{k+1}\in W_{k+1}\), or the root of \(w\) is a
+    non-leaf transition to \(a_{k+1}\), in which case \(w\) is a
+    \(U_{k+1}\)-pattern whose holes carry terms handled by the same
+    decomposition, giving \(w\in V_{k+1}\cdot_{\lambda_{k+1}}W_{k+1}\subseteq
+    W_{k+1}\).  The last inclusion is the max-stage argument already used at
+    (1) of Lemma~12 (lines 1405--1420) and in Lemma~15.
+  \item Conclude \(t\in T_j^k\cdot_{\lambda_{k+1}}W_{k+1}\) in a single
+    application of the product, with the marked subterms as the per-hole
+    choices.  No occurrence counting and no one-at-a-time restoration is
+    needed.
+\end{enumerate}
+This is also the form we recommend for the Lean proof, should the analysis
+direction ever be formalized (note that the Courcelle pipeline does not need
+it; see Section~\ref{sec:path}).
+
+\section{Load-bearing lemmas used without proof}
+\label{sec:obligations}
+
+None of the following is an error, but each is an unproven statement that
+multiple expanded proofs rely on.  In a formalization each becomes a named
+obligation; we list them with their use sites and suggested treatment.
+
+\subsection{The canonical-form characterization}
+\label{sec:canonical}
+
+\paragraph{Location.} Definitions at lines 1912--1917 and 2025--2030
+(``the smallest term in \(c^{-1}(A)\), equivalently the \emph{unique}
+representative with no subterm \(\mathbf 0(\lambda,\lambda)\)'').
+
+\paragraph{Used by.} Both inclusions of Lemmas~15 and~16, the subset and
+successor arguments of Lemma~18, claim (2) of the lifting fact in Lemma~19,
+the recovery of \(\bar B\) from \(q\in U_{m-1}\) in the existential case, and
+the identity \(\iota(\enc(T))=e(D_T,(P_a^T))\) in the derivation of
+Theorem~26 (lines 122--128).
+
+\paragraph{What must be proved.} Existence and uniqueness: every tuple
+\(\bar A\) has exactly one \(c_n\)-preimage without the forbidden subterm, and
+the order-theoretic ``smallest'' description agrees with it.  Recommended
+treatment for Lean: do not define \(e\) through an order at all.  Define
+\(e(\bar A)\) by recursion on the finite tuple (root label from
+\((\epsilon\in A_i)_i\); recurse on the shifted tuples; return \(\lambda\) when
+all components are empty), then prove
+\begin{enumerate}[label=(\roman*),leftmargin=*]
+  \item \(c_n(e(\bar A))=\bar A\);
+  \item \(e(\bar A)\) has no forbidden subterm;
+  \item any term without a forbidden subterm equals \(e\) of its decode.
+\end{enumerate}
+The key auxiliary fact for (iii) is:
+\emph{a term whose decode is the all-empty tuple and which has no forbidden
+subterm is \(\lambda\)} (an all-zero-labelled term of depth \(\ge2\) must
+contain \(\mathbf 0(\lambda,\lambda)\) at the bottom).  This one lemma settles
+the \(\lambda\)-versus-non-\(\lambda\) boundary in the uniqueness induction.
+
+\subsection{The reduce/graft lemma (claim (2) of the lifting fact)}
+
+\paragraph{Location.} Lines 2317--2332; re-used at lines 2402--2409.
+
+\paragraph{Statement.} For canonical \(t=e(A_1,\ldots,A_m)\) and a coordinate
+selection \(I\),
+\[
+  \pi_I(t)\in\{e(A_{i_1},\ldots,A_{i_k})\}\cdot_\lambda Z_k .
+\]
+The file proves this by a two-line sketch.  It is the real content of the
+lifting fact: an arbitrary (possibly non-canonical) term is its own canonical
+reduct with all-zero trees grafted at \(\lambda\)-leaves.  It deserves to be a
+named, free-standing lemma (``every term of \(\Term{\Sigma_k}\) lies in
+\(\{e(c_k(t))\}\cdot_\lambda Z_k\)''), proved by structural induction using the
+zero-decode fact of Section~\ref{sec:canonical}.  Two further facts are used
+silently nearby: grafting \(Z_k\)-terms does not change \(c_k\), and
+\(Z_k=\{\mathbf 0_k(\lambda,\lambda)\}^{*_\lambda}\) equals the set of all
+all-zero terms (asserted at lines 2279--2283 with a one-line proof note).
+
+\subsection{An algebra of complex products}
+
+The expanded proofs use, without statement or proof:
+\begin{itemize}[leftmargin=*]
+  \item \emph{same-symbol associativity}
+    \((U\cdot_\lambda V)\cdot_\lambda T=U\cdot_\lambda(V\cdot_\lambda T)\):
+    Lemma~18's converse (composing chain wrappers, lines 2246--2253), the
+    secondary inclusion in Theorem~9, and Lemma~19;
+  \item \emph{mixed-symbol rearrangement} for the nested products
+    \(U_{k+1}\cdot_{\lambda_1}T_1^k\cdots\cdot_{\lambda_m}T_m^k\)
+    (lines 1026--1033) and
+    \(L_F\cdot_{\lambda_1}C_1\cdots\cdot_{\lambda_m}C_m\)
+    (lines 1107--1121).  Caution: \TW{} themselves note that mixed-symbol
+    associativity \emph{fails} in general
+    (\(\{t\}=(\{\delta\}\cdot_\lambda\{\lambda\})\cdot_\delta\{t\}
+      \ne\{\delta\}\cdot_\lambda(\{\lambda\}\cdot_\delta\{t\})=\{\delta\}\)).
+    The uses here are sound because the inserted sets contain no occurrence of
+    the other hole symbols, but that side condition must be made explicit;
+  \item \emph{continuity / max-stage}: \(U\cdot_\lambda\bigl(\bigcup_rX_r\bigr)
+    =\bigcup_r(U\cdot_\lambda X_r)\) for increasing chains --- stated and used
+    correctly three times (Lemma~12 (1), Lemma~15, Lemma~16), but worth
+    isolating once;
+  \item the composition inclusion \(X_r\cdot_\lambda V\subseteq X_{r+1}\)
+    discussed in Section~\ref{sec:critical}.
+\end{itemize}
+Recommendation: develop these once as a small substitution algebra
+(associativity for a fixed hole symbol, conditional commutation for distinct
+hole symbols, monotonicity, continuity, the \(\cdot_\lambda\emptyset\)
+filter), and let every proof cite it.  Ad hoc re-derivation inside each proof
+is exactly the pattern that produces oversized Lean proofs.
+
+\subsection{Species extension and reduct transfer}
+
+\paragraph{Location.} Theorem~9 replaces the constants of \(\Sigma\) by fresh
+ones (\(\Sigma^+\), lines 965--978); Lemmas~15, 16, 18 add a temporary
+\(\delta\); Theorem~8's synthesis direction says recognizability is preserved
+``even after adding finitely many fresh constants'' (lines 1129--1140).
+
+\paragraph{Missing statement.} If \(U\subseteq\Term{\Sigma}\) and \(U\) is
+recognizable over an extension \(\Sigma'\supseteq\Sigma\) by fresh constants,
+then \(U\) is recognizable over \(\Sigma\) (restrict the automaton to the
+reduct; runs of \(\Sigma\)-terms never consult the new constants).  Trivial on
+paper, but in a formalization terms over different species live in different
+types, so one needs signature-inclusion homomorphisms
+\(\Term{\Sigma}\hookrightarrow\Term{\Sigma'}\) and transfer lemmas for \(h\)
+and \(\bh\).  Design options: (i) a graded-signature functorial interface in
+which inclusions are ordinary signature maps and Theorem~4's machinery is
+reused, or (ii) one fixed ambient species with the set of admissible constants
+as a parameter, avoiding type-level extension entirely.
+
+\subsection{Effectiveness of truncation}
+
+\paragraph{Location.} Lemma~13 defines \(A_V=\{h_\Aut(v):v\in V\}\)
+set-theoretically (lines 1578--1583); the effectiveness paragraphs of
+Theorem~17 (lines 2490--2493) and the Doner proof claim every step is
+effective.
+
+\paragraph{Gap.} For arbitrary \(V\) the set \(A_V\) is not computable, so
+Lemma~13 as stated is a pure existence result.  Effectiveness holds in every
+actual use because the only \(V\) employed is \(Z_{m-1}\), which is given by an
+explicit automaton; for automaton-given \(V\), \(A_V\) is computable by a
+reachable-state analysis (the same induction as Theorem~7).  One remark in the
+main file would close this; a computable Lean \texttt{compile} function must
+implement it.
+
+\subsection{Standing assumptions and small elisions}
+
+\begin{itemize}[leftmargin=*]
+  \item The species definition (lines 170--181) still does not carry \TW{}'s
+    standing assumptions ``\(\Sigma\) finite'' and
+    ``\(\Sigma_0\ne\emptyset\)''.  Finiteness is invoked inside Theorem~7
+    (line 899); it should be a blanket hypothesis of the section.
+  \item Lemmas~15/16, right-to-left inclusion: the argument that substitution
+    creates no forbidden subterm at the junction silently uses
+    \(\lambda\notin W_n\) (every closure element is \(\delta\) or has a
+    binary root), so a pattern child slot filled by an inserted term is never
+    \(\lambda\).  True, but state it; in Lean it is an explicit lemma.
+  \item Derivation of Theorem~26: the relativization equivalence (1)
+    (lines 140--145) is asserted ``by induction on \(\Phi\)'' --- this
+    induction over full \MSO{} syntax is a genuine proof obligation, as are
+    the weak-\MSO{} definability of the well-formedness conditions
+    (prefix-closedness of \(D\), partition of \(D\) by the \(P_a\)) and the
+    empty-tree edge case \(\enc(T)=\bot\), \(\iota(\bot)=\lambda\).
+\end{itemize}
+
+\section{Design decision forced by the new Theorem-26 derivation}
+\label{sec:path}
+
+The added derivation of lecture-note Theorem~26 (lines 94--166) is
+mathematically correct, but it commits to the \emph{literal \(N_2\) route}:
+its dependency cone is
+\[
+  \text{Thms 1--4}
+  \;+\;\text{regularity (Lemmas 10--12, Thm 8)}
+  \;+\;\text{truncation (Lemma 13)}
+  \;+\;\text{encodings (Lemmas 15--16)}
+  \;+\;\text{Lemmas 18--19}
+  \;+\;\text{FO elimination}
+  \;+\;\text{relativization},
+\]
+together with all obligations of Section~\ref{sec:obligations}.  Meanwhile the
+closing section of the file (lines 2652--2656) still recommends the
+\emph{track route} for the Courcelle formalization: variable assignments as
+extra Boolean tracks on the fixed input tree, existential quantification as
+plain projection.  On the track route the tree shape is shared by all tracks,
+so no canonicalization exists at all: negation is plain complementation,
+projection introduces no redundant subtrees, and the entire canonical/reduce/
+graft/truncation apparatus (Sections~\ref{sec:canonical}--4.3, Lemmas~12--13,
+15--16, and the \(Z_k\) machinery of Lemma~19) is unnecessary.  Its dependency
+cone is only: Theorems~1--4, atomic track automata, the formula induction, and
+a relativization-free semantics transfer.
+
+Both routes cannot be ``the'' formalization target simultaneously.  Our
+recommendation, unchanged from the previous review: formalize the track route
+for Courcelle, and keep the \(N_2\)-literal derivation (and this file's
+Sections~5--10) as paper-level provenance.  If the \(N_2\) route is chosen
+instead, the obligations of Section~\ref{sec:obligations} move onto the
+critical path, and the Theorem~9 repair of Section~\ref{sec:critical} is still
+\emph{not} needed (only the synthesis direction of Theorem~8 is used).
+
+\section{Notes on the linear-time accounting}
+
+The planned treatment of ``linear time'' --- an instrumented evaluator that
+increments a counter per step, with the final theorem bounding the counter by
+a linear function of the input size --- fits the revised text well:
+\begin{itemize}[leftmargin=*]
+  \item the padded-term size bound \(|\enc(T)|\le2|T|+1\) is now explicit
+    (line 165) and is exactly the encoding-size lemma the cost argument needs;
+  \item the run is described as ``one transition per symbol of
+    \(\enc(T)\)'' (lines 163--166), matching a one-tick-per-node cost
+    convention;
+  \item the derivation cleanly separates the compile phase (inverse
+    projection, determinization --- cost uncontrolled, absorbed into the
+    \(f(|\Phi|)\) constant) from the run phase.  The Lean statement should
+    preserve this separation: prove the cost bound only for the run of the
+    final deterministic automaton, with a constant depending on the automaton
+    but not on the input tree, alongside an agreement lemma tying the
+    instrumented evaluator to \(h_\Aut\).
+\end{itemize}
+
+\section{Verified coverage}
+
+For the record, the following were checked in detail against the source paper
+and found correct in the reviewed version: the derivation of Theorem~26 from
+\TW{} (modulo the obligations listed above); the full proofs of Theorems~1,
+2, 3, 4 and Lemmas~5, 6 (improved), 7; Lemma~10's singleton automaton;
+Lemma~11 including both invariants; Lemma~12's corrected \(q_\lambda\)
+construction and all four invariants; Lemma~13; the set-only translation and
+its verification; Lemmas~15 and~16 including the \(\cup\{\lambda\}\) case;
+Lemma~18 (both the \((1,0)\)-avoidance automaton and the chain construction
+\(S_i=H^{*_\delta}\cdot_\delta\{B_i\}\), whose base terms and wrappers were
+checked to encode and preserve the successor relation and canonicity);
+Lemma~19's \(Z_k\)-saturated lifting fact, negation, and existential case
+including the \(m-1=0\) degenerate alphabet; the assembly of Theorem~17; and
+the Doner decidability proof including the zero-track sentence test.  The sole
+exception is the analysis theorem's converse induction step
+(Section~\ref{sec:critical}).
+
+\end{document}
