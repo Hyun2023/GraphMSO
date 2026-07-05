@@ -16,6 +16,8 @@ formalization into three layers.
   `B`.
 * `IsGluing A B C := Nonempty (GluingData A B C)` is the proposition-level
   predicate used in theorem statements.
+* `MultiGluingData A B C` is the corresponding witness for gluing a family
+  `B : ι -> KRootedGraph P k` onto one distinguished left graph `A`.
 
 This keeps theorem statements proof-irrelevant while still allowing later
 proofs to unpack the concrete maps into the glued graph when needed.
@@ -223,6 +225,164 @@ def IsGluing (A B C : KRootedGraph P k) : Prop :=
 
 theorem IsGluing.gluable {A B C : KRootedGraph P k} (h : IsGluing A B C) :
     A.Gluable B := by
+  rcases h with ⟨data⟩
+  exact data.gluable
+
+/-! ## Indexed gluing
+
+The cone-gluing lemma in the Courcelle notes glues one node graph with all cone
+graphs of its children.  The child set is finite in the intended applications,
+often `Fin d`, but the specification below does not need finiteness: it records
+the quotient-style result of gluing an arbitrary indexed family of right-hand
+pieces onto one distinguished left-hand piece.
+
+Only roots of the right-hand pieces are identified, and every such root must
+match a labelled vertex of the left-hand graph.  The root set and all surviving
+labels of the result are inherited from the left-hand graph, exactly as in the
+binary operation above.
+-/
+
+/-- Representatives before gluing a family of right-hand pieces onto `A`. -/
+abbrev MultiRep {ι : Type*} (A : KRootedGraph P k) (B : ι -> KRootedGraph P k) :=
+  A.V ⊕ (Σ i : ι, (B i).V)
+
+/--
+The precondition for gluing every member of the indexed family `B` onto `A`.
+
+Each piece is matched directly against the distinguished left graph.  This is
+the shape used by cone gluing: child cones are glued along their adhesions into
+the parent node graph, not sequentially into each other.
+-/
+def MultiGluable {ι : Type*} (A : KRootedGraph P k) (B : ι -> KRootedGraph P k) :
+    Prop :=
+  ∀ i : ι, A.Gluable (B i)
+
+/--
+The intended quotient relation for indexed gluing.
+
+Two left representatives agree exactly when they are the same vertex of `A`.
+A left representative is identified with a right representative exactly when the
+right representative is in its root and has a matching label in `A`.  Two right
+representatives agree either when they are literally the same tagged
+representative, or when they are both rooted representatives matched to the same
+left vertex.
+-/
+def MultiGluingRel {ι : Type*} (A : KRootedGraph P k) (B : ι -> KRootedGraph P k) :
+    MultiRep A B -> MultiRep A B -> Prop
+  | .inl u, .inl u' => u = u'
+  | .inl u, .inr x =>
+      ∃ hx : x.2 ∈ (B x.1).R, A.HasLabel u ((B x.1).rootLabel x.2 hx)
+  | .inr x, .inl u =>
+      ∃ hx : x.2 ∈ (B x.1).R, A.HasLabel u ((B x.1).rootLabel x.2 hx)
+  | .inr x, .inr y =>
+      x = y ∨
+        ∃ (hx : x.2 ∈ (B x.1).R) (hy : y.2 ∈ (B y.1).R) (u : A.V),
+          A.HasLabel u ((B x.1).rootLabel x.2 hx) ∧
+            A.HasLabel u ((B y.1).rootLabel y.2 hy)
+
+/--
+Concrete witness data that `C` is obtained by gluing the indexed family `B` onto
+the distinguished graph `A`.
+
+This is the multi-piece analogue of `GluingData`.  It remains relational rather
+than constructing a canonical quotient, which keeps later cone-gluing statements
+free to use the concrete cone graph as the chosen result.
+-/
+structure MultiGluingData {ι : Type*}
+    (A : KRootedGraph P k) (B : ι -> KRootedGraph P k) (C : KRootedGraph P k) where
+  /-- The quotient map from all representatives into the glued graph. -/
+  repr : MultiRep A B -> C.V
+  /-- Every indexed piece is gluable onto the distinguished left graph. -/
+  gluable : MultiGluable A B
+  /-- Every vertex of the result comes from the left graph or one indexed piece. -/
+  repr_surjective : Function.Surjective repr
+  /-- The fibers of `repr` are exactly the intended indexed gluing relation. -/
+  repr_eq_iff :
+    ∀ x y : MultiRep A B, repr x = repr y ↔ MultiGluingRel A B x y
+  /-- The root of the glued graph is inherited from the left graph. -/
+  root_eq : C.R =
+    repr '' ((fun u : A.V => (Sum.inl u : MultiRep A B)) '' A.R)
+  /-- The surviving label domain is inherited from the left graph. -/
+  labelDom_eq : C.labelDom =
+    repr '' ((fun u : A.V => (Sum.inl u : MultiRep A B)) '' A.labelDom)
+  /-- The inherited labels agree with the labels of the left graph. -/
+  label_left : ∀ u : A.labelDom, C.HasLabel (repr (.inl u.1)) (A.label u)
+  /-- Edges from the left graph appear in the glued graph. -/
+  left_adj : ∀ {u v : A.V}, A.G.Adj u v -> C.G.Adj (repr (.inl u)) (repr (.inl v))
+  /-- Edges from every indexed piece appear in the glued graph. -/
+  piece_adj :
+    ∀ (i : ι) {u v : (B i).V},
+      (B i).G.Adj u v -> C.G.Adj (repr (.inr ⟨i, u⟩)) (repr (.inr ⟨i, v⟩))
+  /--
+  Conversely, every edge of the glued graph comes from the left graph or one
+  indexed piece.
+  -/
+  adj_cases : ∀ {x y : C.V}, C.G.Adj x y ->
+    (∃ u v : A.V, A.G.Adj u v ∧ repr (.inl u) = x ∧ repr (.inl v) = y) ∨
+      (∃ i : ι, ∃ u v : (B i).V,
+        (B i).G.Adj u v ∧ repr (.inr ⟨i, u⟩) = x ∧ repr (.inr ⟨i, v⟩) = y)
+  /-- Unary predicates of the left graph are inherited by the glued graph. -/
+  left_pred : ∀ (p : P) (u : A.V), C.pred p (repr (.inl u)) ↔ A.pred p u
+  /-- Unary predicates of every indexed piece are inherited by the glued graph. -/
+  piece_pred :
+    ∀ (p : P) (i : ι) (v : (B i).V),
+      C.pred p (repr (.inr ⟨i, v⟩)) ↔ (B i).pred p v
+
+namespace MultiGluingData
+
+variable {ι : Type*} {A : KRootedGraph P k} {B : ι -> KRootedGraph P k}
+variable {C : KRootedGraph P k}
+
+/-- The induced map from the distinguished left input into the glued graph. -/
+def left (data : MultiGluingData A B C) : A.V -> C.V :=
+  fun u => data.repr (.inl u)
+
+/-- The induced map from an indexed right input into the glued graph. -/
+def piece (data : MultiGluingData A B C) (i : ι) : (B i).V -> C.V :=
+  fun v => data.repr (.inr ⟨i, v⟩)
+
+theorem left_injective (data : MultiGluingData A B C) :
+    Function.Injective data.left := by
+  intro u v huv
+  exact (data.repr_eq_iff (.inl u) (.inl v)).mp huv
+
+theorem vertex_cover (data : MultiGluingData A B C) (x : C.V) :
+    (∃ u : A.V, data.left u = x) ∨
+      (∃ i : ι, ∃ v : (B i).V, data.piece i v = x) := by
+  rcases data.repr_surjective x with ⟨rep, hrep⟩
+  cases rep with
+  | inl u =>
+      exact Or.inl ⟨u, hrep⟩
+  | inr y =>
+      exact Or.inr ⟨y.1, y.2, hrep⟩
+
+theorem identified_iff (data : MultiGluingData A B C) (u : A.V)
+    (i : ι) (v : (B i).V) :
+    data.left u = data.piece i v ↔
+      ∃ hv : v ∈ (B i).R, A.HasLabel u ((B i).rootLabel v hv) :=
+  data.repr_eq_iff (.inl u) (.inr ⟨i, v⟩)
+
+theorem piece_identified_iff (data : MultiGluingData A B C)
+    (i j : ι) (u : (B i).V) (v : (B j).V) :
+    data.piece i u = data.piece j v ↔
+      (⟨i, u⟩ : Σ i : ι, (B i).V) = ⟨j, v⟩ ∨
+        ∃ (hu : u ∈ (B i).R) (hv : v ∈ (B j).R) (a : A.V),
+          A.HasLabel a ((B i).rootLabel u hu) ∧
+            A.HasLabel a ((B j).rootLabel v hv) :=
+  data.repr_eq_iff (.inr ⟨i, u⟩) (.inr ⟨j, v⟩)
+
+end MultiGluingData
+
+/-- Predicate-level indexed gluing relation. -/
+def IsMultiGluing {ι : Type*}
+    (A : KRootedGraph P k) (B : ι -> KRootedGraph P k) (C : KRootedGraph P k) :
+    Prop :=
+  Nonempty (MultiGluingData A B C)
+
+theorem IsMultiGluing.gluable {ι : Type*} {A : KRootedGraph P k}
+    {B : ι -> KRootedGraph P k} {C : KRootedGraph P k}
+    (h : IsMultiGluing A B C) :
+    MultiGluable A B := by
   rcases h with ⟨data⟩
   exact data.gluable
 

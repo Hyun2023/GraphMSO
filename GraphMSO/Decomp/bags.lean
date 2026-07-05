@@ -11,7 +11,7 @@ induces a connected subgraph of the decomposition tree.
 
 namespace TreeDecomposition
 
-variable {V : Type*} {G : SimpleGraph V}
+variable {V : Type*} [Fintype V] {G : SimpleGraph V}
 
 /-! ## Main definition: BAGS -/
 
@@ -57,42 +57,42 @@ end TreeDecomposition
 
 namespace RootedTreeDecomposition
 
-variable {V : Type*} {G : SimpleGraph V}
+variable {V : Type*} [Fintype V] {G : SimpleGraph V}
 
 /-! ## Top node of `BAGS(v)` -/
 
 /-- The `BAGS(v)` set for a rooted tree decomposition, forwarded to the underlying decomposition. -/
-def BAGS (T : RootedTreeDecomposition G) (v : V) : Set T.decomp.Node :=
-  T.decomp.BAGS v
+def BAGS (T : RootedTreeDecomposition G) (v : V) : Set T.Node :=
+  T.toTreeDecomposition.BAGS v
 
-@[simp] theorem mem_BAGS (T : RootedTreeDecomposition G) (v : V) (t : T.decomp.Node) :
+@[simp] theorem mem_BAGS (T : RootedTreeDecomposition G) (v : V) (t : T.Node) :
     t ∈ T.BAGS v ↔ v ∈ T.bag t :=
   Iff.rfl
 
 /-- `BAGS(v)` is nonempty for a rooted tree decomposition. -/
 theorem BAGS_nonempty (T : RootedTreeDecomposition G) (v : V) :
     (T.BAGS v).Nonempty := by
-  simpa [BAGS] using T.decomp.BAGS_nonempty v
+  simpa [BAGS] using T.toTreeDecomposition.BAGS_nonempty v
 
 /-- The subgraph induced by `BAGS(v)` for a rooted tree decomposition. -/
 def BAGSGraph (T : RootedTreeDecomposition G) (v : V) :
     SimpleGraph (T.BAGS v) :=
-  T.decomp.BAGSGraph v
+  T.toTreeDecomposition.BAGSGraph v
 
 /-- The subgraph induced by `BAGS(v)` is a tree for a rooted tree decomposition. -/
 theorem BAGSGraph_isTree (T : RootedTreeDecomposition G) (v : V) :
     (T.BAGSGraph v).IsTree := by
-  simpa [BAGSGraph, BAGS] using T.decomp.BAGSGraph_isTree v
+  simpa [BAGSGraph, BAGS] using T.toTreeDecomposition.BAGSGraph_isTree v
 
 /-- A top node of `BAGS(v)`: a node in `BAGS(v)` with minimum root depth. -/
-def IsTopBAGSNode (T : RootedTreeDecomposition G) (v : V) (t : T.decomp.Node) : Prop :=
-  t ∈ T.BAGS v ∧ ∀ u : T.decomp.Node, u ∈ T.BAGS v -> T.rootDepth t ≤ T.rootDepth u
+def IsTopBAGSNode (T : RootedTreeDecomposition G) (v : V) (t : T.Node) : Prop :=
+  t ∈ T.BAGS v ∧ ∀ u : T.Node, u ∈ T.BAGS v -> T.rootDepth t ≤ T.rootDepth u
 
 /--
 The top node of `BAGS(v)`: a node in `BAGS(v)` whose path from the root has
 minimum length among all nodes in `BAGS(v)`.
 -/
-noncomputable def topBAGSNode (T : RootedTreeDecomposition G) (v : V) : T.decomp.Node :=
+noncomputable def topBAGSNode (T : RootedTreeDecomposition G) (v : V) : T.Node :=
   T.rootDepth.argminOn (T.BAGS v) (T.BAGS_nonempty v)
 
 /-- The chosen top node belongs to `BAGS(v)`. -/
@@ -102,7 +102,7 @@ theorem topBAGSNode_mem (T : RootedTreeDecomposition G) (v : V) :
 
 /-- The chosen top node is at least as close to the root as any other node in `BAGS(v)`. -/
 theorem topBAGSNode_minimal (T : RootedTreeDecomposition G) (v : V)
-    {t : T.decomp.Node} (ht : t ∈ T.BAGS v) :
+    {t : T.Node} (ht : t ∈ T.BAGS v) :
     T.rootDepth (T.topBAGSNode v) ≤ T.rootDepth t := by
   simpa [topBAGSNode] using
     T.rootDepth.argminOn_le (T.BAGS v) ht (T.BAGS_nonempty v)
@@ -114,12 +114,12 @@ theorem topBAGSNode_isTop (T : RootedTreeDecomposition G) (v : V) :
 
 /-- The top node of `BAGS(v)` is unique. -/
 theorem IsTopBAGSNode.unique {T : RootedTreeDecomposition G} {v : V}
-    {t u : T.decomp.Node} (ht : T.IsTopBAGSNode v t) (hu : T.IsTopBAGSNode v u) :
+    {t u : T.Node} (ht : T.IsTopBAGSNode v t) (hu : T.IsTopBAGSNode v u) :
     t = u := by
   let t' : T.BAGS v := ⟨t, ht.1⟩
   let u' : T.BAGS v := ⟨u, hu.1⟩
   obtain ⟨p, hp⟩ := ((T.BAGSGraph_isTree v).isConnected t' u').exists_isPath
-  let incl : T.BAGSGraph v →g T.decomp.T := {
+  let incl : T.BAGSGraph v →g T.T := {
     toFun := fun x => x.1
     map_rel' := by
       intro x y hxy
@@ -132,7 +132,7 @@ theorem IsTopBAGSNode.unique {T : RootedTreeDecomposition G} {v : V}
   · have hp_not_nil : ¬ p.Nil := SimpleGraph.Walk.not_nil_of_ne heq
     rcases SimpleGraph.Walk.not_nil_iff.mp hp_not_nil with ⟨x, h, q, hp_eq⟩
     subst p
-    have htx : T.decomp.T.Adj t x.1 := incl.map_adj h
+    have htx : T.T.Adj t x.1 := incl.map_adj h
     have hle_tx : T.rootDepth t ≤ T.rootDepth x.1 := ht.2 x x.2
     have hdepth : T.rootDepth x.1 = T.rootDepth t + 1 := by
       rcases T.rootDepth_eq_add_one_or_eq_add_one htx with hlt | hgt
@@ -151,19 +151,19 @@ theorem IsTopBAGSNode.unique {T : RootedTreeDecomposition G} {v : V}
 
 /-- Existence and uniqueness of the top node of `BAGS(v)`. -/
 theorem existsUnique_topBAGSNode (T : RootedTreeDecomposition G) (v : V) :
-    ∃! t : T.decomp.Node, T.IsTopBAGSNode v t := by
+    ∃! t : T.Node, T.IsTopBAGSNode v t := by
   refine ⟨T.topBAGSNode v, T.topBAGSNode_isTop v, ?_⟩
   intro t ht
   exact ht.unique (T.topBAGSNode_isTop v)
 
 /-- The top node of `BAGS(v)` is an ancestor of every node in `BAGS(v)`. -/
 theorem topBAGSNode_isAncestor (T : RootedTreeDecomposition G) (v : V)
-    {t : T.decomp.Node} (ht : t ∈ T.BAGS v) :
+    {t : T.Node} (ht : t ∈ T.BAGS v) :
     T.IsAncestor (T.topBAGSNode v) t := by
   let top' : T.BAGS v := ⟨T.topBAGSNode v, T.topBAGSNode_mem v⟩
   let t' : T.BAGS v := ⟨t, ht⟩
   obtain ⟨p, hp⟩ := ((T.BAGSGraph_isTree v).isConnected top' t').exists_isPath
-  let incl : T.BAGSGraph v →g T.decomp.T := {
+  let incl : T.BAGSGraph v →g T.T := {
     toFun := fun x => x.1
     map_rel' := by
       intro x y hxy
@@ -178,7 +178,7 @@ theorem topBAGSNode_isAncestor (T : RootedTreeDecomposition G) (v : V)
   · have hp_not_nil : ¬ p.Nil := SimpleGraph.Walk.not_nil_of_ne heq
     rcases SimpleGraph.Walk.not_nil_iff.mp hp_not_nil with ⟨x, h, q, hp_eq⟩
     subst p
-    have htopx : T.decomp.T.Adj (T.topBAGSNode v) x.1 := incl.map_adj h
+    have htopx : T.T.Adj (T.topBAGSNode v) x.1 := incl.map_adj h
     have hle_topx : T.rootDepth (T.topBAGSNode v) ≤ T.rootDepth x.1 :=
       T.topBAGSNode_minimal v x.2
     have hdepth : T.rootDepth x.1 = T.rootDepth (T.topBAGSNode v) + 1 := by
@@ -198,14 +198,14 @@ If a child lies in `BAGS(v)` and its parent is below the top node of `BAGS(v)`,
 then the parent lies in `BAGS(v)` as well.
 -/
 theorem IsChild.parent_mem_BAGS_of_child_mem {T : RootedTreeDecomposition G} {v : V}
-    {parent child : T.decomp.Node} (hchild : T.IsChild parent child)
+    {parent child : T.Node} (hchild : T.IsChild parent child)
     (htop_parent : T.IsAncestor (T.topBAGSNode v) parent)
     (hchild_mem : child ∈ T.BAGS v) :
     parent ∈ T.BAGS v := by
   let top' : T.BAGS v := ⟨T.topBAGSNode v, T.topBAGSNode_mem v⟩
   let child' : T.BAGS v := ⟨child, hchild_mem⟩
   obtain ⟨q, hq⟩ := ((T.BAGSGraph_isTree v).isConnected top' child').exists_isPath
-  let incl : T.BAGSGraph v →g T.decomp.T := {
+  let incl : T.BAGSGraph v →g T.T := {
     toFun := fun x => x.1
     map_rel' := by
       intro x y hxy
@@ -213,12 +213,12 @@ theorem IsChild.parent_mem_BAGS_of_child_mem {T : RootedTreeDecomposition G} {v 
   have hincl : Function.Injective incl := by
     intro x y hxy
     exact Subtype.ext hxy
-  let qOrig : T.decomp.T.Walk (T.topBAGSNode v) child := q.map incl
+  let qOrig : T.T.Walk (T.topBAGSNode v) child := q.map incl
   have hqOrig : qOrig.IsPath := by
     dsimp [qOrig]
     exact SimpleGraph.Walk.map_isPath_of_injective (f := incl) hincl hq
   have hqOrig_support_subset :
-      ∀ z : T.decomp.Node, z ∈ qOrig.support -> z ∈ T.BAGS v := by
+      ∀ z : T.Node, z ∈ qOrig.support -> z ∈ T.BAGS v := by
     intro z hz
     dsimp [qOrig] at hz
     rw [SimpleGraph.Walk.support_map] at hz
@@ -233,7 +233,7 @@ theorem IsChild.parent_mem_BAGS_of_child_mem {T : RootedTreeDecomposition G} {v 
     intro hmem
     exact hparent_not_mem (hqOrig_support_subset parent hmem)
   have hchild_in_p : child ∈ p.support :=
-    T.decomp.T_istree.IsAcyclic.mem_support_of_ne_mem_support_of_adj_of_isPath
+    T.T_istree.IsAcyclic.mem_support_of_ne_mem_support_of_adj_of_isPath
       hp hqOrig hchild.adj hparent_not_support
   have hchild_depth_le : T.rootDepth child ≤ T.rootDepth parent :=
     hpdepth child hchild_in_p
@@ -246,7 +246,7 @@ between the top node of `BAGS(v)` and a node of `BAGS(v)`, then `x` is also in
 `BAGS(v)`.
 -/
 theorem mem_BAGS_of_isAncestor_of_isAncestor (T : RootedTreeDecomposition G) (v : V)
-    {x t : T.decomp.Node}
+    {x t : T.Node}
     (htop_x : T.IsAncestor (T.topBAGSNode v) x)
     (hxt : T.IsAncestor x t)
     (ht : t ∈ T.BAGS v) :

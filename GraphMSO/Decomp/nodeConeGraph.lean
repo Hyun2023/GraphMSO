@@ -16,16 +16,16 @@ The lecture note uses two rooted graphs at a decomposition node `t`.
 
 namespace RootedTreeDecomposition
 
-variable {V : Type*} {G : SimpleGraph V}
+variable {V : Type*} [Fintype V] {G : SimpleGraph V}
 
 /-- The bag of `t` is contained in the cone below `t`. -/
-theorem bag_subset_cone (T : RootedTreeDecomposition G) (t : T.decomp.Node) :
+theorem bag_subset_cone (T : RootedTreeDecomposition G) (t : T.Node) :
     T.bag t ⊆ T.cone t := by
   intro v hv
   exact ⟨t, Relation.ReflTransGen.refl, hv⟩
 
 /-- The adhesion of `t` is contained in the bag of `t`. -/
-theorem adhesion_subset_bag (T : RootedTreeDecomposition G) (t : T.decomp.Node) :
+theorem adhesion_subset_bag (T : RootedTreeDecomposition G) (t : T.Node) :
     T.adhesion t ⊆ T.bag t := by
   intro v hv
   by_cases hroot : t = T.root
@@ -35,7 +35,7 @@ theorem adhesion_subset_bag (T : RootedTreeDecomposition G) (t : T.decomp.Node) 
     exact hv.1
 
 /-- The adhesion of `t` is contained in the cone below `t`. -/
-theorem adhesion_subset_cone (T : RootedTreeDecomposition G) (t : T.decomp.Node) :
+theorem adhesion_subset_cone (T : RootedTreeDecomposition G) (t : T.Node) :
     T.adhesion t ⊆ T.cone t :=
   fun _ hv => T.bag_subset_cone t (T.adhesion_subset_bag t hv)
 
@@ -43,7 +43,7 @@ theorem adhesion_subset_cone (T : RootedTreeDecomposition G) (t : T.decomp.Node)
 
 /-- Descendants of distinct children of the same parent are disjoint. -/
 theorem eq_of_isChild_of_isAncestor_of_isAncestor {T : RootedTreeDecomposition G}
-    {parent child₁ child₂ x : T.decomp.Node}
+    {parent child₁ child₂ x : T.Node}
     (hchild₁ : T.IsChild parent child₁) (hchild₂ : T.IsChild parent child₂)
     (hdesc₁ : T.IsAncestor child₁ x) (hdesc₂ : T.IsAncestor child₂ x) :
     child₁ = child₂ := by
@@ -62,7 +62,7 @@ Lemma 6(i): for a child `child` of `parent`, the vertices that occur both in the
 child cone and in the parent bag are exactly the adhesion of the child.
 -/
 theorem cone_inter_bag_eq_adhesion_of_isChild (T : RootedTreeDecomposition G)
-    {parent child : T.decomp.Node} (hchild : T.IsChild parent child) :
+    {parent child : T.Node} (hchild : T.IsChild parent child) :
     T.cone child ∩ T.bag parent = T.adhesion child := by
   ext v
   constructor
@@ -97,7 +97,7 @@ If a vertex belongs to cones of two distinct children, then it already belongs
 to the parent bag.
 -/
 theorem mem_bag_of_mem_cone_of_mem_cone_of_isChild_ne
-    (T : RootedTreeDecomposition G) {parent child₁ child₂ : T.decomp.Node}
+    (T : RootedTreeDecomposition G) {parent child₁ child₂ : T.Node}
     (hchild₁ : T.IsChild parent child₁) (hchild₂ : T.IsChild parent child₂)
     (hne : child₁ ≠ child₂) {v : V}
     (hv₁ : v ∈ T.cone child₁) (hv₂ : v ∈ T.cone child₂) :
@@ -137,7 +137,7 @@ Lemma 6(ii): cones of distinct children intersect only along the corresponding
 adhesions.
 -/
 theorem cone_inter_cone_subset_adhesion_inter_adhesion_of_isChild_ne
-    (T : RootedTreeDecomposition G) {parent child₁ child₂ : T.decomp.Node}
+    (T : RootedTreeDecomposition G) {parent child₁ child₂ : T.Node}
     (hchild₁ : T.IsChild parent child₁) (hchild₂ : T.IsChild parent child₂)
     (hne : child₁ ≠ child₂) :
     T.cone child₁ ∩ T.cone child₂ ⊆ T.adhesion child₁ ∩ T.adhesion child₂ := by
@@ -157,11 +157,11 @@ Lemma 6(iii), first form: every edge of the graph induced by `cone t` has both
 endpoints in a common bag whose node lies in the subtree rooted at `t`.
 -/
 theorem exists_bag_in_subtree_of_adj_of_mem_cone (T : RootedTreeDecomposition G)
-    {t : T.decomp.Node} {u v : V} (hadj : G.Adj u v)
+    {t : T.Node} {u v : V} (hadj : G.Adj u v)
     (hu : u ∈ T.cone t) (hv : v ∈ T.cone t) :
-    ∃ s : T.decomp.Node, T.IsAncestor t s ∧ u ∈ T.bag s ∧ v ∈ T.bag s := by
+    ∃ s : T.Node, T.IsAncestor t s ∧ u ∈ T.bag s ∧ v ∈ T.bag s := by
   classical
-  rcases T.decomp.exists_bag_of_adj hadj with ⟨s₀, hu₀, hv₀⟩
+  rcases T.toTreeDecomposition.exists_bag_of_adj hadj with ⟨s₀, hu₀, hv₀⟩
   by_cases hdesc₀ : T.IsAncestor t s₀
   · exact ⟨s₀, hdesc₀, hu₀, hv₀⟩
   · rcases hu with ⟨a, hta, hua⟩
@@ -203,10 +203,10 @@ Lemma 6(iii), child-cone form: an edge in `cone t` is either already in the bag
 at `t`, or both endpoints lie in the cone of a child of `t`.
 -/
 theorem adj_in_bag_or_child_cone_of_adj_of_mem_cone (T : RootedTreeDecomposition G)
-    {t : T.decomp.Node} {u v : V} (hadj : G.Adj u v)
+    {t : T.Node} {u v : V} (hadj : G.Adj u v)
     (hu : u ∈ T.cone t) (hv : v ∈ T.cone t) :
     (u ∈ T.bag t ∧ v ∈ T.bag t) ∨
-      ∃ child : T.decomp.Node, T.IsChild t child ∧ u ∈ T.cone child ∧ v ∈ T.cone child := by
+      ∃ child : T.Node, T.IsChild t child ∧ u ∈ T.cone child ∧ v ∈ T.cone child := by
   rcases T.exists_bag_in_subtree_of_adj_of_mem_cone hadj hu hv with ⟨s, hts, hus, hvs⟩
   rcases Relation.ReflTransGen.cases_head hts with hst | hstep
   · left
@@ -217,11 +217,11 @@ theorem adj_in_bag_or_child_cone_of_adj_of_mem_cone (T : RootedTreeDecomposition
     exact ⟨child, hchild, ⟨s, hchild_s, hus⟩, ⟨s, hchild_s, hvs⟩⟩
 
 /-- Vertices of the node graph at `t`. -/
-abbrev NodeGraphVertex (T : RootedTreeDecomposition G) (t : T.decomp.Node) : Type _ :=
+abbrev NodeGraphVertex (T : RootedTreeDecomposition G) (t : T.Node) : Type _ :=
   {v : V // v ∈ T.bag t}
 
 /-- Vertices of the cone graph at `t`. -/
-abbrev ConeGraphVertex (T : RootedTreeDecomposition G) (t : T.decomp.Node) : Type _ :=
+abbrev ConeGraphVertex (T : RootedTreeDecomposition G) (t : T.Node) : Type _ :=
   {v : V // v ∈ T.cone t}
 
 /-! ## Main definition: Node Graph -/
@@ -233,7 +233,7 @@ adhesion, and labeled by the bag coloring on every bag vertex.
 def nodeGraph (T : RootedTreeDecomposition G) {omega : ℕ} {P : Type*}
     (vpred : P → V → Prop)
     (color : V -> BagColorSet omega) (hcolor : T.IsBagColoring color)
-    (t : T.decomp.Node) : KRootedGraph P (omega + 1) where
+    (t : T.Node) : KRootedGraph P (omega + 1) where
   V := T.NodeGraphVertex t
   G := G.induce (T.bag t)
   pred := fun p x => vpred p x.1
@@ -264,7 +264,7 @@ root `T.adhesion t` participates in the identification.
 def coneGraph (T : RootedTreeDecomposition G) {omega : ℕ} {P : Type*}
     (vpred : P → V → Prop)
     (color : V -> BagColorSet omega) (hcolor : T.IsBagColoring color)
-    (t : T.decomp.Node) : KRootedGraph P (omega + 1) where
+    (t : T.Node) : KRootedGraph P (omega + 1) where
   V := T.ConeGraphVertex t
   G := G.induce (T.cone t)
   pred := fun p x => vpred p x.1
