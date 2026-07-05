@@ -1,0 +1,296 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem*{remark}{Remark}
+
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\Nodes}{N}
+\newcommand{\width}{\operatorname{width}}
+\newcommand{\children}{\operatorname{children}}
+\newcommand{\Occ}{\operatorname{Occ}}
+
+\title{Nice Tree-Decomposition Normalization}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{Statement}
+
+Graphs are finite simple graphs.  A tree-decomposition of a graph \(G\) is a
+pair \((T,\beta)\), where \(T\) is a finite nonempty tree and
+\(\beta:\Nodes(T)\to 2^{V(G)}\) assigns a bag to each node, such that:
+\begin{enumerate}[label=\textup{(TD\arabic*)},leftmargin=*]
+  \item for every \(v\in V(G)\), some node \(t\in\Nodes(T)\) satisfies
+    \(v\in\beta(t)\);
+  \item for every edge \(uv\in E(G)\), some node \(t\in\Nodes(T)\) satisfies
+    \(u,v\in\beta(t)\);
+  \item for every \(v\in V(G)\), the set
+    \[
+      \Occ_T(v)\defeq\{t\in\Nodes(T):v\in\beta(t)\}
+    \]
+    is connected in \(T\).
+\end{enumerate}
+The width is at most \(\omega\) if every bag has size at most \(\omega+1\).
+
+\begin{definition}[Nice tree-decomposition]
+A rooted tree-decomposition \((T,\beta)\) is \emph{nice} if the following hold.
+\begin{enumerate}[label=\textup{(N\arabic*)},leftmargin=*]
+  \item The root bag is empty, and every leaf bag is empty.
+  \item Every node has at most two children.
+  \item If a node \(x\) has exactly one child \(y\), then exactly one vertex is
+    changed across the edge \(xy\): either
+    \[
+      \beta(x)=\beta(y)\cup\{v\}\quad\text{for some }v\notin\beta(y),
+    \]
+    or
+    \[
+      \beta(y)=\beta(x)\cup\{v\}\quad\text{for some }v\notin\beta(x).
+    \]
+    In the first case \(x\) is an introduce node, and in the second case
+    \(x\) is a forget node, relative to the top-down orientation.
+  \item If a node \(x\) has exactly two children \(y_1,y_2\), then
+    \[
+      \beta(x)=\beta(y_1)=\beta(y_2).
+    \]
+    Such a node is a join node.
+\end{enumerate}
+\end{definition}
+
+\begin{theorem}[Nice normalization]\label{thm:nice-normalization}
+Let \(G\) be a finite simple graph.  Let \((T,\beta)\) be a
+tree-decomposition of \(G\), and suppose that \(|\beta(t)|\le \omega+1\) for
+every \(t\in\Nodes(T)\).  Write \(m=|\Nodes(T)|\).  Then there is a nice
+tree-decomposition \((T^\ast,\beta^\ast)\) of \(G\) such that
+\[
+  |\beta^\ast(x)|\le \omega+1
+  \qquad\text{for every }x\in\Nodes(T^\ast),
+\]
+and
+\[
+  |\Nodes(T^\ast)|\le (3\omega+5)m.
+\]
+Consequently, every tree-decomposition of width at most \(\omega\) can be
+transformed into a nice tree-decomposition of width at most \(\omega\), with
+only \(O_\omega(|\Nodes(T)|)\) nodes.  In particular, if the original width is
+exactly \(w\), then taking \(\omega=w\) gives a nice decomposition of width at
+most \(w\).
+\end{theorem}
+
+\section{Bag-changing paths}
+
+\begin{lemma}[Changing one bag into another]\label{lem:bag-path}
+Let \(A,B\subseteq V(G)\) be finite sets with
+\(|A|,|B|\le \omega+1\).  There is a rooted path \(P(A,B)\) whose top bag is
+\(A\), whose bottom bag is \(B\), and whose consecutive bags differ by exactly
+one vertex, except that if \(A=B\) the path consists of a single node.  Every
+bag on the path has size at most \(\omega+1\), and the number of edges of the
+path is
+\[
+  |A\setminus B|+|B\setminus A|\le 2(\omega+1).
+\]
+Moreover, for every vertex \(v\), the nodes of \(P(A,B)\) whose bags contain
+\(v\) form a connected subpath, possibly empty.
+\end{lemma}
+
+\begin{proof}
+Choose enumerations
+\[
+  A\setminus B=\{a_1,\ldots,a_p\},
+  \qquad
+  B\setminus A=\{b_1,\ldots,b_q\}.
+\]
+Start with \(A\).  First delete the vertices \(a_1,\ldots,a_p\), one at a time,
+obtaining
+\[
+  A,\quad
+  A\setminus\{a_1\},\quad
+  A\setminus\{a_1,a_2\},\quad \ldots,\quad A\cap B.
+\]
+Then add the vertices \(b_1,\ldots,b_q\), one at a time, obtaining
+\[
+  A\cap B,\quad
+  (A\cap B)\cup\{b_1\},\quad \ldots,\quad B.
+\]
+This gives a path from \(A\) to \(B\).  Each step changes exactly one vertex,
+unless \(p=q=0\), in which case the path has only the single bag \(A=B\).
+During the deletion part every bag is a subset of \(A\), and during the
+insertion part every bag is a subset of \(B\), so all bags have size at most
+\(\omega+1\).  The number of edges is \(p+q\).
+
+For a fixed vertex \(v\), there are four cases.  If \(v\in A\cap B\), then
+\(v\) is never deleted and is present throughout the path.  If
+\(v\in A\setminus B\), then \(v\) is present until its deletion step and absent
+afterwards.  If \(v\in B\setminus A\), then \(v\) is absent until its insertion
+step and present afterwards.  If \(v\notin A\cup B\), it is absent throughout.
+In every case the occurrence set is a connected subpath or is empty.
+\end{proof}
+
+\section{Construction}
+
+Root the original tree \(T\) at an arbitrary node \(r\).  For a node \(t\),
+write \(\children(t)\) for its children in this rooted tree, and write
+\(T_t\) for the original rooted subtree consisting of \(t\) and all descendants
+of \(t\).
+
+We construct, by induction from the leaves upward, a rooted tree \(D_t\) with
+bags.  Its root bag will be \(\beta(t)\), every leaf bag will be empty, every
+bag will have size at most \(\omega+1\), and all internal nodes will already
+satisfy the nice local conditions.
+
+\paragraph{Leaf case.}
+If \(t\) has no children, let \(D_t\) be the path
+\(P(\beta(t),\emptyset)\).
+
+\paragraph{One-child case.}
+Suppose \(t\) has the single child \(s\).  By induction \(D_s\) has root
+bag \(\beta(s)\).  Put the path \(P(\beta(t),\beta(s))\) above \(D_s\),
+identifying the bottom node of the path with the root of \(D_s\).  If
+\(\beta(t)=\beta(s)\), this path has length zero, so no unary node with equal
+parent and child bags is inserted.
+
+\paragraph{Many-child case.}
+Suppose \(\children(t)=\{s_1,\ldots,s_d\}\) with \(d\ge 2\).  For each
+\(i\), put the path \(P(\beta(t),\beta(s_i))\) above \(D_{s_i}\), again
+identifying the bottom of the path with the root of \(D_{s_i}\).  The root of
+each resulting branch has bag \(\beta(t)\).  Combine these \(d\) branch roots
+by a binary join tree whose internal nodes all have bag \(\beta(t)\).  For
+instance, use a right-associated tree: the top join node has the first branch
+as its left child and a join tree for the remaining branches as its right
+child.
+
+After constructing \(D_r\), put the path \(P(\emptyset,\beta(r))\) above it,
+identifying the bottom of this path with the root of \(D_r\).  The resulting
+rooted tree with bags is denoted \((T^\ast,\beta^\ast)\).
+
+\section{Verification}
+
+\begin{lemma}\label{lem:nice-local}
+The pair \((T^\ast,\beta^\ast)\) is nice in the local sense of
+Definition~1.1: the root and all leaves have empty bags, every node has at most
+two children, unary nodes change one vertex, and binary nodes are join nodes.
+All bags have size at most \(\omega+1\).
+\end{lemma}
+
+\begin{proof}
+The new root is the top of \(P(\emptyset,\beta(r))\), so its bag is empty.
+Leaves occur only as the bottom nodes of paths \(P(\beta(t),\emptyset)\) for
+original leaves \(t\), and hence have empty bags.
+
+Every path node has at most one child, and by Lemma~\ref{lem:bag-path} adjacent
+bags on such a path differ by exactly one vertex.  The only nodes with two
+children are the internal nodes of the binary join trees, and by construction
+they and their two children all have bag \(\beta(t)\) for the relevant original
+node \(t\).  The same lemma gives the width bound for all path nodes; join
+nodes have bags equal to original bags, so they also have size at most
+\(\omega+1\).
+\end{proof}
+
+\begin{lemma}\label{lem:original-bags-survive}
+For every original node \(t\in\Nodes(T)\), some node
+\(x\in\Nodes(T^\ast)\) satisfies \(\beta^\ast(x)=\beta(t)\).
+\end{lemma}
+
+\begin{proof}
+We prove the corresponding statement inside each \(D_t\).  If \(t\) is a leaf,
+the top node of \(P(\beta(t),\emptyset)\) has bag \(\beta(t)\).  If \(t\) has
+one child \(s\) and \(\beta(t)\ne\beta(s)\), the top node of
+\(P(\beta(t),\beta(s))\) has bag \(\beta(t)\).  If \(t\) has one child \(s\)
+and \(\beta(t)=\beta(s)\), then the induction hypothesis for \(s\) gives a
+node with bag \(\beta(s)=\beta(t)\).  If \(t\) has at least two children, the
+root of the binary join tree has bag \(\beta(t)\).
+\end{proof}
+
+\begin{lemma}\label{lem:decomp-axioms}
+The pair \((T^\ast,\beta^\ast)\) is a tree-decomposition of \(G\).
+\end{lemma}
+
+\begin{proof}
+The vertex-covering axiom follows from Lemma~\ref{lem:original-bags-survive}
+and the vertex-covering axiom for \((T,\beta)\).  Indeed, if \(v\in V(G)\),
+choose \(t\in\Nodes(T)\) with \(v\in\beta(t)\); then a node of \(T^\ast\) has
+bag \(\beta(t)\), hence contains \(v\).  The edge-covering axiom is identical:
+if \(uv\in E(G)\), choose \(t\) with \(u,v\in\beta(t)\), and use the surviving
+copy of \(\beta(t)\).
+
+It remains to prove the running-intersection axiom.  Fix \(v\in V(G)\).  Let
+\[
+  S_v\defeq\{t\in\Nodes(T):v\in\beta(t)\}.
+\]
+This set is connected in the original tree \(T\).  We compare the occurrence
+set of \(v\) in \(T^\ast\) with \(S_v\).
+
+Each added path \(P(\beta(t),\beta(s))\) above a child \(s\) contributes a
+connected subpath of nodes containing \(v\), by Lemma~\ref{lem:bag-path}.  If
+\(v\) belongs to both endpoint bags, this subpath connects the side attached to
+\(t\) with the side attached to \(s\).  If \(v\) belongs to exactly one endpoint
+bag, the subpath is attached only at that endpoint.  If \(v\) belongs to
+neither endpoint bag, the path contributes nothing.  The same description holds
+for the top path \(P(\emptyset,\beta(r))\) and for the leaf paths
+\(P(\beta(t),\emptyset)\).
+
+Every join tree introduced at an original node \(t\) has all bags equal to
+\(\beta(t)\).  Hence it is entirely contained in the occurrence set of \(v\)
+when \(t\in S_v\), and it is disjoint from that occurrence set when
+\(t\notin S_v\).
+
+Thus the occurrence set of \(v\) in \(T^\ast\) is obtained from the connected
+original subtree \(S_v\) by replacing original nodes and original edges with
+connected pieces, and by attaching additional connected initial or terminal
+path segments at nodes of \(S_v\).  Such replacements and attachments preserve
+connectedness.  Therefore
+\[
+  \{x\in\Nodes(T^\ast):v\in\beta^\ast(x)\}
+\]
+is connected.
+\end{proof}
+
+\begin{proof}[Proof of Theorem~\ref{thm:nice-normalization}]
+By Lemmas~\ref{lem:nice-local} and~\ref{lem:decomp-axioms},
+\((T^\ast,\beta^\ast)\) is a nice tree-decomposition of \(G\) with all bags of
+size at most \(\omega+1\).  It remains only to record the size bound.
+
+Let \(m=|\Nodes(T)|\).  Each original edge \(ts\), oriented from parent \(t\)
+to child \(s\), contributes at most \(2(\omega+1)\) new path nodes above
+\(D_s\), because the bottom node is identified with the root of \(D_s\).
+There are \(m-1\) original edges.  Each original leaf \(t\) contributes at most
+\(\omega+2\) nodes in the terminal path \(P(\beta(t),\emptyset)\).  There are
+at most \(m\) original leaves.  The binary join trees contribute
+\(\max(d(t)-1,0)\) join nodes at a node with \(d(t)\) children, and
+\[
+  \sum_{t\in\Nodes(T)}\max(d(t)-1,0)
+  \le \sum_{t\in\Nodes(T)} d(t)
+  =m-1.
+\]
+Finally, the top path \(P(\emptyset,\beta(r))\) contributes at most
+\(\omega+1\) new nodes above \(D_r\).
+
+Therefore
+\[
+\begin{aligned}
+  |\Nodes(T^\ast)|
+  &\le 2(\omega+1)(m-1)+(\omega+2)m+(m-1)+(\omega+1) \\
+  &= (3\omega+5)m-\omega-2 \\
+  &\le (3\omega+5)m.
+\end{aligned}
+\]
+This proves the claimed bound.
+\end{proof}
+
+\begin{remark}
+The constant \(3\omega+5\) is not intended to be optimal.  The important point
+for Courcelle's theorem is that the width is not increased and the number of
+nodes is linear in the size of the supplied decomposition for fixed
+\(\omega\).
+\end{remark}
+
+\end{document}
