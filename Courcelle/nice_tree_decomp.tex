@@ -66,24 +66,36 @@ A rooted tree-decomposition \((T,\beta)\) is \emph{nice} if the following hold.
 \end{enumerate}
 \end{definition}
 
-\begin{theorem}[Nice normalization]\label{thm:nice-normalization}
+In the algorithmic statement, the input decomposition is represented by
+adjacency lists for \(T\) and by lists for the bags.  We write
+\(n=|\Nodes(T)|\).  The intended Courcelle setting fixes \(\omega\), so
+\(O_\omega(n)\) means linear time with a constant depending on \(\omega\).  If
+one writes every output bag explicitly and lets \(\omega\) vary, the same
+algorithm has the uniform bound \(O(\omega^2 n)\); with a compact
+one-vertex-update representation of path bags, the node-generation work is
+\(O(\omega n)\).
+
+\begin{theorem}[Algorithmic nice normalization]\label{thm:nice-normalization}
 Let \(G\) be a finite simple graph.  Let \((T,\beta)\) be a
 tree-decomposition of \(G\), and suppose that \(|\beta(t)|\le \omega+1\) for
-every \(t\in\Nodes(T)\).  Write \(m=|\Nodes(T)|\).  Then there is a nice
-tree-decomposition \((T^\ast,\beta^\ast)\) of \(G\) such that
+every \(t\in\Nodes(T)\).  Write \(n=|\Nodes(T)|\).  There is an algorithm which,
+given \((T,\beta)\), constructs a nice tree-decomposition
+\((T^\ast,\beta^\ast)\) of \(G\) such that
 \[
   |\beta^\ast(x)|\le \omega+1
   \qquad\text{for every }x\in\Nodes(T^\ast),
 \]
 and
 \[
-  |\Nodes(T^\ast)|\le (3\omega+5)m.
+  |\Nodes(T^\ast)|\le (3\omega+5)n.
 \]
-Consequently, every tree-decomposition of width at most \(\omega\) can be
-transformed into a nice tree-decomposition of width at most \(\omega\), with
-only \(O_\omega(|\Nodes(T)|)\) nodes.  In particular, if the original width is
-exactly \(w\), then taking \(\omega=w\) gives a nice decomposition of width at
-most \(w\).
+The algorithm runs in time \(O(\omega n)\), and hence in time \(O(n)\) for
+The algorithm runs in time \(O_\omega(n)\), hence in time \(O(n)\) for fixed
+\(\omega\).  More explicitly, with explicit bag-list output it runs in
+\(O(\omega^2 n)\) time.  In particular, if the original width is exactly \(w\),
+then taking \(\omega=w\) gives a nice decomposition of width at most \(w\), and
+the running time is linear in the size of the supplied decomposition for fixed
+\(w\).
 \end{theorem}
 
 \section{Bag-changing paths}
@@ -135,42 +147,82 @@ step and present afterwards.  If \(v\notin A\cup B\), it is absent throughout.
 In every case the occurrence set is a connected subpath or is empty.
 \end{proof}
 
-\section{Construction}
+\section{Algorithm}
 
-Root the original tree \(T\) at an arbitrary node \(r\).  For a node \(t\),
-write \(\children(t)\) for its children in this rooted tree, and write
-\(T_t\) for the original rooted subtree consisting of \(t\) and all descendants
-of \(t\).
+We now give the algorithm promised in Theorem~\ref{thm:nice-normalization}.
+The algorithm assumes that the input is already a tree-decomposition; it does
+not spend time checking the decomposition axioms.
 
-We construct, by induction from the leaves upward, a rooted tree \(D_t\) with
-bags.  Its root bag will be \(\beta(t)\), every leaf bag will be empty, every
-bag will have size at most \(\omega+1\), and all internal nodes will already
-satisfy the nice local conditions.
+\paragraph{Subroutine: path insertion.}
+For finite bags \(A,B\), define \(\operatorname{Path}(A,B)\) as in
+Lemma~\ref{lem:bag-path}: first delete the elements of \(A\setminus B\), one at
+a time, and then insert the elements of \(B\setminus A\), one at a time.  The
+implementation uses the following version.
 
-\paragraph{Leaf case.}
-If \(t\) has no children, let \(D_t\) be the path
-\(P(\beta(t),\emptyset)\).
+\begin{quote}
+\textbf{AttachPath}\((A,B,z)\): here \(z\) is either absent, or is an already
+constructed node whose bag is \(B\).  Compute the top-to-bottom bag sequence
+\[
+  A=B_0,B_1,\ldots,B_\ell=B
+\]
+of \(\operatorname{Path}(A,B)\).  If \(z\) is present, create fresh nodes with
+bags \(B_0,\ldots,B_{\ell-1}\), link them into a path, and make the last fresh
+node point to \(z\).  If \(\ell=0\), return \(z\).  If \(z\) is absent, create
+fresh nodes with bags \(B_0,\ldots,B_\ell\) and link them into a path.  Return
+the top node.
+\end{quote}
 
-\paragraph{One-child case.}
-Suppose \(t\) has the single child \(s\).  By induction \(D_s\) has root
-bag \(\beta(s)\).  Put the path \(P(\beta(t),\beta(s))\) above \(D_s\),
-identifying the bottom node of the path with the root of \(D_s\).  If
-\(\beta(t)=\beta(s)\), this path has length zero, so no unary node with equal
-parent and child bags is inserted.
+In other words, \(\textbf{AttachPath}(A,B,z)\) creates a path whose top bag is
+\(A\) and whose bottom bag is \(B\), reusing \(z\) as the bottom node when
+possible.
 
-\paragraph{Many-child case.}
-Suppose \(\children(t)=\{s_1,\ldots,s_d\}\) with \(d\ge 2\).  For each
-\(i\), put the path \(P(\beta(t),\beta(s_i))\) above \(D_{s_i}\), again
-identifying the bottom of the path with the root of \(D_{s_i}\).  The root of
-each resulting branch has bag \(\beta(t)\).  Combine these \(d\) branch roots
-by a binary join tree whose internal nodes all have bag \(\beta(t)\).  For
-instance, use a right-associated tree: the top join node has the first branch
-as its left child and a join tree for the remaining branches as its right
-child.
+\paragraph{Full algorithm.}
+\begin{enumerate}[label=\textbf{Step \arabic*.},leftmargin=*]
+  \item Choose an arbitrary node \(r\in\Nodes(T)\).  Root \(T\) at \(r\), compute
+    the parent of each node, and list the nodes in postorder.  For a node \(t\),
+    write \(\children(t)\) for its children in this rooted tree.
 
-After constructing \(D_r\), put the path \(P(\emptyset,\beta(r))\) above it,
-identifying the bottom of this path with the root of \(D_r\).  The resulting
-rooted tree with bags is denoted \((T^\ast,\beta^\ast)\).
+  \item Process the original nodes in postorder.  For each original node \(t\),
+    construct a rooted output tree \(D_t\), and store its root node
+    \(\rho(t)\).  The intended invariant is that \(\rho(t)\) has bag
+    \(\beta(t)\), every leaf of \(D_t\) has empty bag, and \(D_t\) represents
+    the part of the original decomposition below \(t\).
+
+  \item If \(t\) has no children, set
+    \[
+      \rho(t) \defeq \textbf{AttachPath}(\beta(t),\emptyset,\text{absent}).
+    \]
+
+  \item If \(t\) has exactly one child \(s\), set
+    \[
+      \rho(t) \defeq \textbf{AttachPath}(\beta(t),\beta(s),\rho(s)).
+    \]
+    When \(\beta(t)=\beta(s)\), this creates no new same-bag unary node and
+    simply returns \(\rho(s)\).
+
+  \item If \(t\) has children \(s_1,\ldots,s_d\) with \(d\ge 2\), first form
+    branches
+    \[
+      b_i \defeq \textbf{AttachPath}(\beta(t),\beta(s_i),\rho(s_i))
+      \qquad (1\le i\le d).
+    \]
+    Each \(b_i\) has bag \(\beta(t)\).  Combine these branches by a
+    right-associated binary join tree.  Concretely, start with \(J=b_d\).  For
+    \(i=d-1,d-2,\ldots,1\), create a fresh node \(j_i\) with bag \(\beta(t)\),
+    make \(b_i\) its first child and \(J\) its second child, and then reset
+    \(J:=j_i\).  At the end, set \(\rho(t):=J\).
+
+  \item After all original nodes have been processed, attach an empty-root path
+    above \(\rho(r)\):
+    \[
+      r^\ast \defeq \textbf{AttachPath}(\emptyset,\beta(r),\rho(r)).
+    \]
+    Output the rooted tree with root \(r^\ast\), the child pointers just
+    constructed, and the bag attached to every output node.
+\end{enumerate}
+
+The mathematical construction used in the verification below is exactly this
+algorithm.
 
 \section{Verification}
 
@@ -257,19 +309,20 @@ is connected.
 \begin{proof}[Proof of Theorem~\ref{thm:nice-normalization}]
 By Lemmas~\ref{lem:nice-local} and~\ref{lem:decomp-axioms},
 \((T^\ast,\beta^\ast)\) is a nice tree-decomposition of \(G\) with all bags of
-size at most \(\omega+1\).  It remains only to record the size bound.
+size at most \(\omega+1\).  It remains to record the size bound and the running
+time.
 
-Let \(m=|\Nodes(T)|\).  Each original edge \(ts\), oriented from parent \(t\)
+Let \(n=|\Nodes(T)|\).  Each original edge \(ts\), oriented from parent \(t\)
 to child \(s\), contributes at most \(2(\omega+1)\) new path nodes above
 \(D_s\), because the bottom node is identified with the root of \(D_s\).
-There are \(m-1\) original edges.  Each original leaf \(t\) contributes at most
+There are \(n-1\) original edges.  Each original leaf \(t\) contributes at most
 \(\omega+2\) nodes in the terminal path \(P(\beta(t),\emptyset)\).  There are
-at most \(m\) original leaves.  The binary join trees contribute
+at most \(n\) original leaves.  The binary join trees contribute
 \(\max(d(t)-1,0)\) join nodes at a node with \(d(t)\) children, and
 \[
   \sum_{t\in\Nodes(T)}\max(d(t)-1,0)
   \le \sum_{t\in\Nodes(T)} d(t)
-  =m-1.
+  =n-1.
 \]
 Finally, the top path \(P(\emptyset,\beta(r))\) contributes at most
 \(\omega+1\) new nodes above \(D_r\).
@@ -278,19 +331,34 @@ Therefore
 \[
 \begin{aligned}
   |\Nodes(T^\ast)|
-  &\le 2(\omega+1)(m-1)+(\omega+2)m+(m-1)+(\omega+1) \\
-  &= (3\omega+5)m-\omega-2 \\
-  &\le (3\omega+5)m.
+  &\le 2(\omega+1)(n-1)+(\omega+2)n+(n-1)+(\omega+1) \\
+  &= (3\omega+5)n-\omega-2 \\
+  &\le (3\omega+5)n.
 \end{aligned}
 \]
-This proves the claimed bound.
+This proves the claimed size bound.
+
+For the running time, root \(T\) and compute the postorder in \(O(n)\) time.
+For every oriented original edge \(ts\), the algorithm computes
+\(\beta(t)\setminus\beta(s)\) and \(\beta(s)\setminus\beta(t)\).  Since both
+bags have size at most \(\omega+1\), this takes \(O(\omega)\) time using a
+temporary marking table for one bag, or \(O(\omega^2)\) time by direct list
+comparison.  The leaf paths and the top path are handled in the same way.
+The number of join nodes created at \(t\) is at most \(d(t)-1\), and the total
+number of such nodes is at most \(n-1\), so join construction is linear.
+
+Thus the node-generation work is \(O(\omega n)\) with linear-time finite-set
+operations on bags.  If the final output writes every bag as an explicit list,
+then each output bag has length at most \(\omega+1\), and the output-writing
+cost is \(O(\omega|\Nodes(T^\ast)|)=O(\omega^2 n)\).  For fixed \(\omega\), this
+is \(O(n)\), as claimed.
 \end{proof}
 
 \begin{remark}
 The constant \(3\omega+5\) is not intended to be optimal.  The important point
-for Courcelle's theorem is that the width is not increased and the number of
-nodes is linear in the size of the supplied decomposition for fixed
-\(\omega\).
+for Courcelle's theorem is that the width is not increased, and for fixed
+\(\omega\) both the number of nodes and the construction time are linear in the
+size of the supplied decomposition.
 \end{remark}
 
 \end{document}
