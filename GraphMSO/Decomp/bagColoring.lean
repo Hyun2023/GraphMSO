@@ -17,7 +17,7 @@ abbrev BagColorSet (omega : ℕ) : Type :=
 
 namespace TreeDecomposition
 
-variable {V : Type*} {G : SimpleGraph V}
+variable {V : Type*} [Fintype V] {G : SimpleGraph V}
 
 /-! ## Main definition: BagColoring -/
 
@@ -40,17 +40,17 @@ end TreeDecomposition
 
 namespace RootedTreeDecomposition
 
-variable {V : Type*} {G : SimpleGraph V}
+variable {V : Type*} [Fintype V] {G : SimpleGraph V}
 
 /-! ## Main definition: RootedTreeDecomposition.BagColoring -/
 
 /-- Bag-injectivity for a rooted tree decomposition, forwarded to the underlying decomposition. -/
 def IsBagColoring (T : RootedTreeDecomposition G) {k : ℕ} (color : V -> Fin k) : Prop :=
-  T.decomp.IsBagColoring color
+  T.toTreeDecomposition.IsBagColoring color
 
 /-- A Courcelle bag-coloring of a rooted tree decomposition. -/
 def BagColoring (T : RootedTreeDecomposition G) (omega : ℕ) : Type _ :=
-  T.decomp.BagColoring omega
+  T.toTreeDecomposition.BagColoring omega
 
 /-! ## The conflict graph viewpoint -/
 
@@ -59,7 +59,7 @@ The conflict graph of a tree decomposition: two graph vertices conflict when
 they are distinct and appear together in some bag.
 -/
 def bagConflictGraph (T : RootedTreeDecomposition G) : SimpleGraph V where
-  Adj u v := u ≠ v ∧ ∃ t : T.decomp.Node, u ∈ T.bag t ∧ v ∈ T.bag t
+  Adj u v := u ≠ v ∧ ∃ t : T.Node, u ∈ T.bag t ∧ v ∈ T.bag t
   symm := by
     intro u v h
     exact ⟨h.1.symm, h.2.imp fun t ht => ⟨ht.2, ht.1⟩⟩
@@ -69,7 +69,7 @@ def bagConflictGraph (T : RootedTreeDecomposition G) : SimpleGraph V where
 
 theorem bagConflictGraph_adj_iff (T : RootedTreeDecomposition G) (u v : V) :
     (T.bagConflictGraph).Adj u v ↔
-      u ≠ v ∧ ∃ t : T.decomp.Node, u ∈ T.bag t ∧ v ∈ T.bag t :=
+      u ≠ v ∧ ∃ t : T.Node, u ∈ T.bag t ∧ v ∈ T.bag t :=
   Iff.rfl
 
 /--
@@ -106,11 +106,11 @@ theorem mem_bag_topBAGSNode (T : RootedTreeDecomposition G) (v : V) :
   simpa using T.topBAGSNode_mem v
 
 /-- Vertices whose `BAGS` top node is exactly `t`. -/
-def verticesWithTop (T : RootedTreeDecomposition G) (t : T.decomp.Node) : Set V :=
+def verticesWithTop (T : RootedTreeDecomposition G) (t : T.Node) : Set V :=
   {v | T.topBAGSNode v = t}
 
 /-- Every vertex with top node `t` is contained in the bag at `t`. -/
-theorem verticesWithTop_subset_bag (T : RootedTreeDecomposition G) (t : T.decomp.Node) :
+theorem verticesWithTop_subset_bag (T : RootedTreeDecomposition G) (t : T.Node) :
     T.verticesWithTop t ⊆ T.bag t := by
   intro v hv
   rw [← hv]
@@ -118,20 +118,20 @@ theorem verticesWithTop_subset_bag (T : RootedTreeDecomposition G) (t : T.decomp
 
 /-- Under a width bound, each top fiber has size at most `omega + 1`. -/
 theorem verticesWithTop_ncard_le_of_hasWidth (T : RootedTreeDecomposition G) (omega : ℕ)
-    (hwidth : T.decomp.HasWidth omega) (t : T.decomp.Node) :
+    (hwidth : T.toTreeDecomposition.HasWidth omega) (t : T.Node) :
     (T.verticesWithTop t).ncard ≤ omega + 1 := by
-  exact (Set.ncard_le_ncard (T.verticesWithTop_subset_bag t) (hwidth t).1).trans (hwidth t).2
+  exact (Set.ncard_le_ncard (T.verticesWithTop_subset_bag t)).trans (hwidth t)
 
 /-- A single bounded bag admits an injective coloring by the bag color set. -/
 theorem exists_injective_coloring_on_bag (T : RootedTreeDecomposition G) (omega : ℕ)
-    (hwidth : T.decomp.HasWidth omega) (t : T.decomp.Node) :
+    (hwidth : T.toTreeDecomposition.HasWidth omega) (t : T.Node) :
     ∃ color : V -> BagColorSet omega, Set.InjOn color (T.bag t) := by
   classical
-  letI : Fintype (T.bag t) := (hwidth t).1.fintype
+  letI : Fintype (T.bag t) := (Set.toFinite (T.bag t)).fintype
   have hcard : Fintype.card (T.bag t) ≤ Fintype.card (BagColorSet omega) := by
     have hcard_bag : Fintype.card (T.bag t) ≤ omega + 1 := by
       rw [← Set.toFinset_card (T.bag t), ← Set.ncard_eq_toFinset_card' (T.bag t)]
-      exact (hwidth t).2
+      exact hwidth t
     simpa [BagColorSet, Fintype.card_fin] using hcard_bag
   let emb : T.bag t ↪ BagColorSet omega :=
     (Function.Embedding.nonempty_of_card_le hcard).some
@@ -157,7 +157,7 @@ Finite greedy coloring: if every nonempty finite set has a vertex with at most
 `omega` neighbors inside that set, then the whole finite graph is colorable with
 `omega + 1` colors.
 -/
-theorem exists_coloring_of_forall_exists_neighbor_card_le [Fintype V]
+theorem exists_coloring_of_forall_exists_neighbor_card_le
     (H : SimpleGraph V) (omega : ℕ)
     (hchoose : ∀ s : Finset V, s.Nonempty ->
       ∃ v ∈ s, ({u | u ∈ s ∧ H.Adj u v} : Set V).ncard ≤ omega) :
@@ -224,9 +224,9 @@ Greedy bag coloring from the top-node claim: if every conflict edge whose first
 endpoint has no larger top depth is witnessed in the second endpoint's top bag,
 then a bounded-width rooted decomposition has a bag coloring.
 -/
-theorem exists_bagColoring_of_hasWidth_of_top_claim [Fintype V]
+theorem exists_bagColoring_of_hasWidth_of_top_claim
     (T : RootedTreeDecomposition G) (omega : ℕ)
-    (hwidth : T.decomp.HasWidth omega)
+    (hwidth : T.toTreeDecomposition.HasWidth omega)
     (htop : ∀ {u v : V}, (T.bagConflictGraph).Adj u v ->
       T.topBAGSDepth u ≤ T.topBAGSDepth v -> u ∈ T.bag (T.topBAGSNode v)) :
     Nonempty (T.BagColoring omega) := by
@@ -249,7 +249,7 @@ theorem exists_bagColoring_of_hasWidth_of_top_claim [Fintype V]
     have hneighbors_card :
         neighbors.card ≤ (T.bag (T.topBAGSNode v) \ {v}).ncard := by
       rw [← Set.ncard_coe_finset neighbors]
-      exact Set.ncard_le_ncard hsubset ((hwidth (T.topBAGSNode v)).1.diff)
+      exact Set.ncard_le_ncard hsubset
     have hbag_minus :
         (T.bag (T.topBAGSNode v) \ {v}).ncard ≤ omega := by
       have hvbag : v ∈ T.bag (T.topBAGSNode v) := T.mem_bag_topBAGSNode v
@@ -258,7 +258,7 @@ theorem exists_bagColoring_of_hasWidth_of_top_claim [Fintype V]
             (T.bag (T.topBAGSNode v)).ncard - 1 := by
         exact Set.ncard_diff_singleton_of_mem hvbag
       have hbag_card : (T.bag (T.topBAGSNode v)).ncard ≤ omega + 1 :=
-        (hwidth (T.topBAGSNode v)).2
+        hwidth (T.topBAGSNode v)
       rw [hdiff]
       omega
     have hset :
@@ -316,15 +316,15 @@ theorem mem_bag_topBAGSNode_of_conflict_of_depth_le
 Bag-injective coloring fact: a rooted tree decomposition of width at most
 `omega` admits a coloring by `{0, ..., omega}` that is injective on every bag.
 -/
-theorem exists_bagColoring_of_hasWidth [Fintype V] (T : RootedTreeDecomposition G) (omega : ℕ)
-    (hwidth : T.decomp.HasWidth omega) :
+theorem exists_bagColoring_of_hasWidth (T : RootedTreeDecomposition G) (omega : ℕ)
+    (hwidth : T.toTreeDecomposition.HasWidth omega) :
     Nonempty (T.BagColoring omega) := by
   exact T.exists_bagColoring_of_hasWidth_of_top_claim omega hwidth
     (fun huv hle => T.mem_bag_topBAGSNode_of_conflict_of_depth_le huv hle)
 
-theorem exists_bagColoring_of_hasWidth' [Fintype V] (T : RootedTreeDecomposition G) (omega : ℕ)
-    (hwidth : T.decomp.HasWidth omega) :
-    ∃ color : V -> BagColorSet omega, T.decomp.IsBagColoring color:= by
+theorem exists_bagColoring_of_hasWidth' (T : RootedTreeDecomposition G) (omega : ℕ)
+    (hwidth : T.toTreeDecomposition.HasWidth omega) :
+    ∃ color : V -> BagColorSet omega, T.toTreeDecomposition.IsBagColoring color:= by
   have := T.exists_bagColoring_of_hasWidth_of_top_claim omega hwidth
     (fun huv hle => T.mem_bag_topBAGSNode_of_conflict_of_depth_le huv hle)
   cases this;expose_names;cases val;expose_names
@@ -333,7 +333,7 @@ theorem exists_bagColoring_of_hasWidth' [Fintype V] (T : RootedTreeDecomposition
 
 theorem eq_of_mem_bag_of_color_eq {T : RootedTreeDecomposition G} {k : ℕ}
     {color : V -> Fin k} (hcolor : T.IsBagColoring color)
-    {t : T.decomp.Node} {u v : V} (hu : u ∈ T.bag t) (hv : v ∈ T.bag t)
+    {t : T.Node} {u v : V} (hu : u ∈ T.bag t) (hv : v ∈ T.bag t)
     (h : color u = color v) :
     u = v :=
   hcolor t hu hv h

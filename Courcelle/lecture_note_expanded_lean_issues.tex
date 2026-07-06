@@ -1,0 +1,141 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\newcommand{\MSO}{\ensuremath{\mathrm{MSO}}}
+\newcommand{\MSOtwo}{\ensuremath{\mathrm{MSO}_2}}
+\newcommand{\Bags}{\ensuremath{\mathrm{BAGS}}}
+\newcommand{\adh}{\ensuremath{\mathrm{adh}}}
+\newcommand{\cone}{\ensuremath{\mathrm{cone}}}
+
+\title{Issues in \texttt{lecture\_note\_expanded.tex}\\
+  Found While Preparing the Lean Formalization}
+\author{}
+\date{Review of the revised (2026-06) version; July 5, 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Scope and summary}
+
+This report supplements \texttt{lecture\_note\_expanded\_issues.tex}, which
+reviewed the draft dated June 19, 2026 and whose findings were subsequently
+repaired.  The present pass reviewed the revised
+\texttt{lecture\_note\_expanded.tex}---the version incorporating all of those
+repairs---while preparing its Lean~4 formalization, checking both fidelity to
+\texttt{lecture\_note.pdf} and mathematical correctness.  The mathematical
+content of the revision was confirmed to be sound except for one remaining
+gap, described and repaired below.  It is precisely the gap anticipated by
+the closing remark of the earlier report: the defining-pair and
+defining-tuple machinery depended on a fully proved encoding--decoding
+correspondence, and one half of that correspondence was still missing.
+
+Further issues found during the formalization itself can be appended to this
+report in the same format.
+
+\section{The translation-correctness setup identifies the decoding of an
+encoding with the original graph}
+
+\paragraph{Location.} The paragraph ``Correctness of the translation''
+preceding the translation-correctness lemma; implicitly, the statements of
+the recognition and atomic lemmas (\(\varphi_{\mathrm{vtx},i}\),
+\(\varphi_{\mathrm{vtx}}\), \(\varphi_{\mathrm{set}}\),
+\(\varphi_{\mathrm{adj}}\), \(\varphi_Q\), \(\varphi_{\mathrm{eq}}\),
+\(\varphi_{\mathrm{cont}}\)).
+
+The recognition and atomic lemmas are stated for a legal tree and \emph{its
+decoding}: a tuple satisfies \(\varphi_{\mathrm{vtx}}\) iff it is the defining
+tuple of a vertex \emph{of the decoded graph}, and so on.  The
+translation-correctness lemma, however, speaks about a given triple
+\((G,c,(T,\beta))\) and its encoding \((T,\rho)\).  Its preamble bridged the
+two by asserting that ``by the legal-iff-encoding lemma its decoded graph is
+\(G\)''.  That lemma proves two things: every encoding is legal, and every
+legal tree is the encoding of its own decoding---that is, re-encoding is a
+left inverse of decoding.  It does not prove that decoding the encoding of a
+given triple returns that triple.  Indeed it cannot do so literally: the
+decoded vertices are \(\sim\)-classes of slots \(v(t,i)\), not the vertices
+of \(G\), so the best possible statement is a canonical isomorphism, and that
+isomorphism---which must also preserve colors and occurrence sets, so that
+defining pairs and defining tuples on the two sides agree---had never been
+constructed.  This is the surviving trace of the original note's Lemma~9,
+whose unproved ``moreover'' clause (any triple encoding to \((T,\rho)\)
+\emph{is} the decoding) the expanded note had dropped without replacement.
+
+The gap is load-bearing.  In the quantifier cases of the
+translation-correctness induction, the forward direction needs the defining
+tuple of a witness vertex of \(G\) to satisfy the guard
+\(\varphi_{\mathrm{vtx}}\), while the backward direction needs every tuple
+satisfying the guard to be the defining tuple of a vertex of \(G\)---not
+merely of the decoded graph.
+
+\paragraph{Repair.} Two repairs are possible.  (i) Prove the missing half of
+the correspondence: decoding is a left inverse of encoding, up to a canonical
+isomorphism.  (ii) Restate the recognition lemmas relative to a given encoded
+triple, proving them directly from the defining-pair lemma on
+\((G,c,(T,\beta))\)---the letters of an encoding record the bag and adhesion
+data of the original decomposition verbatim---and bypassing the decoding
+altogether; this removes the decoding from the critical path of Theorem~1
+entirely and is the natural route for a formalization.  For the note, option
+(i) was chosen: it keeps the recognition lemmas in their general legal-tree
+form and completes the encoding--decoding correspondence, which is of
+independent interest.
+
+\paragraph{Status (2026-07).} Resolved in \texttt{lecture\_note\_expanded.tex}
+by option (i), in three steps.
+
+First, a new lemma \emph{Decoding inverts encoding} is placed immediately
+after the legal-iff-encoding lemma.  For the encoding \((T,\rho)\) of a triple
+\((G,c,(T,\beta))\), with decoding \((\bar G,\bar c,(T,\bar\beta))\), the slot
+map
+\[
+  \Phi\bigl([v(t,i)]\bigr) := \text{the unique vertex of color \(i\) in
+  \(\beta(t)\)}
+\]
+is shown to be a well-defined isomorphism of
+\(\tau_{\mathcal P}\)-graphs \(\bar G\cong G\) which (i) preserves colors and
+(ii) matches bags: \(\Phi(w)\in\beta(t)\) iff \(w\in\bar\beta(t)\), so that
+occurrence sets satisfy \(\Bags(\Phi(w))=U_w\).  Well-definedness on the
+generators of \(\sim\) follows from bag-injectivity; surjectivity from vertex
+coverage; injectivity from the running-intersection axiom combined with the
+path characterization of \(\sim\) through the subgraphs \(\Gamma_i\); and
+preservation and reflection of adjacency and of the unary predicates from the
+fact that the letters of an encoding are the color-renamed induced
+substructures of \(G\), with reflection of adjacency using the edge-coverage
+axiom.  Together with the legal-iff-encoding lemma, encoding and decoding are
+now mutually inverse: re-encoding is a left inverse of decoding on legal
+trees, and decoding inverts encoding up to the canonical isomorphism
+\(\Phi\).
+
+Second, a new corollary \emph{Recognition over an encoding} closes the
+atomic-formula subsection: for the encoding of \((G,c,(T,\beta))\), the
+recognition and atomic lemmas hold verbatim with the decoding replaced by
+\((G,c,(T,\beta))\) itself, defining pairs and tuples being taken in the
+original triple.  The proof observes that \(\Phi\) matches colors and
+occurrence sets, so the defining pair of a decoded vertex \(w\) equals the
+defining pair of \(\Phi(w)\) and defining tuples coincide coordinatewise;
+bijectivity of \(\Phi\) makes the tuples arising on the two sides literally
+the same, and the atomic cases transfer along the
+\(\tau_{\mathcal P}\)-isomorphism.
+
+Third, the ``Correctness of the translation'' paragraph now invokes this
+corollary instead of asserting that the decoded graph is \(G\), and the
+atomic, existential-vertex, and existential-set cases of the
+translation-correctness proof cite the corollary's items in place of the
+decoding-level lemmas.
+
+The two insertions renumber the subsequent statements of the note; in
+particular, the cited effective \MSO{}--tree-automaton correspondence,
+formerly Theorem~26, is now Theorem~28.
+
+\paragraph{Remark for the formalization.} Although the note adopts repair
+(i), the Lean development should still prefer route (ii) for the main
+theorem: state and prove the recognition lemmas relative to a given encoded
+triple, so that the slot-quotient decoding and the isomorphism \(\Phi\) are
+not on the critical path of Theorem~1.  The new lemma then corresponds to the
+\emph{decode\(\circ\)encode} half of the planned encode/decode equivalence
+(stage 5 of \texttt{docs/PLAN.md}) and can be formalized independently.
+
+\end{document}

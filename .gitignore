@@ -20,3 +20,7 @@
 *.xdv
 !/Courcelle/tree_decomp_and_tree_automata.pdf
 !/Courcelle/Thatcher-Wright.pdf
+
+# Local editor/build tooling (not meant to be pushed)
+/.vscode/
+/Courcelle/build.sh
