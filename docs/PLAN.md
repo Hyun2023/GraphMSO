@@ -1,6 +1,6 @@
 # GraphMSO Plan
 
-Last status check: 2026-07-09.
+Last status check: 2026-07-10.
 
 This project formalizes the graph-theoretic and logical infrastructure needed
 for Courcelle's theorem in Lean 4.  The main proof route follows
@@ -110,6 +110,9 @@ Completed:
   decomposition.
 - Equivalence is now available in the direction needed for algorithms and in
   the direction needed for graph-theoretic use.
+- Property transfer along a realization (`GraphMSO/Decomp/realization.lean`):
+  width bounds and bag-injective colorings are equivalent on the two sides of
+  a `Realizes`, so statements may mix the two nice-decomposition definitions.
 
 The informal algorithmic normalization proof is written in
 `Courcelle/nice_tree_decomp.tex`.  It is not yet formalized in Lean.
@@ -132,6 +135,57 @@ Completed:
 - Sigma letters with unary predicate tags.
 - Sigma trees and the legality predicate.
 - Node and cone graph definitions over unary predicate families.
+
+### Done: Encoding and Legality (Phase 2, first half)
+
+Files:
+
+- `GraphMSO/Decomp/encoding.lean`
+
+Completed:
+
+- `RootedTreeDecomposition.encodeLetter` and `RootedTreeDecomposition.encode`:
+  the Σ-tree encoding of a bag-colored rooted decomposition of a `tau_P`
+  graph, following the lecture note.
+- `encode_isLegal`: every encoding is legal (the forward half of the
+  legal-iff-encoding lemma).
+- Existence forms from a width bound alone, both for
+  `RootedTreeDecomposition` and, through the realization transfer lemmas, for
+  `InductiveNiceTreeDecomposition` (`exists_encode_isLegal`).
+
+Not yet done: decoding of a legal tree, the decode/encode inverse lemmas, and
+the recognition corollary over an encoding.
+
+### Done: Tree Automata Core (Phase 5, TW §2)
+
+Files:
+
+- `GraphMSO/Automata/term.lean`
+- `GraphMSO/Automata/automaton.lean`
+- `GraphMSO/Automata/projection.lean`
+- `GraphMSO/Automata/emptiness.lean`
+
+Completed, following `Courcelle/Thatcher-Wright-expanding.tex`:
+
+- Ranked alphabets (`RankedAlphabet`), finite terms, arity-preserving
+  alphabet maps (`RankedAlphabet.Hom`), term relabeling, and depth.
+- Deterministic and nondeterministic bottom-up tree automata with run
+  semantics and languages; `Recognizable`.
+- TW Theorem 1 (subset construction): `NTreeAutomaton.determinize`,
+  `recognizable_iff_nondet`.
+- TW Theorem 2 (Boolean closure): complement, product, intersection, union.
+- TW Theorems 3-4 (projection and inverse projection):
+  `Hom.imageAutomaton`, `Hom.comapAutomaton`, `Recognizable.map`,
+  `Recognizable.comap`.
+- TW Lemma 5 (replacement) via one-hole contexts.
+- TW Lemma 6 and the mathematical content of Theorem 7: bounded-depth
+  witnesses via depth-indexed reachability, and
+  `language_nonempty_iff` (nonemptiness iff a witness of depth at most
+  `Nat.card State` exists).
+
+Not yet done: atomic automata for the labelled-tree vocabulary, the
+MSO-to-automaton compilation induction, the regularity characterization
+(TW §3, optional), and executable decision procedures (Phase 6).
 
 ## Remaining Roadmap
 
@@ -162,16 +216,16 @@ Main tasks:
 Goal: formalize the lecture-note equivalence between colored bounded-width
 decompositions and legal sigma trees.
 
-Main tasks:
+Main tasks (encoding and its legality are done, see above):
 
-- Define the encoding from a bounded-width rooted decomposition plus a
-  bag-injective coloring and unary predicate family to a `SigmaTree`.
-- Prove the encoded sigma tree is legal.
 - Define decoding/gluing of a legal sigma tree into a graph, coloring, and
   decomposition.
 - Prove encode/decode correctness in both directions, up to the appropriate
   isomorphism/equality notion.
 - Prove cone-gluing correctness using the existing rooted-graph gluing API.
+- Per `Courcelle/lecture_note_expanded_lean_issues.tex`, prefer stating the
+  Phase 3 recognition lemmas directly over an encoded triple, so decoding
+  stays off the critical path of the main theorem.
 
 ### Phase 3: Translate Graph MSO to Tree MSO
 
@@ -207,17 +261,20 @@ Main tasks:
 
 Goal: state and then progressively formalize the automata side.
 
-Main tasks:
+Main tasks (the automata core of TW §2 is done, see above):
 
-- Define finite ranked/tree alphabets and deterministic bottom-up tree
-  automata.
-- Define automaton runs and acceptance over finite rooted binary trees.
-- Prove the evaluator correctness and linear-time evaluator statement.
-- Isolate the MSO-to-tree-automaton theorem as a clean interface first.
-- Eventually replace the interface theorem with a full Lean formalization if
-  feasible.
+- Connect `SigmaTree` to ranked terms: an ordered/binary tree representation
+  and the padding encoding with a nullary `⊥` symbol.  `SigmaTree` itself is
+  an unordered mathlib tree, so this step needs the ordered representation
+  (for nice decompositions, `InductiveNiceTree` already carries it).
+- Define a tree MSO syntax over `child_1, child_2, P_a` and its semantics.
+- Build the atomic automata for that vocabulary and the track/product
+  alphabets for free variables.
+- Prove the MSO-to-automaton compilation by formula induction, using the
+  closure theorems already available.
 - Combine the translation theorem and automaton correctness into the
   decomposition-given Courcelle theorem.
+- Linear-time claims stay metatheoretic until Phase 6 fixes a cost model.
 
 ### Phase 6: Toward Really Working Code
 
@@ -239,16 +296,18 @@ and automata evaluation are stable.
 
 ## Immediate Next Step
 
-Start with Phase 1.  The best next Lean target is the incidence-decomposition
-construction or the nice-normalization theorem, because both are standalone and
-are already fully written informally in the related TeX files.
+Encoding legality (Phase 2, first half) and the tree-automata core (Phase 5,
+TW §2) are done.  The best next Lean targets:
 
-Recommended order:
-
-1. Formalize the incidence-decomposition construction and width bound.
-2. Formalize the algorithmic nice-normalization theorem only if the Lean
-   statement needs built-in normalization.
-3. Move to sigma-tree encoding/decoding.
+1. Defining pairs and defining tuples over an encoded triple
+   (lecture note §3), stated directly against `(G, c, (T, beta))` as the
+   issues note recommends — this starts Phase 3 without needing decoding.
+2. The incidence-decomposition construction and width bound (Phase 1).
+3. The ordered-binary-tree bridge from `SigmaTree`/`InductiveNiceTree` to
+   ranked terms, plus a tree MSO syntax (rest of Phase 5).
+4. The algorithmic nice-normalization theorem
+   (`Courcelle/nice_tree_decomp.tex`) only if the final statement needs
+   built-in normalization; it is the heaviest standalone block.
 
 ## Working Rules
 

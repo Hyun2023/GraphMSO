@@ -1,9 +1,11 @@
 import GraphMSO.Decomp.KRootedPGraph
 import GraphMSO.Decomp.bagColoring
 import GraphMSO.Decomp.bags
+import GraphMSO.Decomp.encoding
 import GraphMSO.Decomp.nice
 import GraphMSO.Decomp.nice_inductive
 import GraphMSO.Decomp.nodeConeGraph
+import GraphMSO.Decomp.realization
 import GraphMSO.Decomp.rootedGraph
 import GraphMSO.Decomp.sigmaTree
 import GraphMSO.Decomp.tree_decomp
