@@ -174,6 +174,15 @@ Write
 \[
   \SigmaSym_n=\rank^{-1}(\{n\}).
 \]
+Throughout the automata and regularity sections, species are assumed to be
+finite and to have at least one nullary symbol:
+\[
+  \SigmaSym \text{ is finite},\qquad \SigmaSym_0\ne\emptyset.
+\]
+The named constants such as \(\lambda,\delta,\lambda_i\) are always chosen from
+the current species, possibly after the permitted extension by fresh nullary
+symbols.
+
 The set \(\Term{\SigmaSym}\) of finite terms is the least set such that
 \(\SigmaSym_0\subseteq\Term{\SigmaSym}\) and, if \(f\in\SigmaSym_n\) and
 \(t_1,\ldots,t_n\in\Term{\SigmaSym}\), then \(f(t_1,\ldots,t_n)\in
@@ -945,6 +954,57 @@ The \(\lambda\)-closure \(U^{*_\lambda}\) is defined by
 \]
 \end{definition}
 
+\begin{definition}[\(\lambda\)-free languages]
+A language \(V\subseteq\Term{\SigmaSym}\) is \(\lambda\)-free if no term of
+\(V\) contains an occurrence of the constant \(\lambda\).
+\end{definition}
+
+\begin{lemma}[Elementary laws for complex product]\label{lem:complex-product-laws}
+Let \(U,V,W\subseteq\Term{\SigmaSym}\), and let
+\(\lambda,\mu\in\SigmaSym_0\).
+\begin{enumerate}[label=\textup{(\alph*)},leftmargin=*]
+  \item Associativity for one hole symbol:
+  \[
+    (U\cdot_\lambda V)\cdot_\lambda W
+    =
+    U\cdot_\lambda(V\cdot_\lambda W).
+  \]
+  \item Continuity in an increasing second argument: if
+  \(X_0\subseteq X_1\subseteq\cdots\), then
+  \[
+    U\cdot_\lambda\Bigl(\bigcup_n X_n\Bigr)
+    =
+    \bigcup_n(U\cdot_\lambda X_n).
+  \]
+  \item Conditional exchange for two different hole symbols: if
+  \(\lambda\ne\mu\) and \(W\) is \(\lambda\)-free, then
+  \[
+    (U\cdot_\lambda V)\cdot_\mu W
+    =
+    (U\cdot_\mu W)\cdot_\lambda(V\cdot_\mu W).
+  \]
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+Each statement is a direct induction on the outer term from \(U\).  For (a),
+first substitute \(V\)-terms into the \(\lambda\)-leaves of a term from \(U\),
+and then substitute \(W\)-terms into all resulting \(\lambda\)-leaves; this is
+the same as first replacing the \(\lambda\)-leaves of each chosen \(V\)-term by
+\(W\)-terms and then inserting the resulting terms into \(U\).
+
+For (b), only finitely many \(\lambda\)-leaves of a fixed outer term are filled.
+If their chosen replacements lie in \(\bigcup_n X_n\), then, since the
+\(X_n\)'s are increasing, all replacements lie in one common \(X_N\).
+
+For (c), the two substitutions act on different constants.  The only possible
+interaction is that the \(\mu\)-substitution may introduce new
+\(\lambda\)-leaves.  The assumption that \(W\) is \(\lambda\)-free excludes this
+interaction, while the term \(V\cdot_\mu W\) on the right accounts for
+\(\mu\)-leaves that were already present inside the terms inserted for
+\(\lambda\).
+\end{proof}
+
 \begin{definition}[Regular sets of terms]
 A set \(U\subseteq\Term{\SigmaSym}\) is regular if it belongs to the least class
 containing all finite sets and closed under finite union, complex products, and
@@ -1053,40 +1113,78 @@ term from \(T_j^k\) by elements of \(W_{k+1}\) preserves the root state \(a_j\)
 and introduces only allowed non-leaf transitions to \(a_{k+1}\).  Hence the
 result lies in \(T_j^{k+1}\).
 
-For the converse inclusion, let \(X_0=\{\lambda_{k+1}\}\) and
+For the converse inclusion, write \(W=W_{k+1}\) and
+\(\lambda=\lambda_{k+1}\).  We prove the following stronger statement by
+structural induction on \(t\): if \(t\in T_j^{k+1}\) and \(j\le k+1\), then
 \[
-  X_{r+1}=X_r\cup (V_{k+1}\cdot_{\lambda_{k+1}}X_r).
+  t\in T_j^k\cdot_\lambda W.        \tag{\(**\)}
 \]
-Thus \(W_{k+1}=\bigcup_r X_r\).  We prove, by induction on the number \(r\) of
-non-leaf transitions to \(a_{k+1}\) occurring in the computation of a term
-\(t\in T_j^{k+1}\), that
+The constant case is immediate.  The only constant with state \(a_j\) is
+\(\lambda_j\).  If \(j\le k\), then \(\lambda_j\in T_j^k\) and
+\(\lambda_j\in T_j^k\cdot_\lambda W\).  If \(j=k+1\), then
+\(\lambda_{k+1}\in T_{k+1}^k\) because, at stage \(k\), no non-leaf transition
+may produce \(a_{k+1}\); also \(\lambda_{k+1}\in W\) as the base stage of
+\(W=V_{k+1}^{*_{\lambda_{k+1}}}\), so
+\(\lambda_{k+1}\in T_{k+1}^k\cdot_\lambda W\).
+
+Now let
 \[
-  t\in T_j^k\cdot_{\lambda_{k+1}}X_r.        \tag{\(**\)}
+  t=f(t_1,\ldots,t_r)
 \]
-If \(r=0\), then no non-leaf transition to \(a_{k+1}\) occurs, so the same
-computation already satisfies the definition of \(T_j^k\).  Hence
+and suppose the root transition has child states
 \[
-  t\in T_j^k=T_j^k\cdot_{\lambda_{k+1}}\{\lambda_{k+1}\}
-  =T_j^k\cdot_{\lambda_{k+1}}X_0.
+  h_{\Aut^+}(t_i)=a_{p_i}
 \]
-For the inductive step, choose a lowest occurrence whose root transition is a
-non-leaf transition to \(a_{k+1}\).  Call this subterm \(v\).  Its immediate
-children have no non-leaf transition to \(a_{k+1}\) below them, so each child
-belongs to some \(T_i^k\).  Therefore \(v\in V_{k+1}\).  Replace this occurrence
-of \(v\) in \(t\) by \(\lambda_{k+1}\), obtaining a term \(t_0\).  The term
-\(t_0\) has one fewer non-leaf transition to \(a_{k+1}\), so by induction
+and output state \(a_j\).  Since \(t\in T_j^{k+1}\), the root output satisfies
+\(j\le k+1\).  If \(p_i\le k+1\), then the child \(t_i\) belongs to
+\(T_{p_i}^{k+1}\), so the structural induction hypothesis gives a skeleton
 \[
-  t_0\in T_j^k\cdot_{\lambda_{k+1}}X_r.
+  s_i\in T_{p_i}^k
 \]
-Restoring \(v\) means replacing one \(\lambda_{k+1}\)-hole by an element of
-\(V_{k+1}\), hence
+such that \(t_i\in\{s_i\}\cdot_\lambda W\).  If \(p_i>k+1\), then \(t_i\) cannot
+have a non-leaf root, since that root transition would be a forbidden non-leaf
+transition to a state outside \(\{a_1,\ldots,a_{k+1}\}\).  Hence
+\(t_i=\lambda_{p_i}\); in this case set \(s_i=\lambda_{p_i}\), which lies in
+\(T_{p_i}^k\), and again \(t_i\in\{s_i\}\cdot_\lambda W\).  Thus, for every
+child, there is a skeleton
 \[
-  t\in (T_j^k\cdot_{\lambda_{k+1}}X_r)
-        \cdot_{\lambda_{k+1}}V_{k+1}
-  \subseteq T_j^k\cdot_{\lambda_{k+1}}X_{r+1}.
+  s_i\in T_{p_i}^k
 \]
-This proves \((**)\), and therefore \(T_j^{k+1}\subseteq
-T_j^k\cdot_{\lambda_{k+1}}W_{k+1}\).  The claim \((*)\) follows.
+with \(t_i\in\{s_i\}\cdot_\lambda W\).
+
+If \(j\le k\), put
+\[
+  s=f(s_1,\ldots,s_r).
+\]
+The root transition of \(s\) has output \(a_j\), and all non-leaf transitions
+inside the \(s_i\)'s use only the first \(k\) states.  Hence \(s\in T_j^k\).
+Using the recursive definition of complex product on children, the original
+term \(t\) is obtained from \(s\) by filling its \(\lambda\)-leaves with terms
+from \(W\).  Thus \(t\in T_j^k\cdot_\lambda W\).
+
+If \(j=k+1\), then the one-step pattern
+\[
+  f(\lambda_{p_1},\ldots,\lambda_{p_r})
+\]
+belongs to \(U_{k+1}\).  Replacing its \(\lambda_{p_i}\)-leaves by the
+skeletons \(s_i\in T_{p_i}^k\) gives a term
+\[
+  v=f(s_1,\ldots,s_r)\in V_{k+1}.
+\]
+By construction, \(t\in\{v\}\cdot_\lambda W\).  Since
+\[
+  V_{k+1}\cdot_\lambda W\subseteq W
+\]
+for \(W=V_{k+1}^{*_\lambda}\) by the stage definition of closure and
+Lemma~\ref{lem:complex-product-laws}(b), we get \(t\in W\).  Finally
+\[
+  T_{k+1}^k=\{\lambda_{k+1}\},
+\]
+so \(t\in T_{k+1}^k\cdot_\lambda W\).  This proves \((**)\), and therefore
+\[
+  T_j^{k+1}\subseteq T_j^k\cdot_{\lambda_{k+1}}W_{k+1}
+\]
+for \(j\le k+1\).  The claim \((*)\) follows.
 
 For \(j>k+1\), still no non-leaf transition may produce \(a_j\), so
 \[
@@ -1348,6 +1446,13 @@ If \(U\subseteq\Term{\SigmaSym}\) is recognizable, then \(U^{*_\lambda}\) is
 recognizable.
 \end{lemma}
 
+\begin{remark}
+The proof below is intentionally not a literal transcription of \TW{}'s printed
+argument.  It uses a fresh marker state \(q_\lambda\) to separate ``accepted as a
+closure replacement'' from the ordinary automaton state \(\alpha_\lambda\).  This
+is the version meant for formalization.
+\end{remark}
+
 \begin{proof}
 Let \(\Aut=(A,\alpha)\) recognize \(U\), with final set \(A_F\).  We use a
 tagged copy of \(A\), written
@@ -1581,6 +1686,14 @@ Although \(V\) is arbitrary, we only need to remember which states of
   A_V=\{h_\Aut(v):v\in V\}\subseteq A.
 \]
 This is a finite set because \(A\) is finite.
+When \(V\) is itself given recognizably, \(A_V\) is effective: for each
+\(a\in A\), test whether
+\[
+  V\cap h_\Aut^{-1}(\{a\})
+\]
+is nonempty, using product/Boolean closure and the emptiness test.  For the
+non-effective statement with arbitrary \(V\), the proof only uses the existence
+of this finite subset of states.
 
 Construct a nondeterministic automaton \(\mathcal N=(A,\rho)\) on the same state
 set \(A\).  For constants \(c\in\SigmaSym_0\), define the initial-state
@@ -1911,10 +2024,48 @@ labelled \(0\) leaves it absent.
 
 \begin{definition}[Canonical encoding]
 The map \(c\) is onto but not one-to-one, since all-zero subtrees carry no set
-information.  For a finite set \(A\subseteq N_2\), let \(e(A)\) be the smallest
-term in \(c^{-1}(A)\), equivalently the unique representative with no subterm of
-the form \(0(\lambda,\lambda)\).
+information.  For a finite set \(A\subseteq N_2\), define \(e(A)\) recursively
+as follows.  Put \(e(\emptyset)=\lambda\).  If \(A\ne\emptyset\), let
+\[
+  A_i=\{w\in N_2:iw\in A\}\qquad(i=1,2),
+\]
+and let \(b=1\) if \(\epsilon\in A\), and \(b=0\) otherwise.  Then set
+\[
+  e(A)=b(e(A_1),e(A_2)).
+\]
+The recursion is well-founded because \(A_1\) and \(A_2\) have strictly smaller
+maximum word length than \(A\).  Equivalently, \(e(A)\) is the unique term in
+\(c^{-1}(A)\) with no subterm of the form \(0(\lambda,\lambda)\).
 \end{definition}
+
+\begin{lemma}[Existence and uniqueness of canonical encodings]\label{lem:canonical-encoding-unique}
+For every finite \(A\subseteq N_2\),
+\[
+  c(e(A))=A,
+\]
+and if \(t\in\Term{\Sigma_1}\) satisfies \(c(t)=A\) and has no subterm
+\(0(\lambda,\lambda)\), then \(t=e(A)\).
+\end{lemma}
+
+\begin{proof}
+The equality \(c(e(A))=A\) follows by induction on the maximum word length in
+\(A\).  The empty case is \(e(\emptyset)=\lambda\).  In the nonempty case,
+the root label records whether \(\epsilon\in A\), and the two recursive
+subterms encode exactly the sets \(A_1\) and \(A_2\) of words below the two
+successor directions.
+
+For uniqueness, argue by structural induction on \(t\).  If \(t=\lambda\), then
+\(c(t)=\emptyset\), so \(A=\emptyset\) and \(e(A)=\lambda\).  If
+\(t=b(t_1,t_2)\), the root label \(b\) is forced by whether
+\(\epsilon\in c(t)\).  The two child terms encode the two residual sets
+\[
+  \{w:1w\in c(t)\},\qquad \{w:2w\in c(t)\}.
+\]
+The no-\(0(\lambda,\lambda)\) condition passes to both children.  Applying the
+induction hypothesis to the children gives \(t_i=e(A_i)\), and hence
+\(t=e(A)\).  The forbidden-subterm condition is what rules out the extra
+all-zero representatives of the empty residual set.
+\end{proof}
 
 \begin{lemma}[TW Lemma 15]\label{lem:tw-encoding-one}
 The set
@@ -1942,6 +2093,8 @@ Thus \(P_1\) contains all one-node \(0/1\)-terms with children
 \[
   W_1=P_1^{*_\delta}.
 \]
+Note that \(\lambda\notin W_1\): the base term is \(\delta\), and every
+non-base term generated by the closure has binary root.
 Equivalently, if
 \[
   X_0=\{\delta\},\qquad
@@ -2059,6 +2212,8 @@ Put
 \[
   W_n=P_n^{*_\delta}.
 \]
+Again \(\lambda\notin W_n\), because the base term is \(\delta\) and all
+generated non-base terms have binary root.
 We claim that
 \[
   U_n=(W_n\cdot_\delta\emptyset)\cup\{\lambda\}.       \tag{2}
@@ -2254,17 +2409,7 @@ wrapper \((0,0)(\lambda,\delta)\).  Thus \(e(\widehat R_i)=S_i\), and
 \(\widehat R_i\) is recognizable.
 \end{proof}
 
-\begin{lemma}[TW Lemma 19: logical closure]\label{lem:tw-logical-closure}
-If \(R\) and \(S\) are recognizable relations, then the following are
-recognizable:
-\[
-  R(\bar A,\bar B)\wedge S(\bar B,\bar C),\qquad
-  \neg R(\bar A),\qquad
-  \exists A_i\,R(A_1,\ldots,A_m,\bar B).
-\]
-\end{lemma}
-
-\begin{proof}
+\noindent
 For \(k\ge 0\), let \(\mathbf 0_k\in\{0,1\}^k\) be the all-zero tuple; when
 \(k=0\), this is the unique empty tuple.  Write
 \[
@@ -2280,7 +2425,73 @@ Thus \(Z_k\) is the set of all all-zero \(k\)-track terms, including
 \(\lambda\).  This is proved by induction on the closure stage in one direction
 and by structural induction on all-zero terms in the other.  In particular,
 substituting a term from \(Z_k\) into a \(\lambda\)-leaf never changes the
-encoded \(k\)-tuple of finite subsets.  The set \(Z_k\) is recognizable by
+encoded \(k\)-tuple of finite subsets.
+
+\begin{lemma}[Projection and zero grafting]\label{lem:tw-zero-graft}
+Let
+\[
+  I=(i_1,\ldots,i_k)
+\]
+be a list of distinct coordinates from \(\{1,\ldots,m\}\), and let
+\[
+  \pi_I:\Sigma_m\to\Sigma_k
+\]
+be the arity-preserving map that selects these coordinates from each
+\(\{0,1\}^m\)-label and sends \(\lambda\) to \(\lambda\).  For every canonical
+term
+\[
+  t=e(A_1,\ldots,A_m),
+\]
+one has
+\[
+  \pi_I(t)\in
+  \{e(A_{i_1},\ldots,A_{i_k})\}\cdot_\lambda Z_k.       \tag{\(\ddagger\)}
+\]
+Equivalently, reducing the maximal all-zero \(k\)-track subterms of
+\(\pi_I(t)\) to \(\lambda\) gives the canonical encoding
+\[
+  e(A_{i_1},\ldots,A_{i_k}).
+\]
+\end{lemma}
+
+\begin{proof}
+Proceed by structural induction on the canonical term \(t\).  The case
+\(t=\lambda\) is immediate.  Suppose
+\[
+  t=\ell(t_1,t_2)
+\]
+is canonical.  Project the label \(\ell\) to the selected coordinates.  If this
+projected label is all-zero and the two projected children encode empty
+selected tuples after reduction, then the whole projected node is an element of
+\(Z_k\).  This is precisely the case in which canonicalization deletes the
+projected node.  Otherwise, the projected root remains, and the induction
+hypothesis applied to the children says that each projected child is obtained
+from its canonical selected-track child by grafting all-zero terms from
+\(Z_k\) at \(\lambda\)-leaves.  Grafting those same zero terms below the
+projected root gives \((\ddagger)\).  This proves both the displayed membership
+and the equivalent reduction description.
+\end{proof}
+
+\begin{lemma}[TW Lemma 19: logical closure]\label{lem:tw-logical-closure}
+If \(R\) and \(S\) are recognizable relations, then the following are
+recognizable:
+\[
+  R(\bar A,\bar B)\wedge S(\bar B,\bar C),\qquad
+  \neg R(\bar A),\qquad
+  \exists A_i\,R(A_1,\ldots,A_m,\bar B).
+\]
+\end{lemma}
+
+\begin{remark}
+This is again a formalization-oriented repair of the \TW{} presentation rather
+than a line-by-line copy.  In particular, the projection of a canonical
+multi-track term is not necessarily canonical; the proof explicitly inserts the
+zero-grafting/reduction step that repairs this mismatch.
+\end{remark}
+
+\begin{proof}
+Use the notation \(Z_k\) from Lemma~\ref{lem:tw-zero-graft}.  The set \(Z_k\)
+is recognizable by
 Lemma~\ref{lem:tw-finite-recognizable} and
 Lemma~\ref{lem:tw-complex-closure}.
 
@@ -2314,22 +2525,13 @@ is recognizable over \(\Sigma_m\), and so is
 \[
   L_I=\pi_I^{-1}(e(R)\cdot_\lambda Z_k)\cap U_m.       \tag{1}
 \]
-For a canonical \(m\)-track term \(t=e(A_1,\ldots,A_m)\), the projection
-\(\pi_I(t)\) encodes \((A_{i_1},\ldots,A_{i_k})\), but it may contain redundant
-all-zero subtrees created by deleting the other tracks.  Removing exactly those
-redundant subtrees gives the canonical encoding
-\[
-  e(A_{i_1},\ldots,A_{i_k}).
-\]
-Equivalently,
+For a canonical \(m\)-track term \(t=e(A_1,\ldots,A_m)\),
+Lemma~\ref{lem:tw-zero-graft} gives
 \[
   \pi_I(t)\in
   \{e(A_{i_1},\ldots,A_{i_k})\}\cdot_\lambda Z_k.       \tag{2}
 \]
-This equivalence is proved by structural induction on the canonical term \(t\):
-at a node whose selected coordinates and selected children are all zero, the
-projection contributes an element of \(Z_k\); otherwise one applies the induction
-hypothesis to the children.  From (1) and (2) we get
+From (1) and (2) we get
 \[
   t\in L_I
   \quad\Longleftrightarrow\quad
@@ -2633,6 +2835,18 @@ The latter set is recognizable by Lemma~\ref{lem:tw-encoding-one} and Boolean
 closure, and Theorem~\ref{thm:tw-emptiness} decides the required emptiness
 question.  Therefore the truth of \(S\) is decidable.
 \end{proof}
+
+\paragraph{Path choice for the Lean development.}
+There are two possible routes from \TW{} to
+Theorem~\ref{thm:mso-tree-automata}.  The literal \TW{} route encodes weak MSO
+assignments as canonical finite-subset terms over \(N_2\), using the machinery
+of \(U_n\), zero grafting, projection, and truncation above.  The route intended
+for the Courcelle formalization is the direct labelled-tree route sketched in
+Section~1: an input tree is padded to a ranked term, and assignments to MSO set
+variables are represented by extra tracks on that same input tree.  Existential
+set quantification is then projection of a track.  The \(N_2\)-literal
+machinery remains in this file as a checked reference and as a fallback if we
+later decide to formalize \TW{}'s Section~4 verbatim.
 
 \section{Lean-Oriented Decomposition}
 

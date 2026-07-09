@@ -60,8 +60,10 @@
 These notes reorganize the lecture note \texttt{lecture\_note.pdf} in proof order.
 The main line is the standard route: encode a bounded-width, colored tree-decomposition as a finite-alphabet tree, interpret graph \MSO{} in tree \MSO{},
 and use the equivalence between \MSO{}-definability and regular tree languages.
-All lemmas that were stated as straightforward, omitted, or left as exercises in
-the lecture note are expanded here.
+All graph-specific omitted proofs used in the encoding and translation argument
+are expanded here.  The standard binary/nice tree-decomposition normalization
+theorem is stated explicitly below; its detailed construction is kept in the
+companion file \texttt{nice\_tree\_decomp.tex}.
 \end{abstract}
 
 \tableofcontents
@@ -127,6 +129,32 @@ decides that the treewidth of \(G\) is greater than \(\omega\), in time
 \(2^{O(\omega)}|V(G)|\).
 \end{theorem}
 
+\begin{theorem}[Binary/nice normalization]\label{thm:binary-nice-normalization}
+Let \(G\) be a finite graph and let \((T,\beta)\) be a finite
+tree-decomposition of \(G\) of width at most \(\omega\), with \(m=|N(T)|\).  There
+is an algorithm which, for fixed \(\omega\), runs in time \(O_\omega(m)\) and
+outputs a rooted ordered nice tree-decomposition \((T',\beta')\) of \(G\) of
+width at most \(\omega\).  In particular \(T'\) is binary, the root and leaves
+may be required to have empty bags, every node is a leaf, introduce, forget, or
+join node, and
+\[
+  |N(T')|\le C_\omega m
+\]
+for a constant \(C_\omega\) depending only on \(\omega\).
+\end{theorem}
+
+\begin{proof}
+This is the standard nice-decomposition normalization theorem.  In this project
+the detailed proof is separated into \texttt{nice\_tree\_decomp.tex}: root the
+input decomposition, replace each tree edge by a path that changes one bag
+element at a time, make leaves and the root empty, and replace every high-degree
+branching point by a binary join tree.  Each inserted path has length bounded by
+a function of \(\omega\), and each branching replacement has size linear in the
+number of old incident child subtrees.  Thus the total number of new nodes, and
+the time needed to write them down, is \(O_\omega(m)\), while no bag ever has
+size larger than \(\omega+1\).
+\end{proof}
+
 \begin{corollary}
 For every fixed finite unary vocabulary \(\Pred\), there is an algorithm which,
 given a \(\tau_{\Pred}\)-graph \(G\) whose underlying graph has treewidth at most
@@ -136,10 +164,13 @@ whether \(G\models\varphi\) in time \(f_{\Pred}(\omega,|\varphi|)|V(G)|\).
 
 \begin{proof}
 Use the treewidth approximation theorem to obtain a decomposition whose width is
-bounded by a function of \(\omega\).  If desired, convert it to a binary or nice
-binary tree-decomposition with only a linear blow-up.  Apply Theorem~\ref{thm:courcelle} with the
-new width bound.  Since \(\omega\) is a parameter, changing the width bound only
-changes the computable parameter function \(f\).
+bounded by a function of \(\omega\).  The decomposition written down by the
+linear-time approximation algorithm has \(O_\omega(|V(G)|)\) nodes.  Apply
+Theorem~\ref{thm:binary-nice-normalization} to convert it to a binary, indeed
+nice, decomposition with only a linear blow-up.  Then apply
+Theorem~\ref{thm:courcelle} with the new width bound.  Since \(\omega\) is a
+parameter, changing the width bound only changes the computable parameter
+function \(f\).
 \end{proof}
 
 \begin{lemma}\label{lem:tw-edges}
@@ -227,9 +258,14 @@ most \(\max(\omega,2)\): for every edge \(e=uv\), choose a bag containing \(u,v\
 and attach a new leaf bag \(\{u,v,e\}\).  The old bags cover the original
 vertices; the new leaf bags cover incidence edges; the bags containing every
 old vertex remain connected; and each edge-object appears in one new leaf bag.
+This leaf-attachment construction has one extra node per edge and need not
+preserve binary branching.  Whenever the binary input required by
+Theorem~\ref{thm:courcelle} is needed, apply
+Theorem~\ref{thm:binary-nice-normalization} to this incidence decomposition.
 Unary predicates do not affect treewidth.  Also, by Lemma~\ref{lem:tw-edges}, a
 simple graph of treewidth at most \(\omega\) has at most \(\omega|V(G)|\) edges.
-Therefore \(|V(\widehat I(G))|=|V(G)|+|E(G)|=O_\omega(|V(G)|)\).
+Therefore \(|V(\widehat I(G))|=|V(G)|+|E(G)|=O_\omega(|V(G)|)\), and the normalized
+incidence decomposition has \(O_\omega(|V(G)|)\) nodes.
 
 Apply the previous corollary to the \(\tau_I\)-graph \(\widehat I(G)\) and the
 sentence \(\psi^\dagger\).  Since \(\psi\) is fixed by the property
@@ -438,7 +474,13 @@ substructure on \(R_k\) inside the child cone is the same as the induced
 substructure on that same vertex set inside \(H_t\), since both are induced
 \(\tau_{\Pred}\)-subgraphs of the original structure \(G\).  Thus the edge
 relation and all unary predicates agree on the common labelled root, so each
-gluing \(\oplus(G_k,R_k,\iota_k)\) is defined.
+gluing \(\oplus(G_k,R_k,\iota_k)\) is defined.  Moreover,
+Lemma~\ref{lem:cone-struct}(ii) says that two distinct child cones can overlap
+only inside their adhesions, hence inside \(\beta(t)\).  Therefore, after gluing
+one child cone to \(H_t\), the induced labelled structure on \(\beta(t)\) is still
+the original \(H_t\); in particular the next child adhesion still matches the
+corresponding induced substructure of \(H_t\).  Thus the iterated gluing displayed
+above is well-defined step by step.
 
 The vertex set of the result is
 \(\beta(t)\cup\cone(t_1)\cup\cdots\cup\cone(t_d)=\cone(t)\).  The gluing identifies
@@ -473,6 +515,9 @@ ordered tree---each node having an optional first child and an optional second
 child, recorded by the relations \(\child_1,\child_2\)---together with a labelling
 \(\rho:N(T)\to\Sigma\).  Thus every node has at most two children, in order; a
 \emph{binary tree-decomposition} is one whose underlying tree is of this form.
+When an unordered rooted binary decomposition is represented in this vocabulary,
+a node with exactly one child is represented by putting that child in the
+first-child slot and leaving the second-child slot absent.
 All tree \MSO{} formulas over the vocabulary
 \(\tau_\Sigma=\{\child_1,\child_2\}\cup\{P_a:a\in\Sigma\}\), where \(P_a(x)\) holds
 iff \(\rho(x)=a\), and all tree automata below are interpreted over the class of
@@ -581,10 +626,15 @@ so that \(v\in\beta(t)\) iff some slot \(v(t,i)\) belongs to \(v\).  Adjacency a
 the unary predicates are induced from the letters: \([v(t,i)]\) and \([v(s,j)]\)
 are adjacent iff some node \(u\) carries slots \(v(u,i),v(u,j)\) of the two classes
 with \(ij\in E(H_u)\), and \(P\) holds of \([v(t,i)]\) iff \(i\in P^{H_t}\) for a
-representative.  Operationally, \(G\) is the bottom-up gluing of the letters by the
-same operation \(\oplus\) used in the cone gluing of Lemma~\ref{lem:cone-gluing};
-since the root letter has \(R_r=\varnothing\), no labels survive at the root and
-\(G\) is an ordinary \(\tau_{\Pred}\)-graph.
+representative.  Since the root letter has \(R_r=\varnothing\), no labels survive
+at the root and \(G\) is an ordinary \(\tau_{\Pred}\)-graph.
+
+\begin{remark}
+The quotient definition above is the formal decoding used in the sequel.  It can
+be viewed operationally as bottom-up gluing of the letters by the same operation
+\(\oplus\) used in Lemma~\ref{lem:cone-gluing}, but this viewpoint is not used as
+a separate lemma.
+\end{remark}
 
 For a color \(i\), let \(\Gamma_i\) be the subgraph of \(T\) whose vertices are the
 nodes \(s\) with \(i\in V(H_s)\) and whose edges are the tree edges \(\{x,p(x)\}\)
@@ -879,19 +929,20 @@ which is impossible.  Therefore \(u\) and \(v\) are non-adjacent.
 
 \begin{lemma}[Edges from common bags]\label{lem:edges-bags}
 For vertices \(u,v\in V(G)\), the edge \(uv\) belongs to \(G\) iff there exists a
-node \(t\in\Bags(u)\cap\Bags(v)\) such that the colors \(c(u),c(v)\) are adjacent
-in the node graph \(H_t\).
+node \(t\in\Bags(u)\cap\Bags(v)\) such that the color-renamed node letter \(H_t\)
+contains the edge \(c(u)c(v)\).
 \end{lemma}
 
 \begin{proof}
 If \(uv\in E(G)\), then some bag \(\beta(t)\) contains both endpoints.  Hence
-\(t\in\Bags(u)\cap\Bags(v)\), and the induced node graph \(H_t=G[\beta(t)]\)
-contains the edge between the two color representatives \(c(u)\) and \(c(v)\).
+\(t\in\Bags(u)\cap\Bags(v)\).  By Lemma~\ref{lem:decode-bag}, the letter \(H_t\)
+is the graph \(G[\beta(t)]\) after renaming each vertex to its color, so \(H_t\)
+contains the edge \(c(u)c(v)\).
 
-Conversely, if such a node \(t\) exists, the letter \(H_t\) records an edge
-between the unique vertices of colors \(c(u)\) and \(c(v)\) in \(\beta(t)\).  Since
-\(H_t\) is an induced subgraph of \(G\), that edge is an edge of \(G\).  Those
-unique vertices are exactly \(u\) and \(v\), because \(t\in\Bags(u)\cap\Bags(v)\).
+Conversely, if such a node \(t\) exists, Lemma~\ref{lem:decode-bag} maps the edge
+\(c(u)c(v)\) of the letter \(H_t\) to an edge of \(G[\beta(t)]\) between the unique
+vertices of colors \(c(u)\) and \(c(v)\) in \(\beta(t)\).  Those unique vertices
+are exactly \(u\) and \(v\), because \(t\in\Bags(u)\cap\Bags(v)\).
 \end{proof}
 
 A vertex is represented on a \(\Sigma\)-tree by a tuple of node sets rather than
@@ -1025,12 +1076,17 @@ legal and \((U,i)\) is the defining pair of a vertex of the decoded graph.
 \end{lemma}
 
 \begin{proof}
-The conjunct \(\varphi_{\legal}\) gives legality.  The remaining conjuncts are a
-literal \MSO{} translation of the five conditions in Lemma~\ref{lem:defining-pairs}: connectedness of
-\(U\); existence of color \(i\) in every bag of \(U\); existence of color \(i\) in
-each non-top adhesion; absence of color \(i\) in the top adhesion; and absence of
-color \(i\) in every dangling child adhesion.  Therefore, by Lemma~\ref{lem:defining-pairs}, the
-formula holds exactly for defining pairs.
+The conjunct \(\varphi_{\legal}\) gives legality.  In a legal tree, the predicate
+\(A_i(x)\) says that the decoded bag \(\beta(x)\) contains the color-\(i\) vertex,
+by Lemma~\ref{lem:decode-bag}; for a non-root node \(x\), the predicate \(R_i(x)\)
+says that the color-\(i\) vertex lies in the adhesion
+\(\beta(x)\cap\beta(p(x))\), by Lemma~\ref{lem:decode-adh}.  With these
+identifications, the remaining conjuncts are a literal \MSO{} translation of the
+five conditions in Lemma~\ref{lem:defining-pairs}: connectedness of \(U\);
+existence of color \(i\) in every bag of \(U\); existence of color \(i\) in each
+non-top adhesion; absence of color \(i\) in the top adhesion; and absence of color
+\(i\) in every dangling child adhesion.  Therefore, by
+Lemma~\ref{lem:defining-pairs}, the formula holds exactly for defining pairs.
 \end{proof}
 
 For a tuple \(\tuple Z=(Z_0,\ldots,Z_\omega)\), define
