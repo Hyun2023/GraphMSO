@@ -8,10 +8,10 @@ tree-decomposition plus a global predicate `IsNice`.
 
 This file is deliberately different: it introduces a programming-facing tree
 code, defined by ordinary inductive constructors, and then relates that code to
-a mathematical `RootedTreeDecomposition` by a separate realization proof.
+a mathematical `NiceTreeDecomposition` by a separate realization proof.
 
 The intended use is that algorithms recurse over `InductiveNiceTree`; the
-realization fields say that this recursive tree is exactly the rooted
+realization fields say that this recursive tree is exactly the nice
 tree-decomposition already present in the mathematical development.
 -/
 
@@ -213,12 +213,12 @@ end InductiveNiceTree
 /--
 An inductive nice tree-decomposition of `G`.
 
-This is a rooted tree-decomposition together with an explicit recursive nice
-tree with empty root bag, plus a proof that the recursive tree realizes the
-rooted tree-decomposition exactly.
+This is a predicate-style nice tree-decomposition together with an explicit
+recursive nice tree with empty root bag, plus a proof that the recursive tree
+realizes the underlying rooted tree-decomposition exactly.
 -/
 structure InductiveNiceTreeDecomposition {V : Type u} [Fintype V]
-    {G : SimpleGraph V} extends RootedTreeDecomposition G where
+    {G : SimpleGraph V} extends NiceTreeDecomposition (G := G) where
   tree : InductiveNiceTree V ∅
   realization :
     InductiveNiceTree.Realizes tree toRootedTreeDecomposition
