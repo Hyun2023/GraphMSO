@@ -1,7 +1,10 @@
 import GraphMSO.Decomp.KRootedPGraph
 import GraphMSO.Decomp.bagColoring
 import GraphMSO.Decomp.bags
+import GraphMSO.Decomp.definingPairs
+import GraphMSO.Decomp.edgeBound
 import GraphMSO.Decomp.encoding
+import GraphMSO.Decomp.incidenceDecomp
 import GraphMSO.Decomp.nice
 import GraphMSO.Decomp.nice_inductive
 import GraphMSO.Decomp.nodeConeGraph

@@ -87,9 +87,18 @@ Completed:
 - Bag, width, rooted path, parent/child, ancestor, cone, adhesion, and `BAGS(v)`
   APIs.
 - Connectedness of `BAGS(v)` from the running-intersection axiom.
-- Topmost-bag lemmas used by the lecture-note encoding.
+- Topmost-node machinery (`topNode`, uniqueness, ancestor property, convexity)
+  for arbitrary preconnected node sets, with the `BAGS(v)` versions derived
+  from it.
 - Bag-injective coloring existence for bounded-width decompositions.
 - Structural cone lemmas corresponding to the lecture note.
+- The edge bound `|E(G)| ≤ omega * |V(G)|` for width-`omega` decompositions
+  (`GraphMSO/Decomp/edgeBound.lean`), proved by charging each edge to the
+  endpoint with the deeper `BAGS` top node instead of the note's
+  minimal-decomposition induction.
+- The partition characterization of induced connectivity
+  (`GraphMSO/connectivity.lean`): the semantic content of the `conn(X)` tree
+  formula of the translation.
 
 ### Done: Nice Decomposition Definitions
 
@@ -156,6 +165,29 @@ Completed:
 Not yet done: decoding of a legal tree, the decode/encode inverse lemmas, and
 the recognition corollary over an encoding.
 
+### Done: Defining Pairs and Defining Tuples (Phase 3, combinatorial layer)
+
+Files:
+
+- `GraphMSO/Decomp/definingPairs.lean`
+
+Completed, stated directly over a bag-colored decomposition as the issues
+note recommends:
+
+- `IsDefiningPair` and `isDefiningPair_iff`: the five-condition
+  characterization of the pairs `(BAGS v, color v)`.  The top node is
+  expressed as "the parent leaves the set", matching the tree formulas.
+- Distinctness: same-colored distinct vertices have disjoint `BAGS` and are
+  non-adjacent; a vertex is determined by its defining pair.
+- Atomic readings over encoded letters: adjacency
+  (`adj_iff_exists_mem_BAGS_adjOnColors`) and unary predicates
+  (`vpred_iff_exists_mem_BAGS_tagOnColor`), in both pointwise and
+  existential-node forms.
+- `definingTuple` for vertex sets, the singleton computation, the membership
+  lemma `mem_iff_BAGS_subset_definingTuple`, and the recognition
+  characterization `exists_definingTuple_eq_iff` in the exact shape of the
+  set-recognition formula.
+
 ### Done: Tree Automata Core (Phase 5, TW §2)
 
 Files:
@@ -198,18 +230,26 @@ working notes for that block.
 Goal: make every decomposition fact cited by `lecture_note_expanded.tex`
 available as Lean statements and proofs.
 
-Main tasks:
+Done:
+
+- `|E(G)| <= omega * |V(G)|` (see the tree-decomposition API section).
+- Pendant extensions of graphs (`GraphMSO/pendant.lean`): one new leaf per
+  index, with preservation of connectedness, acyclicity, and treeness.  The
+  acyclicity proof lifts cycles into the induced old part via
+  `Walk.induceLift` and shows pendant leaves lie on no cycle.
+- The incidence-decomposition construction
+  (`GraphMSO/Decomp/incidenceDecomp.lean`):
+  `TreeDecomposition.incidenceDecomposition` builds a decomposition of
+  `IncidenceGraph G` on nodes `D.Node ⊕ G.edgeSet` with one pendant leaf per
+  edge, `incidenceDecomposition_hasWidth` bounds its width by `max omega 2`,
+  and `card_incidenceVertex_le_of_hasWidth` bounds the incidence-structure
+  size by `(omega + 1) * |V|`.
+
+Remaining:
 
 - Formalize the algorithmic nice-normalization theorem from
   `Courcelle/nice_tree_decomp.tex`, if the final Courcelle statement needs to
   normalize a supplied decomposition inside Lean.
-- Formalize the incidence-decomposition construction: from a decomposition of
-  `G`, build a decomposition of the colored incidence graph with width at most
-  `max omega 2`.
-- Add the associated size bounds needed for linear-time statements:
-  `|E(G)| <= omega * |V(G)|` for bounded treewidth, and the corresponding
-  incidence-structure size bound.
-- Keep these results independent of the later MSO translation layer.
 
 ### Phase 2: Encoding and Decoding Bounded Decompositions
 
@@ -296,15 +336,20 @@ and automata evaluation are stable.
 
 ## Immediate Next Step
 
-Encoding legality (Phase 2, first half) and the tree-automata core (Phase 5,
-TW §2) are done.  The best next Lean targets:
+Done so far: encoding legality (Phase 2, first half), the tree-automata core
+(Phase 5, TW §2), the defining-pair/tuple layer (Phase 3, combinatorial
+half), the edge bound, and the connectivity characterization.  The best next
+Lean targets:
 
-1. Defining pairs and defining tuples over an encoded triple
-   (lecture note §3), stated directly against `(G, c, (T, beta))` as the
-   issues note recommends — this starts Phase 3 without needing decoding.
-2. The incidence-decomposition construction and width bound (Phase 1).
-3. The ordered-binary-tree bridge from `SigmaTree`/`InductiveNiceTree` to
-   ranked terms, plus a tree MSO syntax (rest of Phase 5).
+1. Tree MSO: an ordered-binary-tree structure bridging
+   `SigmaTree`/`InductiveNiceTree` to ranked terms, a tree MSO syntax over
+   `child_1, child_2, P_a`, and the recognition formulas; their correctness
+   proofs should reduce to `definingPairs.lean` and `connectivity.lean`.
+2. The MSO₂-to-MSO₁ formula translation over the coloured incidence
+   structure (Phase 4); its decomposition input is now available from
+   `incidenceDecomposition`.
+3. Decoding of legal Σ-trees and the decode/encode isomorphism (Phase 2,
+   second half; off the critical path).
 4. The algorithmic nice-normalization theorem
    (`Courcelle/nice_tree_decomp.tex`) only if the final statement needs
    built-in normalization; it is the heaviest standalone block.
