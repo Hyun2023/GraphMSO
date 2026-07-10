@@ -272,13 +272,31 @@ Main tasks (encoding and its legality are done, see above):
 Goal: formalize the logical interpretation used in
 `lecture_note_expanded.tex`.
 
-Main tasks:
+Done:
 
-- Decide whether to introduce a small tree-MSO syntax or a reusable relational
-  vocabulary abstraction.
-- Define tree formulas for root, parent, connected node sets, top node, and
-  dangles.
-- Formalize defining pairs and defining tuples for vertices and vertex sets.
+- The tree language (`GraphMSO/treeLanguage/syntax.lean`,
+  `GraphMSO/treeLanguage/semantics.lean`): MSO formulas over `parent` and
+  letter-class atoms `labelMem S x` (the note's finite disjunctions `A_i,
+  R_i, E_ij, Q_i` are single atoms; `child_1/child_2` enter only at the
+  automata boundary, where `parent` is definable).  Models are `TreeModel`s;
+  satisfaction is Tarski-style with the assignment interface of the graph
+  language.
+- Semantic characterizations of the derived formulas: `root_`, `subset`,
+  `empty`, `nonempty`, `adjTree`, `inSet`, `labelMem`, and crucially `conn`
+  (reduced to the partition characterization in `GraphMSO/connectivity.lean`
+  over the symmetrized parent graph `TreeModel.graph`), `top`, and `dangle`.
+- The model bridge (`GraphMSO/Decomp/treeModel.lean`):
+  `SigmaTree.toTreeModel`, and for an encoding the parent relation is the
+  decomposition child relation definitionally while `TreeModel.graph` is the
+  decomposition tree (`encode_toTreeModel_graph`).
+- Defining pairs and defining tuples (see the earlier section).
+
+Main remaining tasks:
+
+- Define the recognition formulas `phi_vtx_i`, `phi_vtx`, `phi_set` and prove
+  their correctness over an encoding: satisfaction iff the argument sets form
+  a defining pair/tuple, by combining the formula characterizations with
+  `definingPairs.lean` through the model bridge.
 - Translate `tau_P` MSO atoms:
   adjacency, equality, set membership, and unary predicate atoms.
 - Prove translation correctness:
@@ -337,22 +355,25 @@ and automata evaluation are stable.
 ## Immediate Next Step
 
 Done so far: encoding legality (Phase 2, first half), the tree-automata core
-(Phase 5, TW §2), the defining-pair/tuple layer (Phase 3, combinatorial
-half), the edge bound, and the connectivity characterization.  The best next
-Lean targets:
+(Phase 5, TW §2), the defining-pair/tuple layer and the tree language with
+its formula characterizations and model bridge (Phase 3), the incidence
+decomposition, the edge bound, and the connectivity characterization
+(Phase 1).  The best next Lean targets:
 
-1. Tree MSO: an ordered-binary-tree structure bridging
-   `SigmaTree`/`InductiveNiceTree` to ranked terms, a tree MSO syntax over
-   `child_1, child_2, P_a`, and the recognition formulas; their correctness
-   proofs should reduce to `definingPairs.lean` and `connectivity.lean`.
-2. The MSO₂-to-MSO₁ formula translation over the coloured incidence
+1. The recognition formulas `phi_vtx_i`, `phi_vtx`, `phi_set` and their
+   correctness over an encoding (Phase 3): the semantic side is fully
+   prepared in `definingPairs.lean` + `treeLanguage/semantics.lean` +
+   `treeModel.lean`; what remains is tuple-of-set-variables plumbing and the
+   legality formula `phi_legal`.
+2. The atomic translations (`phi_adj`, `phi_Q`, `phi_eq`, `phi_cont`) and the
+   translation `theta_star` by formula induction (rest of Phase 3).
+3. The MSO₂-to-MSO₁ formula translation over the coloured incidence
    structure (Phase 4); its decomposition input is now available from
    `incidenceDecomposition`.
-3. Decoding of legal Σ-trees and the decode/encode isomorphism (Phase 2,
-   second half; off the critical path).
-4. The algorithmic nice-normalization theorem
-   (`Courcelle/nice_tree_decomp.tex`) only if the final statement needs
-   built-in normalization; it is the heaviest standalone block.
+4. Ranked-term bridge for ordered trees and the MSO-to-automaton compilation
+   (rest of Phase 5).
+5. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
+   and the nice-normalization theorem only if the final statement needs it.
 
 ## Working Rules
 

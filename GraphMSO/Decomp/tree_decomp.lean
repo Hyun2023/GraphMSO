@@ -322,6 +322,19 @@ theorem existsUnique_parent {T : RootedTreeDecomposition G} {t : T.Node}
   intro parent hparent
   exact hparent.2
 
+/-- Tree adjacency is the child relation in one of the two orientations. -/
+theorem adj_iff_isChild_or_isChild (T : RootedTreeDecomposition G)
+    {t u : T.Node} :
+    T.T.Adj t u ↔ T.IsChild t u ∨ T.IsChild u t := by
+  constructor
+  · intro hadj
+    rcases T.rootDepth_eq_add_one_or_eq_add_one hadj with h | h
+    · exact Or.inr (isChild_of_adj_of_rootDepth_eq_add_one hadj.symm h)
+    · exact Or.inl (isChild_of_adj_of_rootDepth_eq_add_one hadj h)
+  · rintro (h | h)
+    · exact h.adj
+    · exact h.adj.symm
+
 /-- `child` is the unique child of `t`. -/
 def HasUniqueChild (T : RootedTreeDecomposition G) (t child : T.Node) : Prop :=
   T.IsChild t child ∧ ∀ child' : T.Node, T.IsChild t child' -> child' = child

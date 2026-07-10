@@ -5,6 +5,8 @@ import GraphMSO.Decomp.definingPairs
 import GraphMSO.Decomp.edgeBound
 import GraphMSO.Decomp.encoding
 import GraphMSO.Decomp.incidenceDecomp
+import GraphMSO.Decomp.treeModel
+import GraphMSO.Decomp.incidenceDecomp
 import GraphMSO.Decomp.nice
 import GraphMSO.Decomp.nice_inductive
 import GraphMSO.Decomp.nodeConeGraph
