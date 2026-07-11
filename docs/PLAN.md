@@ -217,7 +217,7 @@ Completed, following `Courcelle/Thatcher-Wright-expanding.tex`:
 
 Not yet done: atomic automata for the labelled-tree vocabulary, the
 MSO-to-automaton compilation induction, the regularity characterization
-(TW §3, optional), and executable decision procedures (Phase 6).
+(TW §3, optional), and executable decision procedures (Phase 7).
 
 ## Remaining Roadmap
 
@@ -376,7 +376,28 @@ Main tasks (the automata core of TW §2 is done, see above):
   decomposition-given Courcelle theorem.
 - Linear-time claims stay metatheoretic until Phase 6 fixes a cost model.
 
-### Phase 6: Toward Really Working Code
+### Phase 6: Cost Model and Linear-Time Statements
+
+Goal: make the linear-time part of the Courcelle statement precise without
+committing to Lean kernel or VM reduction steps.
+
+Main tasks:
+
+- Define a small cost layer, such as `Costed α`, for algorithms whose result
+  and abstract operation count are tracked together.
+- Define reusable size measures for ranked terms, sigma trees,
+  decompositions, formulas, and finite input graphs.
+- For evaluators such as automata evaluation, separate correctness from cost:
+  the `value` agrees with the mathematical evaluator, and
+  `cost <= C * size + D`.
+- Treat fixed-width, fixed-formula, fixed-automaton operations as
+  constant-cost primitives whose constants are absorbed into
+  `f_P(omega, |phi|)`.
+- Combine encoding, translation bookkeeping, and automata-evaluation bounds
+  into the runtime shape
+  `f_P(omega, |phi|) * (|V(G)| + |N(T)|)`.
+
+### Phase 7: Toward Really Working Code
 
 Goal: after the proof architecture is stable, make the checker executable on
 finite inputs where possible.
