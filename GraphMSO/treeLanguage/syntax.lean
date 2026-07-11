@@ -132,6 +132,16 @@ def dangle (x : FOVar) (X : SOVar) : Formula A :=
   conj (neg (inSet x X))
     (existsFO (x + 1) (conj (parent (x + 1) x) (inSet (x + 1) X)))
 
+/-- Quantify a list of set variables existentially, in order. -/
+def existsSOList : List SOVar → Formula A → Formula A
+  | [], φ => φ
+  | X :: l, φ => existsSO X (existsSOList l φ)
+
+/-- Quantify a list of set variables universally, in order. -/
+def forallSOList : List SOVar → Formula A → Formula A
+  | [], φ => φ
+  | X :: l, φ => forallSO X (forallSOList l φ)
+
 /-- Finite conjunction of a list of formulas. -/
 def conjList : List (Formula A) → Formula A
   | [] => true_

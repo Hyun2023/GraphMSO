@@ -106,6 +106,47 @@ theorem updateSO_fo (ρ : Assignment M) (X : SOVar) (S : Set M.Node) (x : FOVar)
     (ρ.updateSO X S).fo x = ρ.fo x :=
   rfl
 
+theorem ext {ρ σ : Assignment M} (hfo : ρ.fo = σ.fo) (hso : ρ.so = σ.so) :
+    ρ = σ := by
+  cases ρ
+  cases σ
+  cases hfo
+  cases hso
+  rfl
+
+/--
+Overwrite an assignment on a block of set variables enumerated by `Zs`,
+leaving everything else unchanged.  This is the simultaneous form of the
+sequential updates performed by a block of set quantifiers.
+-/
+def setBlock {k : ℕ} (ρ : Assignment M) (Zs : Fin k → SOVar)
+    (g : Fin k → Set M.Node) : Assignment M where
+  fo := ρ.fo
+  so := fun Y => if h : ∃ i, Zs i = Y then g h.choose else ρ.so Y
+
+@[simp]
+theorem setBlock_fo {k : ℕ} (ρ : Assignment M) (Zs : Fin k → SOVar)
+    (g : Fin k → Set M.Node) (x : FOVar) :
+    (ρ.setBlock Zs g).fo x = ρ.fo x :=
+  rfl
+
+theorem setBlock_so_apply {k : ℕ} (ρ : Assignment M) {Zs : Fin k → SOVar}
+    (hinj : Function.Injective Zs) (g : Fin k → Set M.Node) (i : Fin k) :
+    (ρ.setBlock Zs g).so (Zs i) = g i := by
+  have h : ∃ j, Zs j = Zs i := ⟨i, rfl⟩
+  show (if h : ∃ j, Zs j = Zs i then g h.choose else ρ.so (Zs i)) = g i
+  rw [dif_pos h]
+  exact congrArg g (hinj h.choose_spec)
+
+theorem setBlock_so_of_forall_ne {k : ℕ} (ρ : Assignment M)
+    (Zs : Fin k → SOVar) (g : Fin k → Set M.Node) {Y : SOVar}
+    (hY : ∀ i, Zs i ≠ Y) :
+    (ρ.setBlock Zs g).so Y = ρ.so Y := by
+  show (if h : ∃ i, Zs i = Y then g h.choose else ρ.so Y) = ρ.so Y
+  rw [dif_neg]
+  rintro ⟨i, hi⟩
+  exact hY i hi
+
 end Assignment
 
 namespace Semantics
@@ -180,6 +221,79 @@ theorem satisfiesAt_forallSO (ρ : Assignment M) (X : SOVar) (φ : Formula A) :
     SatisfiesAt M (forallSO X φ) ρ ↔
       ∀ S : Set M.Node, SatisfiesAt M φ (ρ.updateSO X S) :=
   Iff.rfl
+
+/--
+A block of existential set quantifiers holds iff the body holds under some
+assignment that changes at most the quantified variables.
+-/
+theorem satisfiesAt_existsSOList_iff (l : List SOVar) (φ : Formula A)
+    (ρ : Assignment M) :
+    SatisfiesAt M (Formula.existsSOList l φ) ρ ↔
+      ∃ ρ' : Assignment M, ρ'.fo = ρ.fo ∧
+        (∀ Y : SOVar, Y ∉ l → ρ'.so Y = ρ.so Y) ∧ SatisfiesAt M φ ρ' := by
+  induction l generalizing ρ with
+  | nil =>
+      constructor
+      · intro h
+        exact ⟨ρ, rfl, fun _ _ => rfl, h⟩
+      · rintro ⟨ρ', hfo, hso, h⟩
+        have hρ : ρ' = ρ :=
+          Assignment.ext hfo (funext fun Y => hso Y (by simp))
+        rwa [hρ] at h
+  | cons X l ih =>
+      show (∃ S, SatisfiesAt M (Formula.existsSOList l φ) (ρ.updateSO X S)) ↔ _
+      constructor
+      · rintro ⟨S, hS⟩
+        obtain ⟨ρ', hfo, hso, h⟩ := (ih _).mp hS
+        refine ⟨ρ', hfo, ?_, h⟩
+        intro Y hY
+        have hYl : Y ∉ l := fun h' => hY (List.mem_cons_of_mem _ h')
+        have hYX : Y ≠ X := fun h' => hY (by rw [h']; exact List.mem_cons_self)
+        rw [hso Y hYl, Assignment.updateSO_other _ _ hYX]
+      · rintro ⟨ρ', hfo, hso, h⟩
+        refine ⟨ρ'.so X, (ih _).mpr ⟨ρ', hfo, ?_, h⟩⟩
+        intro Y hYl
+        by_cases hYX : Y = X
+        · subst hYX
+          rw [Assignment.updateSO_here]
+        · rw [Assignment.updateSO_other _ _ hYX]
+          exact hso Y (by simp [List.mem_cons, hYX, hYl])
+
+/--
+A block of universal set quantifiers holds iff the body holds under every
+assignment that changes at most the quantified variables.
+-/
+theorem satisfiesAt_forallSOList_iff (l : List SOVar) (φ : Formula A)
+    (ρ : Assignment M) :
+    SatisfiesAt M (Formula.forallSOList l φ) ρ ↔
+      ∀ ρ' : Assignment M, ρ'.fo = ρ.fo →
+        (∀ Y : SOVar, Y ∉ l → ρ'.so Y = ρ.so Y) → SatisfiesAt M φ ρ' := by
+  induction l generalizing ρ with
+  | nil =>
+      constructor
+      · intro h ρ' hfo hso
+        have hρ : ρ' = ρ :=
+          Assignment.ext hfo (funext fun Y => hso Y (by simp))
+        rwa [hρ]
+      · intro h
+        exact h ρ rfl (fun _ _ => rfl)
+  | cons X l ih =>
+      show (∀ S, SatisfiesAt M (Formula.forallSOList l φ) (ρ.updateSO X S)) ↔ _
+      constructor
+      · intro h ρ' hfo hso
+        refine (ih (ρ.updateSO X (ρ'.so X))).mp (h (ρ'.so X)) ρ' hfo ?_
+        intro Y hYl
+        by_cases hYX : Y = X
+        · subst hYX
+          rw [Assignment.updateSO_here]
+        · rw [Assignment.updateSO_other _ _ hYX]
+          exact hso Y (by simp [List.mem_cons, hYX, hYl])
+      · intro h S
+        refine (ih _).mpr fun ρ' hfo hso => h ρ' hfo ?_
+        intro Y hY
+        have hYl : Y ∉ l := fun h' => hY (List.mem_cons_of_mem _ h')
+        have hYX : Y ≠ X := fun h' => hY (by rw [h']; exact List.mem_cons_self)
+        rw [hso Y hYl, Assignment.updateSO_other _ _ hYX]
 
 /-! ## Characterizations of the derived formulas -/
 

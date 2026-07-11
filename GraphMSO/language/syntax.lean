@@ -44,6 +44,40 @@ namespace Formula
 
 variable {P : Type u}
 
+/-- The free first-order variables of a formula. -/
+def freeFO : Formula P → Set FOVar
+  | false_ => ∅
+  | equal x y => {x, y}
+  | adj x y => {x, y}
+  | pred _ x => {x}
+  | inSet x _ => {x}
+  | neg φ => φ.freeFO
+  | conj φ ψ => φ.freeFO ∪ ψ.freeFO
+  | disj φ ψ => φ.freeFO ∪ ψ.freeFO
+  | impl φ ψ => φ.freeFO ∪ ψ.freeFO
+  | biimpl φ ψ => φ.freeFO ∪ ψ.freeFO
+  | existsFO x φ => φ.freeFO \ {x}
+  | forallFO x φ => φ.freeFO \ {x}
+  | existsSO _ φ => φ.freeFO
+  | forallSO _ φ => φ.freeFO
+
+/-- The free second-order variables of a formula. -/
+def freeSO : Formula P → Set SOVar
+  | false_ => ∅
+  | equal _ _ => ∅
+  | adj _ _ => ∅
+  | pred _ _ => ∅
+  | inSet _ X => {X}
+  | neg φ => φ.freeSO
+  | conj φ ψ => φ.freeSO ∪ ψ.freeSO
+  | disj φ ψ => φ.freeSO ∪ ψ.freeSO
+  | impl φ ψ => φ.freeSO ∪ ψ.freeSO
+  | biimpl φ ψ => φ.freeSO ∪ ψ.freeSO
+  | existsFO _ φ => φ.freeSO
+  | forallFO _ φ => φ.freeSO
+  | existsSO X φ => φ.freeSO \ {X}
+  | forallSO X φ => φ.freeSO \ {X}
+
 /-- Truth, defined from falsity. -/
 def true_ : Formula P :=
   neg false_

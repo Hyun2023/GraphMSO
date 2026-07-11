@@ -13,5 +13,6 @@ import GraphMSO.Decomp.nodeConeGraph
 import GraphMSO.Decomp.realization
 import GraphMSO.Decomp.recognition
 import GraphMSO.Decomp.rootedGraph
+import GraphMSO.Decomp.translation
 import GraphMSO.Decomp.sigmaTree
 import GraphMSO.Decomp.tree_decomp

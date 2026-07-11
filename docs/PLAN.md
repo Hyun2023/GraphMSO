@@ -320,17 +320,30 @@ Also done — the atomic formulas (recognition corollary part 4, in
   `satisfiesAt_contTuple_iff` (membership, via
   `mem_iff_BAGS_subset_definingTuple`).
 
-Main remaining task — the translation itself:
+Also done — the translation itself (`GraphMSO/Decomp/translation.lean`):
 
-- The translation `theta_star` of `tau_P` MSO formulas by induction, and
-  translation correctness: graph satisfaction iff the encoded legal sigma
-  tree satisfies the translated tree formula.  This needs the tuple-variable
-  allocation discipline (disjoint blocks of `omega + 1` set variables per
-  graph variable, e.g. graph FO variable `x` ↦ tree set variables
-  `(omega + 1) * (2 * x) + i`, graph SO variable `X` ↦
-  `(omega + 1) * (2 * X + 1) + i`), plus assignment-independence lemmas for
-  the tree language (satisfaction depends only on the assigned values of
-  free variables).
+- Block quantifiers for the tree language
+  (`existsSOList`/`forallSOList` with the loose-assignment semantics
+  `satisfiesAt_existsSOList_iff`/`forallSOList_iff`, and the simultaneous
+  block update `Assignment.setBlock`).
+- The variable allocation: graph FO variable `x` gets the tree set variables
+  `fvBlock omega x = fun i => (omega+1)*(2*x) + i`, graph SO variable `X`
+  gets `svBlock omega X = fun i => (omega+1)*(2*X+1) + i`, with the
+  positional-decoding injectivity and disjointness lemmas.
+- Free variables `freeFO`/`freeSO` for the graph language.
+- `Language.Formula.translate` (`theta_star`): atoms to the atomic tuple
+  formulas, connectives commute, quantifiers to guarded block quantifiers
+  (universal quantifiers translated directly as guarded universal blocks
+  rather than via `¬∃¬`).
+- `satisfiesAt_translate_iff` — translation correctness by formula
+  induction: over an encoding, satisfaction of `theta_star` equals graph
+  satisfaction, for every tree assignment carrying the defining tuples of
+  the graph assignment on all free-variable blocks.
+- `satisfies_legalFormula_conj_translate_iff` — the note's final display:
+  for a closed `tau_P` formula, `G ⊨ phi` iff the encoding satisfies
+  `phi_legal ∧ phi_star`.
+
+Phase 3 is complete.
 
 ### Phase 4: MSO2 via Colored Incidence
 
@@ -390,16 +403,14 @@ formula characterizations and model bridge, and the recognition formulas
 encoding (Phase 3), plus the incidence decomposition, the edge bound, and
 the connectivity characterization (Phase 1).  The best next Lean targets:
 
-1. The translation `theta_star` by formula induction and its correctness
-   (rest of Phase 3; all recognition and atomic lemmas are in place).  The
-   induction needs the tuple-variable allocation discipline and
-   assignment-independence lemmas for the tree language.
-2. The MSO₂-to-MSO₁ formula translation over the coloured incidence
+1. The MSO₂-to-MSO₁ formula translation over the coloured incidence
    structure (Phase 4); its decomposition input is now available from
    `incidenceDecomposition`.
-3. Ranked-term bridge for ordered trees and the MSO-to-automaton compilation
-   (rest of Phase 5).
-4. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
+2. Ranked-term bridge for ordered trees, the atomic automata for the tree
+   vocabulary, and the MSO-to-automaton compilation (rest of Phase 5); with
+   Phase 3 complete this is the last substantial block before the
+   decomposition-given Courcelle statement.
+3. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
    and the nice-normalization theorem only if the final statement needs it.
 
 ## Working Rules
