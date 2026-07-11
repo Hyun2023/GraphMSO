@@ -11,6 +11,7 @@ import GraphMSO.Decomp.nice
 import GraphMSO.Decomp.nice_inductive
 import GraphMSO.Decomp.nodeConeGraph
 import GraphMSO.Decomp.realization
+import GraphMSO.Decomp.recognition
 import GraphMSO.Decomp.rootedGraph
 import GraphMSO.Decomp.sigmaTree
 import GraphMSO.Decomp.tree_decomp

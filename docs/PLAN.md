@@ -291,17 +291,46 @@ Done:
   decomposition tree (`encode_toTreeModel_graph`).
 - Defining pairs and defining tuples (see the earlier section).
 
-Main remaining tasks:
+Also done — the recognition layer (`GraphMSO/Decomp/recognition.lean`):
 
-- Define the recognition formulas `phi_vtx_i`, `phi_vtx`, `phi_set` and prove
-  their correctness over an encoding: satisfaction iff the argument sets form
-  a defining pair/tuple, by combining the formula characterizations with
-  `definingPairs.lean` through the model bridge.
-- Translate `tau_P` MSO atoms:
-  adjacency, equality, set membership, and unary predicate atoms.
-- Prove translation correctness:
-  graph satisfaction iff the encoded legal sigma tree satisfies the translated
-  tree formula.
+- `labelMem₂` binary letter-class atoms, finite `conjList`/`disjList`, and
+  the formulas `legal`, `definingPair`, `vtxTuple`, `setTuple` in the tree
+  language, with the note's finite alphabet disjunctions absorbed into
+  set-parameterized atoms.
+- `SigmaTree.satisfiesAt_legalFormula_iff`: the legality sentence
+  characterizes legal Σ-trees (the note's `phi_legal` lemma), and encodings
+  satisfy it.
+- `satisfiesAt_definingPair_iff`: over an encoding, `phi_vtx_i` recognizes
+  exactly the defining pairs (the note's Lemma vtx-i / recognition
+  corollary part 1).
+- `satisfiesAt_vtxTuple_iff` and `satisfiesAt_setTuple_iff`: the tuple
+  formulas recognize the defining tuples of vertices and of vertex sets
+  (recognition corollary parts 2-3).
+
+Also done — the atomic formulas (recognition corollary part 4, in
+`recognition.lean`):
+
+- `Formula.setEq`, `adjTuple`, `predTuple`, `eqTuple`, `contTuple` in the
+  tree language, with the note's double color disjunction of `phi_adj`
+  realized as nested finite disjunctions.
+- On defining tuples over an encoding: `satisfiesAt_adjTuple_iff`
+  (adjacency), `satisfiesAt_predTuple_iff` (unary predicates),
+  `satisfiesAt_eqTuple_iff` (equality, via injectivity of vertex defining
+  tuples `eq_of_definingTuple_singleton_eq`), and
+  `satisfiesAt_contTuple_iff` (membership, via
+  `mem_iff_BAGS_subset_definingTuple`).
+
+Main remaining task — the translation itself:
+
+- The translation `theta_star` of `tau_P` MSO formulas by induction, and
+  translation correctness: graph satisfaction iff the encoded legal sigma
+  tree satisfies the translated tree formula.  This needs the tuple-variable
+  allocation discipline (disjoint blocks of `omega + 1` set variables per
+  graph variable, e.g. graph FO variable `x` ↦ tree set variables
+  `(omega + 1) * (2 * x) + i`, graph SO variable `X` ↦
+  `(omega + 1) * (2 * X + 1) + i`), plus assignment-independence lemmas for
+  the tree language (satisfaction depends only on the assigned values of
+  free variables).
 
 ### Phase 4: MSO2 via Colored Incidence
 
@@ -355,24 +384,22 @@ and automata evaluation are stable.
 ## Immediate Next Step
 
 Done so far: encoding legality (Phase 2, first half), the tree-automata core
-(Phase 5, TW §2), the defining-pair/tuple layer and the tree language with
-its formula characterizations and model bridge (Phase 3), the incidence
-decomposition, the edge bound, and the connectivity characterization
-(Phase 1).  The best next Lean targets:
+(Phase 5, TW §2), the defining-pair/tuple layer, the tree language with its
+formula characterizations and model bridge, and the recognition formulas
+`phi_legal`, `phi_vtx_i`, `phi_vtx`, `phi_set` with correctness over an
+encoding (Phase 3), plus the incidence decomposition, the edge bound, and
+the connectivity characterization (Phase 1).  The best next Lean targets:
 
-1. The recognition formulas `phi_vtx_i`, `phi_vtx`, `phi_set` and their
-   correctness over an encoding (Phase 3): the semantic side is fully
-   prepared in `definingPairs.lean` + `treeLanguage/semantics.lean` +
-   `treeModel.lean`; what remains is tuple-of-set-variables plumbing and the
-   legality formula `phi_legal`.
-2. The atomic translations (`phi_adj`, `phi_Q`, `phi_eq`, `phi_cont`) and the
-   translation `theta_star` by formula induction (rest of Phase 3).
-3. The MSO₂-to-MSO₁ formula translation over the coloured incidence
+1. The translation `theta_star` by formula induction and its correctness
+   (rest of Phase 3; all recognition and atomic lemmas are in place).  The
+   induction needs the tuple-variable allocation discipline and
+   assignment-independence lemmas for the tree language.
+2. The MSO₂-to-MSO₁ formula translation over the coloured incidence
    structure (Phase 4); its decomposition input is now available from
    `incidenceDecomposition`.
-4. Ranked-term bridge for ordered trees and the MSO-to-automaton compilation
+3. Ranked-term bridge for ordered trees and the MSO-to-automaton compilation
    (rest of Phase 5).
-5. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
+4. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
    and the nice-normalization theorem only if the final statement needs it.
 
 ## Working Rules

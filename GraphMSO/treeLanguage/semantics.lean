@@ -121,6 +121,9 @@ def SatisfiesAt (M : TreeModel A) : Formula A → Assignment M → Prop
   | parent y x, ρ =>
       ∃ p n : M.Node, ρ.fo y = some p ∧ ρ.fo x = some n ∧ M.parentRel p n
   | labelMem S x, ρ => ∃ n : M.Node, ρ.fo x = some n ∧ M.label n ∈ S
+  | labelMem₂ R x y, ρ =>
+      ∃ m n : M.Node, ρ.fo x = some m ∧ ρ.fo y = some n ∧
+        (M.label m, M.label n) ∈ R
   | inSet x X, ρ => ∃ n : M.Node, ρ.fo x = some n ∧ n ∈ ρ.so X
   | neg φ, ρ => ¬ SatisfiesAt M φ ρ
   | conj φ ψ, ρ => SatisfiesAt M φ ρ ∧ SatisfiesAt M ψ ρ
@@ -158,6 +161,26 @@ theorem satisfiesAt_neg (ρ : Assignment M) (φ : Formula A) :
     SatisfiesAt M (neg φ) ρ ↔ ¬ SatisfiesAt M φ ρ :=
   Iff.rfl
 
+theorem satisfiesAt_existsFO (ρ : Assignment M) (x : FOVar) (φ : Formula A) :
+    SatisfiesAt M (existsFO x φ) ρ ↔
+      ∃ n : M.Node, SatisfiesAt M φ (ρ.updateFO x n) :=
+  Iff.rfl
+
+theorem satisfiesAt_forallFO (ρ : Assignment M) (x : FOVar) (φ : Formula A) :
+    SatisfiesAt M (forallFO x φ) ρ ↔
+      ∀ n : M.Node, SatisfiesAt M φ (ρ.updateFO x n) :=
+  Iff.rfl
+
+theorem satisfiesAt_existsSO (ρ : Assignment M) (X : SOVar) (φ : Formula A) :
+    SatisfiesAt M (existsSO X φ) ρ ↔
+      ∃ S : Set M.Node, SatisfiesAt M φ (ρ.updateSO X S) :=
+  Iff.rfl
+
+theorem satisfiesAt_forallSO (ρ : Assignment M) (X : SOVar) (φ : Formula A) :
+    SatisfiesAt M (forallSO X φ) ρ ↔
+      ∀ S : Set M.Node, SatisfiesAt M φ (ρ.updateSO X S) :=
+  Iff.rfl
+
 /-! ## Characterizations of the derived formulas -/
 
 theorem satisfiesAt_labelMem_iff (ρ : Assignment M) {x : FOVar} {n : M.Node}
@@ -176,6 +199,12 @@ theorem satisfiesAt_empty_iff (ρ : Assignment M) (X : SOVar) :
 theorem satisfiesAt_subset_iff (ρ : Assignment M) (Y X : SOVar) :
     SatisfiesAt M (Formula.subset Y X) ρ ↔ ρ.so Y ⊆ ρ.so X := by
   simp [Formula.subset, SatisfiesAt, Set.subset_def]
+
+theorem satisfiesAt_setEq_iff (ρ : Assignment M) (X Y : SOVar) :
+    SatisfiesAt M (Formula.setEq X Y) ρ ↔ ρ.so X = ρ.so Y := by
+  rw [Formula.setEq, satisfiesAt_conj, satisfiesAt_subset_iff,
+    satisfiesAt_subset_iff]
+  exact Set.Subset.antisymm_iff.symm
 
 theorem satisfiesAt_root_iff (ρ : Assignment M) {x : FOVar} {n : M.Node}
     (hx : ρ.fo x = some n) :
@@ -267,6 +296,60 @@ theorem satisfiesAt_dangle_iff (ρ : Assignment M) {x : FOVar} {n : M.Node}
     SatisfiesAt M (Formula.dangle x X) ρ ↔
       n ∉ ρ.so X ∧ ∃ p, M.parentRel p n ∧ p ∈ ρ.so X := by
   simp [Formula.dangle, SatisfiesAt, hx]
+
+theorem satisfiesAt_labelMem₂_iff (ρ : Assignment M) {x y : FOVar}
+    {m n : M.Node} (hx : ρ.fo x = some m) (hy : ρ.fo y = some n)
+    (R : Set (A × A)) :
+    SatisfiesAt M (labelMem₂ R x y) ρ ↔ (M.label m, M.label n) ∈ R := by
+  simp [SatisfiesAt, hx, hy]
+
+/-- A finite conjunction holds iff every member holds. -/
+theorem satisfiesAt_conjList (ρ : Assignment M) (l : List (Formula A)) :
+    SatisfiesAt M (Formula.conjList l) ρ ↔ ∀ φ ∈ l, SatisfiesAt M φ ρ := by
+  induction l with
+  | nil => simp [Formula.conjList, Formula.true_, SatisfiesAt]
+  | cons φ l ih => simp [Formula.conjList, ih]
+
+/-- A finite disjunction holds iff some member holds. -/
+theorem satisfiesAt_disjList (ρ : Assignment M) (l : List (Formula A)) :
+    SatisfiesAt M (Formula.disjList l) ρ ↔ ∃ φ ∈ l, SatisfiesAt M φ ρ := by
+  induction l with
+  | nil => simp [Formula.disjList, SatisfiesAt]
+  | cons φ l ih => simp [Formula.disjList, ih]
+
+/--
+The `legal` sentence holds iff every parentless node carries a root letter
+and every node either is parentless or has a parent with a compatible
+letter.
+-/
+theorem satisfiesAt_legal_iff (ρ : Assignment M) (S : Set A)
+    (R : Set (A × A)) :
+    SatisfiesAt M (Formula.legal S R) ρ ↔
+      (∀ n : M.Node, (∀ p, ¬ M.parentRel p n) → M.label n ∈ S) ∧
+      (∀ n : M.Node, (∀ p, ¬ M.parentRel p n) ∨
+        ∃ p, M.parentRel p n ∧ (M.label n, M.label p) ∈ R) := by
+  rw [Formula.legal, satisfiesAt_conj]
+  refine and_congr ?_ ?_
+  · refine forall_congr' fun n => ?_
+    rw [satisfiesAt_impl,
+      satisfiesAt_root_iff _ (Assignment.updateFO_here ρ 0 n),
+      satisfiesAt_labelMem_iff _ (Assignment.updateFO_here ρ 0 n)]
+  · refine forall_congr' fun n => ?_
+    rw [satisfiesAt_disj,
+      satisfiesAt_root_iff _ (Assignment.updateFO_here ρ 0 n)]
+    refine or_congr Iff.rfl ?_
+    show (∃ p, SatisfiesAt M _ ((ρ.updateFO 0 n).updateFO 1 p)) ↔ _
+    refine exists_congr fun p => ?_
+    have h0 : ((ρ.updateFO 0 n).updateFO 1 p).fo 0 = some n := by
+      rw [Assignment.updateFO_other _ _ (by decide : (0 : FOVar) ≠ 1)]
+      exact Assignment.updateFO_here ρ 0 n
+    have h1 : ((ρ.updateFO 0 n).updateFO 1 p).fo 1 = some p :=
+      Assignment.updateFO_here _ 1 p
+    rw [satisfiesAt_conj, satisfiesAt_labelMem₂_iff _ h0 h1]
+    refine and_congr ?_ Iff.rfl
+    show (∃ a b, _ = some a ∧ _ = some b ∧ M.parentRel a b) ↔ _
+    rw [h0, h1]
+    simp
 
 end Semantics
 

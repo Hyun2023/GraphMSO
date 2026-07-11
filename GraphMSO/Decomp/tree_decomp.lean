@@ -322,6 +322,16 @@ theorem existsUnique_parent {T : RootedTreeDecomposition G} {t : T.Node}
   intro parent hparent
   exact hparent.2
 
+/-- A node has no parent in the child relation iff it is the root. -/
+theorem forall_not_isChild_iff (T : RootedTreeDecomposition G) (t : T.Node) :
+    (∀ p : T.Node, ¬ T.IsChild p t) ↔ t = T.root := by
+  constructor
+  · intro h
+    by_contra hroot
+    exact h (T.parent t) (isChild_parent hroot)
+  · rintro rfl p
+    exact T.not_isChild_root p
+
 /-- Tree adjacency is the child relation in one of the two orientations. -/
 theorem adj_iff_isChild_or_isChild (T : RootedTreeDecomposition G)
     {t u : T.Node} :

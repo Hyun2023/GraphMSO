@@ -294,6 +294,23 @@ theorem definingTuple_singleton [DecidableEq (Fin k)] (v : V) (i : Fin k) :
   · simp [hc]
   · simp [hc]
 
+theorem mem_definingTuple_singleton_iff {v : V} {i : Fin k} {t : T.Node} :
+    t ∈ T.definingTuple color {v} i ↔ color v = i ∧ t ∈ T.BAGS v := by
+  rw [mem_definingTuple_iff]
+  simp
+
+/-- A vertex is determined by its defining tuple. -/
+theorem eq_of_definingTuple_singleton_eq (hcolor : T.IsBagColoring color)
+    {u v : V}
+    (h : ∀ i, T.definingTuple color {u} i = T.definingTuple color {v} i) :
+    u = v := by
+  obtain ⟨t, ht⟩ := T.BAGS_nonempty u
+  have htu : t ∈ T.definingTuple color {u} (color u) :=
+    mem_definingTuple_singleton_iff.mpr ⟨rfl, ht⟩
+  rw [h (color u)] at htu
+  obtain ⟨hcv, htv⟩ := mem_definingTuple_singleton_iff.mp htu
+  exact hcolor t ht htv hcv.symm
+
 /-- A member of a set contributes its whole bag set to the tuple coordinate
 of its color. -/
 theorem BAGS_subset_definingTuple {S : Set V} {v : V} (hv : v ∈ S) :
