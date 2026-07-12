@@ -1,6 +1,6 @@
 # GraphMSO Plan
 
-Last status check: 2026-07-10.
+Last status check: 2026-07-12.
 
 This project formalizes the graph-theoretic and logical infrastructure needed
 for Courcelle's theorem in Lean 4.  The main proof route follows
@@ -19,7 +19,7 @@ handled through the colored incidence structure with predicates `Vert` and
 
 ## Current Status
 
-Verified on 2026-07-09:
+Verified on 2026-07-12:
 
 - `lake build` succeeds.
 - No real `sorry` or `admit` placeholders were found in `GraphMSO/**/*.lean`.
@@ -28,7 +28,12 @@ Verified on 2026-07-09:
   - `GraphMSO.Semantics`
   - `GraphMSO.Examples`
   - `GraphMSO.incidence`
+  - `GraphMSO.incidenceTranslation`
+  - `GraphMSO.connectivity`
+  - `GraphMSO.pendant`
+  - `GraphMSO.treeLanguage.modelIso`
   - `GraphMSO.Decomp`
+  - `GraphMSO.Automata`
 
 The following foundations are complete enough to stop tracking them as active
 plan items.
@@ -376,8 +381,50 @@ Done beyond the TW §2 core:
 - Ordered binary labeled trees (`GraphMSO/Automata/binTree.lean`):
   `BinTree A` with positions, labels, the ordered child relations
   `childRel false/true` (= `child₁/child₂`), the tree-model reading
-  `BinTree.toTreeModel`, and the injective padded ranked-term encoding
-  `BinTree.toTerm` over `paddedAlphabet A` (nullary `⊥` + binary letters).
+  `BinTree.toTreeModel`, and the padded ranked-term equivalence
+  `BinTree.toTerm`/`BinTree.ofTerm` over `paddedAlphabet A` (nullary `⊥` +
+  binary letters).
+- The first track-machinery block in `binTree.lean`: shape-preserving
+  relabeling `BinTree.map`, canonical position equivalences for relabelings,
+  preservation of labels/root/child relations, the padded alphabet homomorphism
+  `paddedMapHom`, and `toTerm_map`.
+- Boolean monadic tracks on ordered trees: `TrackBits`, `withTracks`,
+  `eraseTracks`, `trackSet`, `remapTracks`, `eraseTracksHom`,
+  `remapTracksHom`, and correctness lemmas `trackSet_withTracks_iff`,
+  `eraseTracks_withTracks`, `eraseTracks_remapTracks`,
+  `trackSet_remapTracks_iff`, `toTerm_eraseTracks`, and
+  `toTerm_remapTracks`.  This supplies the bridge between trees over
+  `A × Bool^n` and trees over `A` with `n` distinguished position sets, plus
+  the track projection/reindexing needed by quantified variables.
+- Atomic tracked-tree automata (`GraphMSO/Automata/atomic.lean`): a generic
+  `foldAutomaton` for bottom-up summaries of padded binary terms; singleton,
+  root, track-intersection, parent-track, unary label, and binary label-pair
+  automata; language characterizations and `Recognizable` wrappers for these
+  atomic languages; and the first position-erasure bridge
+  (`erasePosEquiv`, `trackSetErased`,
+  `tracksIntersect_eq_true_iff_exists_erased`) needed to relate tracks to
+  tree assignments.  The tracked-assignment invariant `CarriesAssignment`
+  now connects Boolean tracks on a tracked tree with a tree-language
+  assignment on the track-erased model, and all primitive tree atoms
+  (`equal`, `parent`, `inSet`, unary `labelMem`, and binary `labelMem₂`) are
+  proved equivalent to the corresponding track summaries under that
+  invariant.  Singleton FO tracks now have position-level and erased-position
+  characterizations via `trackCount_eq_one_iff_exists_unique` and
+  `trackCount_eq_one_iff_exists_unique_erased`, and `CarriesAssignment` has
+  update lemmas for FO/SO assignment changes along changed track maps.  The
+  label-set states are currently stated for alphabets in `Type`, matching the
+  existing `TreeAutomaton.State : Type` universe.
+- Formula-to-automata compiler skeleton (`GraphMSO/Automata/compile.lean`):
+  `TrackLanguage` packages atomic tracked languages, Boolean closure, and the
+  projection-shape constructors for `existsFO`, `forallFO`, `existsSO`, and
+  `forallSO`.  FO quantifiers intersect with a singleton-track automaton
+  before projection; SO quantifiers project the guessed set track directly;
+  both now carry explicit freshness side conditions for later semantic
+  correctness.  `TrackLanguage.recognizable` proves every language produced
+  by this relation is recognizable using the existing TW closure theorems.
+  The `QFTrackLanguage` subrelation covers the atom/Boolean fragment and
+  `QFTrackLanguage.correct` proves it agrees with `SatisfiesAt` under
+  `CarriesAssignment`.
 - Isomorphism invariance (`GraphMSO/treeLanguage/modelIso.lean`):
   `TreeModel.Iso` and `satisfiesAt_mapEquiv_iff`/`satisfies_iff_of_iso` —
   tree MSO satisfaction transfers along node bijections preserving parent
@@ -387,12 +434,12 @@ Done beyond the TW §2 core:
 Main remaining tasks (linear-time claims excluded; they stay metatheoretic
 until Phase 6 fixes a cost model):
 
-- Track machinery: `BinTree.map`, the position equivalence between a tree
-  and its relabelings, and the correspondence between trees over
-  `A × Bool^n` and trees over `A` with `n` distinguished position sets.
-- Atomic automata over `paddedAlphabet` for the tree vocabulary, and the
-  MSO-to-automaton compilation by formula induction using the closure
-  theorems (subset construction, Boolean closure, projection).
+- Prove semantic correctness for the quantified `TrackLanguage` constructors:
+  source/target assignment transfer across `remapTracksHom` projections and
+  construction of fresh source tracks for arbitrary FO/SO witnesses.
+- Turn the relational compiler skeleton into a convenient formula-induction
+  theorem that allocates fresh tracks automatically for a finite free-variable
+  context.
 - The ordered encoding of an `InductiveNiceTreeDecomposition` as a
   `BinTree (SigmaLetter P omega)` and its `TreeModel.Iso` with the encoded
   model, via the realization.
@@ -441,20 +488,25 @@ and automata evaluation are stable.
 ## Immediate Next Step
 
 Done so far: encoding legality (Phase 2, first half), the tree-automata core
-(Phase 5, TW §2), the defining-pair/tuple layer, the tree language with its
-formula characterizations and model bridge, and the recognition formulas
-`phi_legal`, `phi_vtx_i`, `phi_vtx`, `phi_set` with correctness over an
-encoding (Phase 3), plus the incidence decomposition, the edge bound, and
-the connectivity characterization (Phase 1).  The best next Lean targets:
+(Phase 5, TW §2), ordered binary trees with padded-term encoding, the Boolean
+track bridge, and the first tracked atomic automata, the defining-pair/tuple
+layer, the tree language with its formula characterizations and model bridge,
+the recognition formulas `phi_legal`, `phi_vtx_i`, `phi_vtx`, `phi_set`, the
+graph-to-tree formula translation (Phase 3), the incidence reduction
+(Phase 4), plus the incidence decomposition, the edge bound, and the
+connectivity characterization (Phase 1).  The best next Lean targets:
 
-1. The MSO₂-to-MSO₁ formula translation over the coloured incidence
-   structure (Phase 4); its decomposition input is now available from
-   `incidenceDecomposition`.
-2. Ranked-term bridge for ordered trees, the atomic automata for the tree
-   vocabulary, and the MSO-to-automaton compilation (rest of Phase 5); with
-   Phase 3 complete this is the last substantial block before the
-   decomposition-given Courcelle statement.
-3. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
+1. Prove the remaining quantified semantic correctness lemmas for
+   `TrackLanguage`: if a source tracked term projects to a target tracked
+   term along `remapTracksHom`, transfer `CarriesAssignment` between their
+   erased tree models and use the fresh-track side conditions.
+2. Turn `TrackLanguage` into a user-facing formula-induction compiler that
+   allocates fresh tracks for quantifiers and returns a recognizable tracked
+   language.
+3. The ordered encoding of an `InductiveNiceTreeDecomposition` as a
+   `BinTree (SigmaLetter P omega)` and its `TreeModel.Iso` with the encoded
+   model, via the realization.
+4. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
    and the nice-normalization theorem only if the final statement needs it.
 
 ## Working Rules
