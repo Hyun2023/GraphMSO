@@ -2,7 +2,9 @@ import GraphMSO.Syntax
 import GraphMSO.Semantics
 import GraphMSO.Examples
 import GraphMSO.incidence
+import GraphMSO.incidenceTranslation
 import GraphMSO.connectivity
 import GraphMSO.pendant
+import GraphMSO.treeLanguage.modelIso
 import GraphMSO.Decomp
 import GraphMSO.Automata

@@ -345,36 +345,59 @@ Also done — the translation itself (`GraphMSO/Decomp/translation.lean`):
 
 Phase 3 is complete.
 
-### Phase 4: MSO2 via Colored Incidence
+### Phase 4: MSO2 via Colored Incidence — done
 
 Goal: connect the existing MSO2-over-`SimpleGraph` source language to the
 `tau_P` theorem through the colored incidence structure.
 
-Main tasks:
+Done (`GraphMSO/incidenceTranslation.lean`):
 
-- Define the formula translation from MSO2 over `SimpleGraph` to MSO1 over
-  `tau_I = {adj, Vert, EdgeObj}`.
-- Prove truth preservation for the translation.
-- Combine this with the incidence treewidth/decomposition theorem from Phase 1.
+- `incidenceTauGraph`: the coloured incidence structure as a `τPGraph` over
+  `IncSort`.
+- `Formula.toIncidence`: the MSO₂-to-MSO₁ translation.  The two-sorted
+  variables are merged by parity (`x ↦ 2x`, edge `e ↦ 2e+1`, and likewise
+  for set variables); quantifiers are guarded by `Vert`/`EdgeObj` and the
+  pointwise set guards; the `edge x y` atom, absent from `τ_I`, becomes the
+  existence of a common incident edge object between distinct vertices
+  (`adj_iff_exists_edgeSet`), with the odd bound variable `2x + 2y + 1`.
+- `satisfiesAt_toIncidence_iff`: truth preservation for open formulas, with
+  the assignment correspondence carried on free variables.
+- `satisfies_toIncidence_iff` (closed sentences) and `incidence_reduction`
+  (combined with `incidenceDecomposition_hasWidth`): MSO₂ model checking on
+  `G` with a width-`omega` decomposition reduces to MSO₁ model checking on
+  the incidence structure with a width-`max omega 2` decomposition.
 
 ### Phase 5: Tree Automata and Courcelle Statement
 
 Goal: state and then progressively formalize the automata side.
 
-Main tasks (the automata core of TW §2 is done, see above):
+Done beyond the TW §2 core:
 
-- Connect `SigmaTree` to ranked terms: an ordered/binary tree representation
-  and the padding encoding with a nullary `⊥` symbol.  `SigmaTree` itself is
-  an unordered mathlib tree, so this step needs the ordered representation
-  (for nice decompositions, `InductiveNiceTree` already carries it).
-- Define a tree MSO syntax over `child_1, child_2, P_a` and its semantics.
-- Build the atomic automata for that vocabulary and the track/product
-  alphabets for free variables.
-- Prove the MSO-to-automaton compilation by formula induction, using the
-  closure theorems already available.
-- Combine the translation theorem and automaton correctness into the
-  decomposition-given Courcelle theorem.
-- Linear-time claims stay metatheoretic until Phase 6 fixes a cost model.
+- Ordered binary labeled trees (`GraphMSO/Automata/binTree.lean`):
+  `BinTree A` with positions, labels, the ordered child relations
+  `childRel false/true` (= `child₁/child₂`), the tree-model reading
+  `BinTree.toTreeModel`, and the injective padded ranked-term encoding
+  `BinTree.toTerm` over `paddedAlphabet A` (nullary `⊥` + binary letters).
+- Isomorphism invariance (`GraphMSO/treeLanguage/modelIso.lean`):
+  `TreeModel.Iso` and `satisfiesAt_mapEquiv_iff`/`satisfies_iff_of_iso` —
+  tree MSO satisfaction transfers along node bijections preserving parent
+  and labels.  This is the glue between the unordered encoded model of a
+  decomposition and the ordered tree the automaton runs on.
+
+Main remaining tasks (linear-time claims excluded; they stay metatheoretic
+until Phase 6 fixes a cost model):
+
+- Track machinery: `BinTree.map`, the position equivalence between a tree
+  and its relabelings, and the correspondence between trees over
+  `A × Bool^n` and trees over `A` with `n` distinguished position sets.
+- Atomic automata over `paddedAlphabet` for the tree vocabulary, and the
+  MSO-to-automaton compilation by formula induction using the closure
+  theorems (subset construction, Boolean closure, projection).
+- The ordered encoding of an `InductiveNiceTreeDecomposition` as a
+  `BinTree (SigmaLetter P omega)` and its `TreeModel.Iso` with the encoded
+  model, via the realization.
+- Combine the translation theorem, the isomorphism transfer, and automaton
+  correctness into the decomposition-given Courcelle theorem.
 
 ### Phase 6: Toward Really Working Code
 
