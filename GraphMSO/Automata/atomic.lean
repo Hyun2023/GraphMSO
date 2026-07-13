@@ -1,5 +1,6 @@
 import GraphMSO.Automata.automaton
 import GraphMSO.Automata.binTree
+import GraphMSO.treeLanguage.modelIso
 
 /-!
 # Atomic automata for tracked binary trees
@@ -467,6 +468,449 @@ theorem mem_trackSetErased_iff {n : ℕ} (t : BinTree (A × TrackBits n))
       ∃ q : t.Pos, (t.labelAt q).2 i = true ∧ erasePosEquiv t q = p :=
   Iff.rfl
 
+@[simp] theorem trackSetErased_node_root {n : ℕ}
+    (a : A × TrackBits n) (l r : BinTree (A × TrackBits n)) (i : Fin n) :
+    (none : (BinTree.node a l r).eraseTracks.Pos) ∈
+        trackSetErased (BinTree.node a l r) i ↔
+      a.2 i = true := by
+  rw [mem_trackSetErased_iff]
+  constructor
+  · rintro ⟨q, hq, hqp⟩
+    cases q with
+    | none =>
+        simpa using hq
+    | some q =>
+        cases q with
+        | inl q => cases hqp
+        | inr q => cases hqp
+  · intro h
+    exact ⟨none, by simpa using h, rfl⟩
+
+@[simp] theorem trackSetErased_node_left {n : ℕ}
+    (a : A × TrackBits n) (l r : BinTree (A × TrackBits n)) (i : Fin n)
+    (p : l.eraseTracks.Pos) :
+    (some (.inl p) : (BinTree.node a l r).eraseTracks.Pos) ∈
+        trackSetErased (BinTree.node a l r) i ↔
+      p ∈ trackSetErased l i := by
+  rw [mem_trackSetErased_iff]
+  constructor
+  · rintro ⟨q, hq, hqp⟩
+    cases q with
+    | none => cases hqp
+    | some q =>
+        cases q with
+        | inl q =>
+            refine ⟨q, hq, ?_⟩
+            change
+              (some (Sum.inl ((erasePosEquiv l) q)) :
+                  Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) =
+                some (Sum.inl p) at hqp
+            exact Sum.inl.inj (Option.some.inj hqp)
+        | inr q => cases hqp
+  · rintro ⟨q, hq, hqp⟩
+    refine ⟨some (.inl q), hq, ?_⟩
+    change
+      (some (Sum.inl ((erasePosEquiv l) q)) :
+          Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) =
+        some (Sum.inl p)
+    simp [hqp]
+
+@[simp] theorem trackSetErased_node_right {n : ℕ}
+    (a : A × TrackBits n) (l r : BinTree (A × TrackBits n)) (i : Fin n)
+    (p : r.eraseTracks.Pos) :
+    (some (.inr p) : (BinTree.node a l r).eraseTracks.Pos) ∈
+        trackSetErased (BinTree.node a l r) i ↔
+      p ∈ trackSetErased r i := by
+  rw [mem_trackSetErased_iff]
+  constructor
+  · rintro ⟨q, hq, hqp⟩
+    cases q with
+    | none => cases hqp
+    | some q =>
+        cases q with
+        | inl q => cases hqp
+        | inr q =>
+            refine ⟨q, hq, ?_⟩
+            change
+              (some (Sum.inr ((erasePosEquiv r) q)) :
+                  Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) =
+                some (Sum.inr p) at hqp
+            exact Sum.inr.inj (Option.some.inj hqp)
+  · rintro ⟨q, hq, hqp⟩
+    refine ⟨some (.inr q), hq, ?_⟩
+    change
+      (some (Sum.inr ((erasePosEquiv r) q)) :
+          Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) =
+        some (Sum.inr p)
+    simp [hqp]
+
+theorem erasePosEquiv_mem_trackSetErased_iff {n : ℕ}
+    (t : BinTree (A × TrackBits n)) (i : Fin n) (p : t.Pos) :
+    erasePosEquiv t p ∈ trackSetErased t i ↔ p ∈ trackSet t i := by
+  constructor
+  · intro h
+    obtain ⟨q, hq, heq⟩ := (mem_trackSetErased_iff t i (erasePosEquiv t p)).mp h
+    have hqp : q = p := (erasePosEquiv t).injective heq
+    simpa [trackSet, hqp] using hq
+  · intro hp
+    exact ⟨p, hp, rfl⟩
+
+/-- The erased-position equivalence induced by adding tracks to an untracked
+tree. -/
+noncomputable def eraseWithTracksEquiv {n : ℕ}
+    (t : BinTree A) (tracks : Fin n → Set t.Pos) :
+    t.Pos ≃ (withTracks t tracks).eraseTracks.Pos :=
+  (posEquivWithTracks t tracks).trans (erasePosEquiv (withTracks t tracks))
+
+@[simp] theorem eraseWithTracksEquiv_mem_trackSetErased_iff {n : ℕ}
+    (t : BinTree A) (tracks : Fin n → Set t.Pos) (i : Fin n)
+    (p : t.Pos) :
+    eraseWithTracksEquiv t tracks p ∈ trackSetErased (withTracks t tracks) i ↔
+      p ∈ tracks i := by
+  simpa [eraseWithTracksEquiv] using
+    (erasePosEquiv_mem_trackSetErased_iff (withTracks t tracks) i
+      (posEquivWithTracks t tracks p)).trans
+      (trackSet_withTracks_iff t tracks i p)
+
+theorem labelAt_eraseWithTracksEquiv {n : ℕ}
+    (t : BinTree A) (tracks : Fin n → Set t.Pos) (p : t.Pos) :
+    (withTracks t tracks).eraseTracks.labelAt
+      (eraseWithTracksEquiv t tracks p) =
+      t.labelAt p := by
+  simp [eraseWithTracksEquiv, eraseTracks, erasePosEquiv]
+
+theorem childRel_eraseWithTracksEquiv_iff {n : ℕ}
+    (t : BinTree A) (tracks : Fin n → Set t.Pos) (b : Bool)
+    (p q : t.Pos) :
+    (withTracks t tracks).eraseTracks.childRel b
+        (eraseWithTracksEquiv t tracks p)
+        (eraseWithTracksEquiv t tracks q) ↔
+      t.childRel b p q := by
+  rw [show
+      (withTracks t tracks).eraseTracks.childRel b
+          (eraseWithTracksEquiv t tracks p)
+          (eraseWithTracksEquiv t tracks q) ↔
+        (withTracks t tracks).childRel b
+          (posEquivWithTracks t tracks p)
+          (posEquivWithTracks t tracks q) by
+      simpa [eraseWithTracksEquiv, eraseTracks, erasePosEquiv] using
+        childRel_map_iff Prod.fst b (withTracks t tracks)
+          (posEquivWithTracks t tracks p)
+          (posEquivWithTracks t tracks q)]
+  exact childRel_withTracks_iff t tracks b p q
+
+/-- Adding tracks and then erasing them gives a tree model isomorphic to the
+original untracked tree model. -/
+noncomputable def eraseWithTracksIso {n : ℕ}
+    (t : BinTree A) (tracks : Fin n → Set t.Pos) :
+    t.toTreeModel.Iso (withTracks t tracks).eraseTracks.toTreeModel where
+  toEquiv := eraseWithTracksEquiv t tracks
+  parentRel_iff := by
+    intro p q
+    simp [toTreeModel, childRel_eraseWithTracksEquiv_iff t tracks]
+  label_eq := by
+    intro p
+    exact labelAt_eraseWithTracksEquiv t tracks p
+
+theorem remapTracks_withTracks_eq_of_tracks {source target : ℕ}
+    (keep : Fin target → Fin source)
+    (t : BinTree (A × TrackBits target))
+    (tracks : Fin source → Set t.eraseTracks.Pos)
+    (htracks : ∀ i p, p ∈ tracks (keep i) ↔ p ∈ trackSetErased t i) :
+    remapTracks keep (withTracks t.eraseTracks tracks) = t := by
+  induction t with
+  | nil =>
+      rfl
+  | node a l r ihl ihr =>
+      let leftTracks : Fin source → Set l.eraseTracks.Pos := fun j =>
+        {p | (some (.inl p) : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+          tracks j}
+      let rightTracks : Fin source → Set r.eraseTracks.Pos := fun j =>
+        {p | (some (.inr p) : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+          tracks j}
+      have hleft :
+          ∀ i p, p ∈ leftTracks (keep i) ↔ p ∈ trackSetErased l i := by
+        intro i p
+        change
+          (some (.inl p) :
+              Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+              tracks (keep i) ↔
+            p ∈ trackSetErased l i
+        exact (htracks i
+          (some (.inl p) :
+            Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos))).trans
+          (trackSetErased_node_left a l r i p)
+      have hright :
+          ∀ i p, p ∈ rightTracks (keep i) ↔ p ∈ trackSetErased r i := by
+        intro i p
+        change
+          (some (.inr p) :
+              Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+              tracks (keep i) ↔
+            p ∈ trackSetErased r i
+        exact (htracks i
+          (some (.inr p) :
+            Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos))).trans
+          (trackSetErased_node_right a l r i p)
+      have hlabel :
+          (a.1,
+              fun i =>
+                haveI : Decidable
+                    ((none : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+                      tracks (keep i)) :=
+                  Classical.propDecidable _
+                decide
+                  ((none : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+                    tracks (keep i))) = a := by
+        cases a with
+        | mk a bits =>
+            classical
+            simp only [Prod.mk.injEq, true_and]
+            funext i
+            have hiff :
+                ((none : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+                    tracks (keep i)) ↔
+                  bits i = true := by
+              exact (htracks i
+                (none : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos))).trans
+                (trackSetErased_node_root (a, bits) l r i)
+            by_cases hmem :
+                (none : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+                  tracks (keep i)
+            · have hbit : bits i = true := hiff.mp hmem
+              rw [decide_eq_true hmem, hbit]
+            · have hbit : bits i = false := by
+                cases h : bits i with
+                | false => rfl
+                | true =>
+                    exact False.elim (hmem (hiff.mpr h))
+              rw [decide_eq_false hmem, hbit]
+      change
+        BinTree.node
+            (a.1,
+              fun i =>
+                haveI : Decidable
+                    ((none : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+                      tracks (keep i)) :=
+                  Classical.propDecidable _
+                decide
+                  ((none : Option (l.eraseTracks.Pos ⊕ r.eraseTracks.Pos)) ∈
+                    tracks (keep i)))
+            (remapTracks keep (withTracks l.eraseTracks leftTracks))
+            (remapTracks keep (withTracks r.eraseTracks rightTracks)) =
+          BinTree.node a l r
+      rw [ihl leftTracks hleft, ihr rightTracks hright, hlabel]
+
+/-- Extend a target track context by copying the kept tracks and using one
+fresh source track for a chosen set of erased target positions.  All other
+source tracks are empty. -/
+noncomputable def liftTracksWithFresh {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    (freshSet : Set t.eraseTracks.Pos) :
+    Fin source → Set t.eraseTracks.Pos :=
+  fun j =>
+    if h : ∃ i, keep i = j then
+      trackSetErased t h.choose
+    else if j = fresh then
+      freshSet
+    else
+      ∅
+
+@[simp] theorem liftTracksWithFresh_keep {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    (freshSet : Set t.eraseTracks.Pos)
+    (hkeep : Function.Injective keep) (i : Fin target) :
+    liftTracksWithFresh keep fresh t freshSet (keep i) =
+      trackSetErased t i := by
+  unfold liftTracksWithFresh
+  rw [dif_pos ⟨i, rfl⟩]
+  congr 1
+  exact hkeep (Classical.choose_spec (p := fun k => keep k = keep i) ⟨i, rfl⟩)
+
+@[simp] theorem liftTracksWithFresh_fresh {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    (freshSet : Set t.eraseTracks.Pos)
+    (hfresh : ∀ i, fresh ≠ keep i) :
+    liftTracksWithFresh keep fresh t freshSet fresh = freshSet := by
+  unfold liftTracksWithFresh
+  rw [dif_neg]
+  · simp
+  · rintro ⟨i, hi⟩
+    exact hfresh i hi.symm
+
+theorem remapTracks_withTracks_liftTracksWithFresh_eq {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    (freshSet : Set t.eraseTracks.Pos)
+    (hkeep : Function.Injective keep) :
+    remapTracks keep
+        (withTracks t.eraseTracks (liftTracksWithFresh keep fresh t freshSet)) =
+      t := by
+  refine remapTracks_withTracks_eq_of_tracks keep t
+    (liftTracksWithFresh keep fresh t freshSet) ?_
+  intro i p
+  rw [liftTracksWithFresh_keep keep fresh t freshSet hkeep i]
+
+theorem eraseWithTracksEquiv_mem_liftTracksWithFresh_fresh_iff
+    {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    (freshSet : Set t.eraseTracks.Pos)
+    (hfresh : ∀ i, fresh ≠ keep i)
+    (p : t.eraseTracks.Pos) :
+    eraseWithTracksEquiv t.eraseTracks
+        (liftTracksWithFresh keep fresh t freshSet) p ∈
+        trackSetErased
+          (withTracks t.eraseTracks (liftTracksWithFresh keep fresh t freshSet))
+          fresh ↔
+      p ∈ freshSet := by
+  rw [eraseWithTracksEquiv_mem_trackSetErased_iff,
+    liftTracksWithFresh_fresh keep fresh t freshSet hfresh]
+
+theorem eraseWithTracksEquiv_mem_liftTracksWithFresh_keep_iff
+    {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    (freshSet : Set t.eraseTracks.Pos)
+    (hkeep : Function.Injective keep) (i : Fin target)
+    (p : t.eraseTracks.Pos) :
+    eraseWithTracksEquiv t.eraseTracks
+        (liftTracksWithFresh keep fresh t freshSet) p ∈
+        trackSetErased
+          (withTracks t.eraseTracks (liftTracksWithFresh keep fresh t freshSet))
+          (keep i) ↔
+      p ∈ trackSetErased t i := by
+  rw [eraseWithTracksEquiv_mem_trackSetErased_iff,
+    liftTracksWithFresh_keep keep fresh t freshSet hkeep i]
+
+theorem trackCount_liftTracksWithFresh_singleton {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    (hfresh : ∀ i, fresh ≠ keep i)
+    (p : t.eraseTracks.Pos) :
+    trackCount fresh
+        (withTracks t.eraseTracks
+          (liftTracksWithFresh keep fresh t ({p} : Set t.eraseTracks.Pos))) =
+      Count.one := by
+  let tracks :=
+    liftTracksWithFresh keep fresh t ({p} : Set t.eraseTracks.Pos)
+  let e := posEquivWithTracks t.eraseTracks tracks
+  refine (trackCount_eq_one_iff_exists_unique fresh
+    (withTracks t.eraseTracks tracks)).mpr ?_
+  refine ⟨e p, ?_, ?_⟩
+  · exact
+      (trackSet_withTracks_iff t.eraseTracks tracks fresh p).mpr
+        (by
+          change p ∈ liftTracksWithFresh keep fresh t
+            ({p} : Set t.eraseTracks.Pos) fresh
+          rw [liftTracksWithFresh_fresh keep fresh t
+            ({p} : Set t.eraseTracks.Pos) hfresh]
+          exact rfl)
+  · intro q hq
+    obtain ⟨q0, rfl⟩ := e.surjective q
+    have hq0 : q0 ∈ ({p} : Set t.eraseTracks.Pos) :=
+      by
+        have hq0tracks : q0 ∈ tracks fresh :=
+          (trackSet_withTracks_iff t.eraseTracks tracks fresh q0).mp hq
+        simpa [tracks,
+          liftTracksWithFresh_fresh keep fresh t
+            ({p} : Set t.eraseTracks.Pos) hfresh] using hq0tracks
+    rw [Set.mem_singleton_iff.mp hq0]
+
+theorem erasePosEquiv_mem_trackSetErased_remap_iff {source target : ℕ}
+    (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source)) (i : Fin target) (p : s.Pos) :
+    erasePosEquiv (remapTracks keep s)
+        (posEquivMap (fun a : A × TrackBits source =>
+          (a.1, fun j => a.2 (keep j))) s p) ∈
+        trackSetErased (remapTracks keep s) i ↔
+      erasePosEquiv s p ∈ trackSetErased s (keep i) := by
+  rw [erasePosEquiv_mem_trackSetErased_iff,
+    erasePosEquiv_mem_trackSetErased_iff]
+  exact trackSet_remapTracks_iff keep s i p
+
+/-- The natural position equivalence between a source tracked tree with
+`source` tracks and its `target`-track remapping after erasing tracks. -/
+def eraseRemapEquiv {source target : ℕ} (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source)) :
+    s.eraseTracks.Pos ≃ (remapTracks keep s).eraseTracks.Pos :=
+  (erasePosEquiv s).symm.trans
+    ((posEquivMap (fun a : A × TrackBits source =>
+      (a.1, fun j => a.2 (keep j))) s).trans
+        (erasePosEquiv (remapTracks keep s)))
+
+theorem eraseRemapEquiv_mem_trackSetErased_iff {source target : ℕ}
+    (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source)) (i : Fin target)
+    (p : s.eraseTracks.Pos) :
+    eraseRemapEquiv keep s p ∈ trackSetErased (remapTracks keep s) i ↔
+      p ∈ trackSetErased s (keep i) := by
+  simpa [eraseRemapEquiv] using
+    erasePosEquiv_mem_trackSetErased_remap_iff keep s i
+      ((erasePosEquiv s).symm p)
+
+theorem labelAt_eraseRemapEquiv {source target : ℕ}
+    (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source)) (p : s.eraseTracks.Pos) :
+    (remapTracks keep s).eraseTracks.labelAt (eraseRemapEquiv keep s p) =
+      s.eraseTracks.labelAt p := by
+  obtain ⟨p, rfl⟩ := (erasePosEquiv s).surjective p
+  simp [eraseRemapEquiv, eraseTracks, erasePosEquiv, remapTracks]
+
+theorem childRel_eraseRemapEquiv_iff {source target : ℕ}
+    (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source)) (b : Bool)
+    (p q : s.eraseTracks.Pos) :
+    (remapTracks keep s).eraseTracks.childRel b
+        (eraseRemapEquiv keep s p) (eraseRemapEquiv keep s q) ↔
+      s.eraseTracks.childRel b p q := by
+  obtain ⟨p, rfl⟩ := (erasePosEquiv s).surjective p
+  obtain ⟨q, rfl⟩ := (erasePosEquiv s).surjective q
+  simp only [eraseRemapEquiv, Equiv.trans_apply, Equiv.symm_apply_apply]
+  change
+    ((remapTracks keep s).map Prod.fst).childRel b
+        (posEquivMap Prod.fst (remapTracks keep s)
+          (posEquivMap (fun a : A × TrackBits source =>
+            (a.1, fun j => a.2 (keep j))) s p))
+        (posEquivMap Prod.fst (remapTracks keep s)
+          (posEquivMap (fun a : A × TrackBits source =>
+            (a.1, fun j => a.2 (keep j))) s q)) ↔
+      (s.map Prod.fst).childRel b
+        (posEquivMap Prod.fst s p) (posEquivMap Prod.fst s q)
+  rw [childRel_map_iff Prod.fst b (remapTracks keep s)
+      (posEquivMap (fun a : A × TrackBits source =>
+        (a.1, fun j => a.2 (keep j))) s p)
+      (posEquivMap (fun a : A × TrackBits source =>
+        (a.1, fun j => a.2 (keep j))) s q)]
+  change
+    (s.map (fun a : A × TrackBits source =>
+      (a.1, fun j => a.2 (keep j)))).childRel b
+        (posEquivMap (fun a : A × TrackBits source =>
+          (a.1, fun j => a.2 (keep j))) s p)
+        (posEquivMap (fun a : A × TrackBits source =>
+          (a.1, fun j => a.2 (keep j))) s q) ↔
+      (s.map Prod.fst).childRel b
+        (posEquivMap Prod.fst s p) (posEquivMap Prod.fst s q)
+  rw [childRel_map_iff (fun a : A × TrackBits source =>
+      (a.1, fun j => a.2 (keep j))) b s p q,
+    childRel_map_iff Prod.fst b s p q]
+
+/-- Erasing tracks before and after a track remapping yields isomorphic tree
+models. -/
+def eraseRemapIso {source target : ℕ} (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source)) :
+    s.eraseTracks.toTreeModel.Iso (remapTracks keep s).eraseTracks.toTreeModel where
+  toEquiv := eraseRemapEquiv keep s
+  parentRel_iff := by
+    intro p q
+    simp [toTreeModel, childRel_eraseRemapEquiv_iff keep s]
+  label_eq := by
+    intro p
+    exact labelAt_eraseRemapEquiv keep s p
+
 theorem trackCount_eq_one_iff_exists_unique_erased {n : ℕ} (i : Fin n)
     (t : BinTree (A × TrackBits n)) :
     trackCount i t = Count.one ↔
@@ -930,6 +1374,345 @@ theorem updateSO {oldSO : SOVar → Fin n}
       rw [Assignment.updateSO_here, hX]
     · rw [Assignment.updateSO_other ρ S hY, hso Y hY]
       exact h.so_eq Y
+
+theorem of_liftTracksWithFresh_updateFO {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    {targetFO : FOVar → Fin target} {targetSO : SOVar → Fin target}
+    {sourceFO : FOVar → Fin source} {sourceSO : SOVar → Fin source}
+    {ρ : Assignment t.eraseTracks.toTreeModel}
+    (hρ : CarriesAssignment t targetFO targetSO ρ)
+    (hkeep : Function.Injective keep)
+    {x : FOVar} (p : t.eraseTracks.Pos)
+    (hfo : ∀ y, y ≠ x → sourceFO y = keep (targetFO y))
+    (hx : sourceFO x = fresh)
+    (hfresh : ∀ i, fresh ≠ keep i)
+    (hso : ∀ X, sourceSO X = keep (targetSO X)) :
+    CarriesAssignment
+      (withTracks t.eraseTracks
+        (liftTracksWithFresh keep fresh t ({p} : Set t.eraseTracks.Pos)))
+      sourceFO sourceSO
+      ((ρ.updateFO x p).mapEquiv
+        (eraseWithTracksEquiv t.eraseTracks
+          (liftTracksWithFresh keep fresh t ({p} : Set t.eraseTracks.Pos)))) := by
+  let tracks :=
+    liftTracksWithFresh keep fresh t ({p} : Set t.eraseTracks.Pos)
+  let e := eraseWithTracksEquiv t.eraseTracks tracks
+  constructor
+  · intro y q
+    obtain ⟨q0, rfl⟩ := e.surjective q
+    have hmap :
+        (((ρ.updateFO x p).fo y).map e = some (e q0)) ↔
+          (ρ.updateFO x p).fo y = some q0 := by
+      constructor
+      · intro h
+        obtain ⟨r, hr, hrq⟩ := Option.map_eq_some_iff.mp h
+        have hr0 : r = q0 := e.injective hrq
+        simpa [hr0] using hr
+      · intro h
+        rw [h]
+        rfl
+    by_cases hy : y = x
+    · subst hy
+      rw [Assignment.updateFO_here] at hmap
+      change
+        (((ρ.updateFO y p).fo y).map e = some (e q0)) ↔
+          e q0 ∈ trackSetErased
+            (withTracks t.eraseTracks tracks) (sourceFO y)
+      rw [Assignment.updateFO_here, hmap, hx]
+      constructor
+      · intro hpq
+        have hq0 : q0 = p := (Option.some.inj hpq).symm
+        rw [hq0]
+        exact
+          (eraseWithTracksEquiv_mem_liftTracksWithFresh_fresh_iff
+            keep fresh t ({p} : Set t.eraseTracks.Pos) hfresh p).mpr rfl
+      · intro hq
+        have hq0 : q0 ∈ ({p} : Set t.eraseTracks.Pos) :=
+          (eraseWithTracksEquiv_mem_liftTracksWithFresh_fresh_iff
+            keep fresh t ({p} : Set t.eraseTracks.Pos) hfresh q0).mp hq
+        exact congrArg some (Set.mem_singleton_iff.mp hq0).symm
+    · rw [Assignment.updateFO_other ρ p hy] at hmap
+      change
+        (((ρ.updateFO x p).fo y).map e = some (e q0)) ↔
+          e q0 ∈ trackSetErased
+            (withTracks t.eraseTracks tracks) (sourceFO y)
+      rw [Assignment.updateFO_other ρ p hy]
+      rw [hmap, hfo y hy]
+      exact
+        (hρ.fo_iff y q0).trans
+          (eraseWithTracksEquiv_mem_liftTracksWithFresh_keep_iff
+            keep fresh t ({p} : Set t.eraseTracks.Pos) hkeep (targetFO y) q0).symm
+  · intro X
+    ext q
+    obtain ⟨q0, rfl⟩ := e.surjective q
+    constructor
+    · rintro ⟨r, hr, hrq⟩
+      have hr0 : r = q0 := e.injective hrq
+      have htarget : q0 ∈ trackSetErased t (targetSO X) := by
+        simpa [hr0, hρ.so_eq X] using hr
+      have hsource :
+          e q0 ∈ trackSetErased
+            (withTracks t.eraseTracks tracks) (keep (targetSO X)) :=
+        (eraseWithTracksEquiv_mem_liftTracksWithFresh_keep_iff
+          keep fresh t ({p} : Set t.eraseTracks.Pos) hkeep (targetSO X) q0).mpr
+          htarget
+      simpa [e, tracks, hso X] using hsource
+    · intro hq
+      have hsource :
+          e q0 ∈ trackSetErased
+            (withTracks t.eraseTracks tracks) (keep (targetSO X)) := by
+        simpa [e, tracks, hso X] using hq
+      have htarget : q0 ∈ trackSetErased t (targetSO X) :=
+        (eraseWithTracksEquiv_mem_liftTracksWithFresh_keep_iff
+          keep fresh t ({p} : Set t.eraseTracks.Pos) hkeep (targetSO X) q0).mp
+          hsource
+      refine ⟨q0, ?_, rfl⟩
+      simpa [hρ.so_eq X] using htarget
+
+theorem of_liftTracksWithFresh_updateSO {source target : ℕ}
+    (keep : Fin target → Fin source) (fresh : Fin source)
+    (t : BinTree (A × TrackBits target))
+    {targetFO : FOVar → Fin target} {targetSO : SOVar → Fin target}
+    {sourceFO : FOVar → Fin source} {sourceSO : SOVar → Fin source}
+    {ρ : Assignment t.eraseTracks.toTreeModel}
+    (hρ : CarriesAssignment t targetFO targetSO ρ)
+    (hkeep : Function.Injective keep)
+    {X : SOVar} (S : Set t.eraseTracks.Pos)
+    (hfo : ∀ y, sourceFO y = keep (targetFO y))
+    (hX : sourceSO X = fresh)
+    (hfresh : ∀ i, fresh ≠ keep i)
+    (hso : ∀ Y, Y ≠ X → sourceSO Y = keep (targetSO Y)) :
+    CarriesAssignment
+      (withTracks t.eraseTracks
+        (liftTracksWithFresh keep fresh t S))
+      sourceFO sourceSO
+      ((ρ.updateSO X S).mapEquiv
+        (eraseWithTracksEquiv t.eraseTracks
+          (liftTracksWithFresh keep fresh t S))) := by
+  let tracks := liftTracksWithFresh keep fresh t S
+  let e := eraseWithTracksEquiv t.eraseTracks tracks
+  constructor
+  · intro y q
+    obtain ⟨q0, rfl⟩ := e.surjective q
+    have hmap :
+        (((ρ.updateSO X S).fo y).map e = some (e q0)) ↔
+          (ρ.updateSO X S).fo y = some q0 := by
+      constructor
+      · intro h
+        obtain ⟨r, hr, hrq⟩ := Option.map_eq_some_iff.mp h
+        have hr0 : r = q0 := e.injective hrq
+        simpa [hr0] using hr
+      · intro h
+        rw [h]
+        rfl
+    change
+      (((ρ.updateSO X S).fo y).map e = some (e q0)) ↔
+        e q0 ∈ trackSetErased
+          (withTracks t.eraseTracks tracks) (sourceFO y)
+    rw [hmap, Assignment.updateSO_fo, hfo y]
+    exact
+      (hρ.fo_iff y q0).trans
+        (eraseWithTracksEquiv_mem_liftTracksWithFresh_keep_iff
+          keep fresh t S hkeep (targetFO y) q0).symm
+  · intro Y
+    ext q
+    obtain ⟨q0, rfl⟩ := e.surjective q
+    by_cases hY : Y = X
+    · subst hY
+      rw [hX]
+      constructor
+      · rintro ⟨r, hr, hrq⟩
+        have hr0 : r = q0 := e.injective hrq
+        have hq0 : q0 ∈ S := by
+          simpa [hr0] using hr
+        exact
+          (eraseWithTracksEquiv_mem_liftTracksWithFresh_fresh_iff
+            keep fresh t S hfresh q0).mpr hq0
+      · intro hq
+        have hq0 : q0 ∈ S :=
+          (eraseWithTracksEquiv_mem_liftTracksWithFresh_fresh_iff
+            keep fresh t S hfresh q0).mp hq
+        exact ⟨q0, by simpa using hq0, rfl⟩
+    · constructor
+      · rintro ⟨r, hr, hrq⟩
+        have hr0 : r = q0 := e.injective hrq
+        have htarget : q0 ∈ trackSetErased t (targetSO Y) := by
+          simpa [hr0, hρ.so_eq Y, Assignment.updateSO_other ρ S hY] using hr
+        have hsource :
+            e q0 ∈ trackSetErased
+              (withTracks t.eraseTracks tracks) (keep (targetSO Y)) :=
+          (eraseWithTracksEquiv_mem_liftTracksWithFresh_keep_iff
+            keep fresh t S hkeep (targetSO Y) q0).mpr htarget
+        simpa [e, tracks, hso Y hY] using hsource
+      · intro hq
+        have hsource :
+            e q0 ∈ trackSetErased
+              (withTracks t.eraseTracks tracks) (keep (targetSO Y)) := by
+          simpa [e, tracks, hso Y hY] using hq
+        have htarget : q0 ∈ trackSetErased t (targetSO Y) :=
+          (eraseWithTracksEquiv_mem_liftTracksWithFresh_keep_iff
+            keep fresh t S hkeep (targetSO Y) q0).mp hsource
+        refine ⟨q0, ?_, rfl⟩
+        simpa [hρ.so_eq Y, Assignment.updateSO_other ρ S hY] using htarget
+
+theorem empty_withTracks_empty {n : ℕ}
+    (t : BinTree A)
+    (foTrack : FOVar → Fin n) (soTrack : SOVar → Fin n) :
+    CarriesAssignment
+      (withTracks t (fun _ => (∅ : Set t.Pos)))
+      foTrack soTrack
+      ((Assignment.empty t.toTreeModel).mapEquiv
+        (eraseWithTracksEquiv t (fun _ => (∅ : Set t.Pos)))) := by
+  let tracks : Fin n → Set t.Pos := fun _ => ∅
+  let e := eraseWithTracksEquiv t tracks
+  constructor
+  · intro x p
+    constructor
+    · intro hp
+      simp [Assignment.empty, Assignment.mapEquiv] at hp
+    · intro hp
+      obtain ⟨q, rfl⟩ := e.surjective p
+      have hq : q ∈ tracks (foTrack x) :=
+        (eraseWithTracksEquiv_mem_trackSetErased_iff t tracks (foTrack x) q).mp hp
+      simp [tracks] at hq
+  · intro X
+    ext p
+    constructor
+    · intro hp
+      rcases hp with ⟨q, hq, rfl⟩
+      simp [Assignment.empty] at hq
+    · intro hp
+      obtain ⟨q, rfl⟩ := e.surjective p
+      have hq : q ∈ tracks (soTrack X) :=
+        (eraseWithTracksEquiv_mem_trackSetErased_iff t tracks (soTrack X) q).mp hp
+      simp [tracks] at hq
+
+theorem of_remapTracks {source target : ℕ}
+    (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source))
+    {targetFO : FOVar → Fin target} {targetSO : SOVar → Fin target}
+    {sourceFO : FOVar → Fin source} {sourceSO : SOVar → Fin source}
+    {ρ : Assignment (remapTracks keep s).eraseTracks.toTreeModel}
+    (hρ : CarriesAssignment (remapTracks keep s) targetFO targetSO ρ)
+    (hfo : ∀ x, sourceFO x = keep (targetFO x))
+    (hso : ∀ X, sourceSO X = keep (targetSO X)) :
+    CarriesAssignment s sourceFO sourceSO
+      (ρ.mapEquiv (eraseRemapEquiv keep s).symm) := by
+  let e := eraseRemapEquiv keep s
+  constructor
+  · intro x p
+    constructor
+    · intro hp
+      obtain ⟨q, hq, hqp⟩ := Option.map_eq_some_iff.mp hp
+      have hqmem : q ∈ trackSetErased (remapTracks keep s) (targetFO x) :=
+        (hρ.fo_iff x q).mp hq
+      have hqeq : q = e p := by
+        have := congrArg e hqp
+        simpa [e] using this
+      have hep : e p ∈ trackSetErased (remapTracks keep s) (targetFO x) := by
+        simpa [hqeq] using hqmem
+      have hsource :=
+        (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetFO x) p).mp hep
+      simpa [hfo x] using hsource
+    · intro hp
+      have hep : e p ∈ trackSetErased (remapTracks keep s) (targetFO x) := by
+        have hsource : p ∈ trackSetErased s (keep (targetFO x)) := by
+          simpa [hfo x] using hp
+        exact (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetFO x) p).mpr
+          hsource
+      have htarget : ρ.fo x = some (e p) :=
+        (hρ.fo_iff x (e p)).mpr hep
+      rw [Assignment.mapEquiv_fo, htarget]
+      simp [e]
+  · intro X
+    ext p
+    constructor
+    · rintro ⟨q, hq, hqp⟩
+      have hqmem : q ∈ trackSetErased (remapTracks keep s) (targetSO X) := by
+        simpa [hρ.so_eq X] using hq
+      have hqeq : q = e p := by
+        have := congrArg e hqp
+        simpa [e] using this
+      have hep : e p ∈ trackSetErased (remapTracks keep s) (targetSO X) := by
+        simpa [hqeq] using hqmem
+      have hsource :=
+        (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetSO X) p).mp hep
+      simpa [hso X] using hsource
+    · intro hp
+      refine ⟨e p, ?_, ?_⟩
+      · have hsource : p ∈ trackSetErased s (keep (targetSO X)) := by
+          simpa [hso X] using hp
+        have hep :=
+          (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetSO X) p).mpr
+            hsource
+        simpa [hρ.so_eq X] using hep
+      · simp [e]
+
+theorem to_remapTracks {source target : ℕ}
+    (keep : Fin target → Fin source)
+    (s : BinTree (A × TrackBits source))
+    {targetFO : FOVar → Fin target} {targetSO : SOVar → Fin target}
+    {sourceFO : FOVar → Fin source} {sourceSO : SOVar → Fin source}
+    {ρ : Assignment s.eraseTracks.toTreeModel}
+    (hρ : CarriesAssignment s sourceFO sourceSO ρ)
+    (hfo : ∀ x, sourceFO x = keep (targetFO x))
+    (hso : ∀ X, sourceSO X = keep (targetSO X)) :
+    CarriesAssignment (remapTracks keep s) targetFO targetSO
+      (ρ.mapEquiv (eraseRemapEquiv keep s)) := by
+  let e := eraseRemapEquiv keep s
+  constructor
+  · intro x q
+    constructor
+    · intro hq
+      obtain ⟨p, hp, hpq⟩ := Option.map_eq_some_iff.mp hq
+      have hpmem : p ∈ trackSetErased s (keep (targetFO x)) := by
+        have hsource : p ∈ trackSetErased s (sourceFO x) :=
+          (hρ.fo_iff x p).mp hp
+        simpa [hfo x] using hsource
+      have heq : e p = q := hpq
+      have hep :=
+        (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetFO x) p).mpr
+          hpmem
+      rw [← heq]
+      exact hep
+    · intro hq
+      let p : s.eraseTracks.Pos := e.symm q
+      have hpmem : p ∈ trackSetErased s (keep (targetFO x)) := by
+        have hep : e p ∈ trackSetErased (remapTracks keep s) (targetFO x) := by
+          simpa [p, e] using hq
+        exact (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetFO x) p).mp
+          hep
+      have hp : ρ.fo x = some p := by
+        apply (hρ.fo_iff x p).mpr
+        simpa [hfo x] using hpmem
+      rw [Assignment.mapEquiv_fo, hp]
+      simp [p, e]
+  · intro X
+    ext q
+    constructor
+    · rintro ⟨p, hp, hpq⟩
+      have hpmem : p ∈ trackSetErased s (keep (targetSO X)) := by
+        have hsource : p ∈ trackSetErased s (sourceSO X) := by
+          simpa [hρ.so_eq X] using hp
+        simpa [hso X] using hsource
+      have hep :=
+        (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetSO X) p).mpr
+          hpmem
+      rw [← hpq]
+      exact hep
+    · intro hq
+      let p : s.eraseTracks.Pos := e.symm q
+      refine ⟨p, ?_, ?_⟩
+      · have hep : e p ∈ trackSetErased (remapTracks keep s) (targetSO X) := by
+          simpa [p, e] using hq
+        have hpmem :=
+          (eraseRemapEquiv_mem_trackSetErased_iff keep s (targetSO X) p).mp
+            hep
+        have hsource : p ∈ trackSetErased s (sourceSO X) := by
+          simpa [hso X] using hpmem
+        simpa [hρ.so_eq X] using hsource
+      · simp [p, e]
 
 end CarriesAssignment
 

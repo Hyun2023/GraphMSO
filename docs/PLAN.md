@@ -1,6 +1,6 @@
 # GraphMSO Plan
 
-Last status check: 2026-07-12.
+Last status check: 2026-07-13.
 
 This project formalizes the graph-theoretic and logical infrastructure needed
 for Courcelle's theorem in Lean 4.  The main proof route follows
@@ -412,39 +412,63 @@ Done beyond the TW §2 core:
   characterizations via `trackCount_eq_one_iff_exists_unique` and
   `trackCount_eq_one_iff_exists_unique_erased`, and `CarriesAssignment` has
   update lemmas for FO/SO assignment changes along changed track maps.  The
-  label-set states are currently stated for alphabets in `Type`, matching the
-  existing `TreeAutomaton.State : Type` universe.
-- Formula-to-automata compiler skeleton (`GraphMSO/Automata/compile.lean`):
+  remap bridge now includes the natural erased-position equivalence
+  `eraseRemapEquiv`, membership preservation for kept tracks, and
+  `CarriesAssignment.of_remapTracks`/`to_remapTracks` for transferring
+  carried assignments across `remapTracks`.  The label-set states are
+  currently stated for alphabets in `Type`, matching the existing
+  `TreeAutomaton.State : Type` universe.
+- Formula-to-automata compiler (`GraphMSO/Automata/compile.lean`):
   `TrackLanguage` packages atomic tracked languages, Boolean closure, and the
   projection-shape constructors for `existsFO`, `forallFO`, `existsSO`, and
   `forallSO`.  FO quantifiers intersect with a singleton-track automaton
   before projection; SO quantifiers project the guessed set track directly;
-  both now carry explicit freshness side conditions for later semantic
-  correctness.  `TrackLanguage.recognizable` proves every language produced
-  by this relation is recognizable using the existing TW closure theorems.
+  all four quantified constructors carry explicit injective-keep and
+  freshness side conditions.  `TrackLanguage.recognizable` proves every
+  language produced by this relation is recognizable using the existing TW
+  closure theorems.
   The `QFTrackLanguage` subrelation covers the atom/Boolean fragment and
   `QFTrackLanguage.correct` proves it agrees with `SatisfiesAt` under
-  `CarriesAssignment`.
+  `CarriesAssignment`.  Projection-image membership can now be unpacked into
+  a source `BinTree` witness via
+  `exists_remapTracks_eq_of_toTerm_mem_image`; the projected-language to
+  semantic-existential direction is proved for `existsFO` and `existsSO` by
+  `existsFO_sound_of_mem_image` and `existsSO_sound_of_mem_image`.  The
+  converse semantic-to-language direction is proved by constructing fresh
+  source tracks with `liftTracksWithFresh`; `existsFO_correct`,
+  `existsSO_correct`, `forallFO_correct`, and `forallSO_correct` package the
+  quantified cases.  `TrackLanguage.correct` is the full formula-induction
+  correctness theorem, and `TrackLanguage.exists_compile` /
+  `exists_recognizable_compile` allocate fresh tracks automatically.  Finally,
+  `exists_recognizable_sentence_language` removes the dummy empty track by
+  inverse projection and gives a recognizable padded-term language for every
+  ordered binary tree MSO sentence.
 - Isomorphism invariance (`GraphMSO/treeLanguage/modelIso.lean`):
   `TreeModel.Iso` and `satisfiesAt_mapEquiv_iff`/`satisfies_iff_of_iso` —
   tree MSO satisfaction transfers along node bijections preserving parent
   and labels.  This is the glue between the unordered encoded model of a
   decomposition and the ordered tree the automaton runs on.
+- Ordered decomposition encodings (`GraphMSO/Automata/orderedEncoding.lean`):
+  constructor-coded nice trees are read as ordered `BinTree`s by
+  `InductiveNiceTree.toBinTree`; `nodeEquivToBinTreePos`,
+  `labelAt_toBinTree_nodeEquiv`, and
+  `parentRel_toBinTree_nodeEquiv_iff` prove that positions, labels, and
+  parent relations match.  For an `InductiveNiceTreeDecomposition`,
+  `orderedEncode` gives a `BinTree (SigmaLetter P omega)`, and
+  `orderedEncodeIso` identifies its tree model with the existing Σ-tree
+  encoding through the realization.
+- Final Phase 5 assembly:
+  `orderedEncode_satisfies_legal_translate_iff` transfers the closed
+  graph-to-tree translation theorem to the ordered encoding, and
+  `exists_recognizable_orderedEncode_language` states the decomposition-given
+  Courcelle theorem for fixed finite predicate alphabet `P`: for every closed
+  `tau_P` formula, the padded ordered encodings of satisfying decompositions
+  form a recognizable tree language.  `SigmaLetter.instFinite` supplies the
+  finite alphabet instance from `[Finite P]`.
 
-Main remaining tasks (linear-time claims excluded; they stay metatheoretic
-until Phase 6 fixes a cost model):
-
-- Prove semantic correctness for the quantified `TrackLanguage` constructors:
-  source/target assignment transfer across `remapTracksHom` projections and
-  construction of fresh source tracks for arbitrary FO/SO witnesses.
-- Turn the relational compiler skeleton into a convenient formula-induction
-  theorem that allocates fresh tracks automatically for a finite free-variable
-  context.
-- The ordered encoding of an `InductiveNiceTreeDecomposition` as a
-  `BinTree (SigmaLetter P omega)` and its `TreeModel.Iso` with the encoded
-  model, via the realization.
-- Combine the translation theorem, the isomorphism transfer, and automaton
-  correctness into the decomposition-given Courcelle theorem.
+Phase 5 is complete at the theorem level.  Linear-time claims remain
+metatheoretic until Phase 6 fixes a cost model, and executable model checking
+remains Phase 7 work.
 
 ### Phase 6: Cost Model and Linear-Time Statements
 
@@ -488,26 +512,24 @@ and automata evaluation are stable.
 ## Immediate Next Step
 
 Done so far: encoding legality (Phase 2, first half), the tree-automata core
-(Phase 5, TW §2), ordered binary trees with padded-term encoding, the Boolean
-track bridge, and the first tracked atomic automata, the defining-pair/tuple
-layer, the tree language with its formula characterizations and model bridge,
-the recognition formulas `phi_legal`, `phi_vtx_i`, `phi_vtx`, `phi_set`, the
-graph-to-tree formula translation (Phase 3), the incidence reduction
-(Phase 4), plus the incidence decomposition, the edge bound, and the
-connectivity characterization (Phase 1).  The best next Lean targets:
+(Phase 5, TW §2), the full tracked MSO-to-automata compiler and correctness
+theorem, the ordered `BinTree` encoding of inductive nice decompositions, the
+ordered-encoding transfer of the graph-to-tree translation, the
+decomposition-given recognizable-language Courcelle statement (Phase 5), the
+defining-pair/tuple layer, the tree language with its formula
+characterizations and model bridge, the recognition formulas `phi_legal`,
+`phi_vtx_i`, `phi_vtx`, `phi_set`, the graph-to-tree formula translation
+(Phase 3), the incidence reduction (Phase 4), plus the incidence
+decomposition, the edge bound, and the connectivity characterization
+(Phase 1).  The best next Lean targets:
 
-1. Prove the remaining quantified semantic correctness lemmas for
-   `TrackLanguage`: if a source tracked term projects to a target tracked
-   term along `remapTracksHom`, transfer `CarriesAssignment` between their
-   erased tree models and use the fresh-track side conditions.
-2. Turn `TrackLanguage` into a user-facing formula-induction compiler that
-   allocates fresh tracks for quantifiers and returns a recognizable tracked
-   language.
-3. The ordered encoding of an `InductiveNiceTreeDecomposition` as a
-   `BinTree (SigmaLetter P omega)` and its `TreeModel.Iso` with the encoded
-   model, via the realization.
-4. Decoding of legal Σ-trees (Phase 2, second half; off the critical path),
-   and the nice-normalization theorem only if the final statement needs it.
+1. Phase 6: define the cost model and state/prove the linear-time shape for
+   fixed formula, fixed width, and fixed automaton.
+2. Phase 7 groundwork: separate proof-only objects from computable
+   representations and begin executable encoders/evaluators.
+3. Decoding of legal Σ-trees (Phase 2, second half; now off the critical path),
+   and nice-normalization only if a later final statement needs to construct
+   nice decompositions internally.
 
 ## Working Rules
 

@@ -25,6 +25,21 @@ namespace SigmaLetter
 
 variable {P : Type*} {omega : ℕ}
 
+instance instFinite [Finite P] : Finite (SigmaLetter P omega) := by
+  classical
+  let encode :
+      SigmaLetter P omega →
+        Σ verts : Set (BagColorSet omega),
+          SimpleGraph verts × Set verts × (P → verts → Prop) :=
+    fun A => ⟨A.verts, A.G, A.R, A.tag⟩
+  have henc : Function.Injective encode := by
+    intro A B h
+    cases A
+    cases B
+    cases h
+    rfl
+  exact Finite.of_injective encode henc
+
 /-- The letter contains the color `i` as a vertex. -/
 def HasVertex (A : SigmaLetter P omega) (i : BagColorSet omega) : Prop :=
   i ∈ A.verts

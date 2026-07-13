@@ -64,6 +64,28 @@ theorem mapEquiv_updateSO (e : M.Node ≃ N.Node) (ρ : Assignment M)
   simp only [updateSO, mapEquiv]
   by_cases h : Y = X <;> simp [h]
 
+@[simp] theorem mapEquiv_symm_mapEquiv (e : M.Node ≃ N.Node)
+    (ρ : Assignment N) :
+    (ρ.mapEquiv e.symm).mapEquiv e = ρ := by
+  refine Assignment.ext ?_ ?_
+  · funext x
+    cases h : ρ.fo x with
+    | none => simp [mapEquiv, h]
+    | some p => simp [mapEquiv, h]
+  · funext X
+    ext p
+    constructor
+    · rintro ⟨q, ⟨r, hr, hrq⟩, hqp⟩
+      rw [← hqp, ← hrq]
+      simpa using hr
+    · intro hp
+      exact ⟨e.symm p, ⟨p, hp, rfl⟩, by simp⟩
+
+@[simp] theorem mapEquiv_mapEquiv_symm (e : M.Node ≃ N.Node)
+    (ρ : Assignment M) :
+    (ρ.mapEquiv e).mapEquiv e.symm = ρ := by
+  simpa using mapEquiv_symm_mapEquiv (M := N) (N := M) e.symm ρ
+
 end Assignment
 
 namespace Semantics

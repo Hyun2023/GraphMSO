@@ -452,6 +452,90 @@ noncomputable def posEquivWithTracks {n : ℕ} :
           {p | (some (.inr p) : Option (l.Pos ⊕ r.Pos)) ∈ tracks i}) p)) :=
   rfl
 
+theorem isRootPos_withTracks_iff {n : ℕ}
+    (t : BinTree A) (tracks : Fin n → Set t.Pos) (p : t.Pos) :
+    (withTracks t tracks).IsRootPos (posEquivWithTracks t tracks p) ↔
+      t.IsRootPos p := by
+  induction t with
+  | nil => exact p.elim
+  | node a l r ihl ihr =>
+      cases p with
+      | none =>
+          simp [IsRootPos, withTracks, posEquivWithTracks]
+      | some q =>
+          cases q with
+          | inl p =>
+              simp [IsRootPos, withTracks, posEquivWithTracks]
+          | inr p =>
+              simp [IsRootPos, withTracks, posEquivWithTracks]
+
+theorem childRel_withTracks_iff {n : ℕ}
+    (t : BinTree A) (tracks : Fin n → Set t.Pos) (b : Bool)
+    (p q : t.Pos) :
+    (withTracks t tracks).childRel b
+        (posEquivWithTracks t tracks p)
+        (posEquivWithTracks t tracks q) ↔
+      t.childRel b p q := by
+  induction t with
+  | nil => exact p.elim
+  | node a l r ihl ihr =>
+      cases p with
+      | none =>
+          cases q with
+          | none => rfl
+          | some q' =>
+              cases q' with
+              | inl q =>
+                  change
+                    (b = false ∧
+                        (withTracks l fun i =>
+                          {p | (some (.inl p) : Option (l.Pos ⊕ r.Pos)) ∈
+                            tracks i}).IsRootPos
+                          ((posEquivWithTracks l fun i =>
+                            {p | (some (.inl p) :
+                              Option (l.Pos ⊕ r.Pos)) ∈ tracks i}) q)) ↔
+                      (b = false ∧ l.IsRootPos q)
+                  exact and_congr_right fun _ =>
+                    isRootPos_withTracks_iff l (fun i =>
+                      {p | (some (.inl p) :
+                        Option (l.Pos ⊕ r.Pos)) ∈ tracks i}) q
+              | inr q =>
+                  change
+                    (b = true ∧
+                        (withTracks r fun i =>
+                          {p | (some (.inr p) : Option (l.Pos ⊕ r.Pos)) ∈
+                            tracks i}).IsRootPos
+                          ((posEquivWithTracks r fun i =>
+                            {p | (some (.inr p) :
+                              Option (l.Pos ⊕ r.Pos)) ∈ tracks i}) q)) ↔
+                      (b = true ∧ r.IsRootPos q)
+                  exact and_congr_right fun _ =>
+                    isRootPos_withTracks_iff r (fun i =>
+                      {p | (some (.inr p) :
+                        Option (l.Pos ⊕ r.Pos)) ∈ tracks i}) q
+      | some p' =>
+          cases p' with
+          | inl p =>
+              cases q with
+              | none => rfl
+              | some q' =>
+                  cases q' with
+                  | inl q =>
+                      exact ihl (fun i =>
+                        {p | (some (.inl p) :
+                          Option (l.Pos ⊕ r.Pos)) ∈ tracks i}) p q
+                  | inr q => rfl
+          | inr p =>
+              cases q with
+              | none => rfl
+              | some q' =>
+                  cases q' with
+                  | inl q => rfl
+                  | inr q =>
+                      exact ihr (fun i =>
+                        {p | (some (.inr p) :
+                          Option (l.Pos ⊕ r.Pos)) ∈ tracks i}) p q
+
 @[simp] theorem fst_labelAt_withTracks {n : ℕ}
     (t : BinTree A) (tracks : Fin n → Set t.Pos) (p : t.Pos) :
     ((withTracks t tracks).labelAt (posEquivWithTracks t tracks p)).1 =
@@ -504,6 +588,31 @@ noncomputable def posEquivWithTracks {n : ℕ} :
           (eraseTracks (withTracks r rightTracks)) =
         BinTree.node a l r
       simp [ihl leftTracks, ihr rightTracks]
+
+@[simp] theorem withTracks_empty {n : ℕ} (t : BinTree A) :
+    withTracks t (fun _ => (∅ : Set t.Pos)) =
+      t.map (fun a => (a, fun _ : Fin n => false)) := by
+  induction t with
+  | nil =>
+      rfl
+  | node a l r ihl ihr =>
+      change
+        BinTree.node
+            (a,
+              fun i =>
+                haveI : Decidable
+                    ((none : Option (l.Pos ⊕ r.Pos)) ∈
+                      (∅ : Set (Option (l.Pos ⊕ r.Pos)))) :=
+                  Classical.propDecidable _
+                decide
+                  ((none : Option (l.Pos ⊕ r.Pos)) ∈
+                    (∅ : Set (Option (l.Pos ⊕ r.Pos)))))
+            (withTracks l (fun _ => (∅ : Set l.Pos)))
+            (withTracks r (fun _ => (∅ : Set r.Pos))) =
+          BinTree.node (a, fun _ : Fin n => false)
+            (l.map fun a => (a, fun _ : Fin n => false))
+            (r.map fun a => (a, fun _ : Fin n => false))
+      simp [ihl, ihr]
 
 /-- Erasing Boolean tracks is an arity-preserving homomorphism of padded
 ranked alphabets. -/
@@ -558,5 +667,19 @@ theorem toTerm_injective :
           have hl : l.toTerm = l'.toTerm := congrFun hchild' 0
           have hr : r.toTerm = r'.toTerm := congrFun hchild' 1
           rw [ihl hl, ihr hr]
+
+theorem remapTracks_eq_of_toTerm_map_eq {m n : ℕ} (ι : Fin m → Fin n)
+    (s : BinTree (A × TrackBits n)) (t : BinTree (A × TrackBits m))
+    (h : s.toTerm.map (remapTracksHom A ι) = t.toTerm) :
+    remapTracks ι s = t := by
+  apply toTerm_injective
+  rw [toTerm_remapTracks, h]
+
+theorem eraseTracks_eq_of_remapTracks_eq {m n : ℕ} (ι : Fin m → Fin n)
+    {s : BinTree (A × TrackBits n)} {t : BinTree (A × TrackBits m)}
+    (h : remapTracks ι s = t) :
+    s.eraseTracks = t.eraseTracks := by
+  have h' := congrArg eraseTracks h
+  rwa [eraseTracks_remapTracks] at h'
 
 end BinTree
