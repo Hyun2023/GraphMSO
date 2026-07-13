@@ -6,3 +6,4 @@ import GraphMSO.Automata.projection
 import GraphMSO.Automata.compile
 import GraphMSO.Automata.emptiness
 import GraphMSO.Automata.orderedEncoding
+import GraphMSO.Automata.cost

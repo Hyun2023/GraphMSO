@@ -615,4 +615,32 @@ theorem exists_recognizable_orderedEncode_language
     (orderedEncode_satisfies_legal_translate_iff
       T vpred color hcolor θ hFO hSO)
 
+/-- Uniform form of the decomposition-given Courcelle statement.  The
+recognizable language depends only on `P`, `omega`, and the sentence, and is
+shared by all finite input graphs and supplied inductive nice decompositions. -/
+theorem exists_recognizable_orderedEncode_language_uniform
+    [Finite P]
+    (θ : GraphMSO.Language.Formula P)
+    (hFO : θ.freeFO = ∅) (hSO : θ.freeSO = ∅) :
+    ∃ L : Set (paddedAlphabet (SigmaLetter P omega)).Term,
+      (paddedAlphabet (SigmaLetter P omega)).Recognizable L ∧
+        ∀ {W : Type u} [Fintype W] {H : SimpleGraph W}
+          (T : InductiveNiceTreeDecomposition (G := H))
+          (vpred : P → W → Prop) (color : W → BagColorSet omega)
+          (hcolor : T.tree.IsBagColoring color),
+          (T.orderedEncode vpred color hcolor).toTerm ∈ L ↔
+            GraphMSO.Language.Semantics.Satisfies
+              (⟨W, H, vpred⟩ : τPGraph P) θ := by
+  let φ :=
+    GraphMSO.TreeLanguage.Formula.conj
+      (SigmaTree.legalFormula P omega) (θ.translate omega)
+  obtain ⟨L, hrec, hcorr⟩ :=
+    BinTree.Automata.TrackLanguage.exists_recognizable_sentence_language
+      (A := SigmaLetter P omega) φ
+  refine ⟨L, hrec, ?_⟩
+  intro W inst H T vpred color hcolor
+  exact (hcorr (T.orderedEncode vpred color hcolor)).symm.trans
+    (orderedEncode_satisfies_legal_translate_iff
+      T vpred color hcolor θ hFO hSO)
+
 end InductiveNiceTreeDecomposition

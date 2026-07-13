@@ -1,6 +1,6 @@
 # GraphMSO Plan
 
-Last status check: 2026-07-13.
+Last status check: 2026-07-14.
 
 This project formalizes the graph-theoretic and logical infrastructure needed
 for Courcelle's theorem in Lean 4.  The main proof route follows
@@ -19,7 +19,7 @@ handled through the colored incidence structure with predicates `Vert` and
 
 ## Current Status
 
-Verified on 2026-07-12:
+Verified on 2026-07-14:
 
 - `lake build` succeeds.
 - No real `sorry` or `admit` placeholders were found in `GraphMSO/**/*.lean`.
@@ -220,9 +220,10 @@ Completed, following `Courcelle/Thatcher-Wright-expanding.tex`:
   `language_nonempty_iff` (nonemptiness iff a witness of depth at most
   `Nat.card State` exists).
 
-Not yet done: atomic automata for the labelled-tree vocabulary, the
-MSO-to-automaton compilation induction, the regularity characterization
-(TW §3, optional), and executable decision procedures (Phase 7).
+The atomic automata and full MSO-to-automaton compilation induction are also
+complete; they are summarized in Phase 5 below.  Not yet done are the
+regularity characterization (TW §3, optional) and executable decision
+procedures (Phase 7).
 
 ## Remaining Roadmap
 
@@ -463,33 +464,48 @@ Done beyond the TW §2 core:
   `exists_recognizable_orderedEncode_language` states the decomposition-given
   Courcelle theorem for fixed finite predicate alphabet `P`: for every closed
   `tau_P` formula, the padded ordered encodings of satisfying decompositions
-  form a recognizable tree language.  `SigmaLetter.instFinite` supplies the
-  finite alphabet instance from `[Finite P]`.
+  form a recognizable tree language.  Its uniform strengthening
+  `exists_recognizable_orderedEncode_language_uniform` places all finite input
+  graphs after the language existential, so the language and recognizing
+  automaton depend only on `P`, `omega`, and the sentence.
+  `SigmaLetter.instFinite` supplies the finite alphabet instance from
+  `[Finite P]`.
 
-Phase 5 is complete at the theorem level.  Linear-time claims remain
-metatheoretic until Phase 6 fixes a cost model, and executable model checking
-remains Phase 7 work.
+Phase 5 is complete at the theorem level.  Phase 6 now formalizes the abstract
+linear-time statement; executable model checking remains Phase 7 work.
 
 ### Phase 6: Cost Model and Linear-Time Statements
 
 Goal: make the linear-time part of the Courcelle statement precise without
 committing to Lean kernel or VM reduction steps.
 
-Main tasks:
+Done (`GraphMSO/Cost.lean`, `GraphMSO/Automata/cost.lean`):
 
-- Define a small cost layer, such as `Costed α`, for algorithms whose result
-  and abstract operation count are tracked together.
-- Define reusable size measures for ranked terms, sigma trees,
-  decompositions, formulas, and finite input graphs.
-- For evaluators such as automata evaluation, separate correctness from cost:
-  the `value` agrees with the mathematical evaluator, and
-  `cost <= C * size + D`.
-- Treat fixed-width, fixed-formula, fixed-automaton operations as
-  constant-cost primitives whose constants are absorbed into
-  `f_P(omega, |phi|)`.
-- Combine encoding, translation bookkeeping, and automata-evaluation bounds
-  into the runtime shape
-  `f_P(omega, |phi|) * (|V(G)| + |N(T)|)`.
+- `Costed α` starts with `pure` at cost zero, charges one primitive operation
+  with `tick`, and adds sequential costs with `bind`.
+- Ranked terms, binary trees, constructor-coded nice trees, sigma trees, and
+  graph/tree formulas have size measures.  The realization bijection proves
+  that the inductive code-node count equals the node count of the underlying
+  predicate-style nice decomposition.
+- Automaton evaluation, ordered encoding, and padded-term construction have
+  costed versions.  Their values agree with the existing mathematical
+  definitions; their exact costs are respectively the padded-term symbol
+  count, `|N(T)|`, and `2|N(T)|+1`.
+- The full abstract pass has exact cost
+  `|V(G)| + 5|N(T)| + 3`, hence at most
+  `8(|V(G)| + |N(T)|)`.  `explicitCourcelleFactor` supplies the explicit
+  tower-shaped envelope
+  `courcelleTower (|phi|+1) (omega+2) + 8`, yielding the requested
+  `f_P(omega, |phi|) * (|V(G)| + |N(T)|)` form.
+- `exists_costed_courcelle_automaton` is uniform over all finite input graphs;
+  `exists_costed_courcelle_automaton_of_width` obtains the required bag
+  coloring from a coded width bound using the realization-transfer API.
+
+This is an abstract fixed-formula/fixed-automaton unit-cost model: transitions,
+label queries, and accepting-set membership are primitive operations.  The
+checker remains `noncomputable` and returns `Costed Prop`; the tower envelope
+does not claim a bound on compiler state growth or Lean VM time.  Those issues
+belong to explicit state-complexity work or Phase 7.
 
 ### Phase 7: Toward Really Working Code
 
@@ -515,7 +531,8 @@ Done so far: encoding legality (Phase 2, first half), the tree-automata core
 (Phase 5, TW §2), the full tracked MSO-to-automata compiler and correctness
 theorem, the ordered `BinTree` encoding of inductive nice decompositions, the
 ordered-encoding transfer of the graph-to-tree translation, the
-decomposition-given recognizable-language Courcelle statement (Phase 5), the
+uniform decomposition-given recognizable-language Courcelle statement
+(Phase 5), the abstract costed linear-time theorem (Phase 6), the
 defining-pair/tuple layer, the tree language with its formula
 characterizations and model bridge, the recognition formulas `phi_legal`,
 `phi_vtx_i`, `phi_vtx`, `phi_set`, the graph-to-tree formula translation
@@ -523,10 +540,10 @@ characterizations and model bridge, the recognition formulas `phi_legal`,
 decomposition, the edge bound, and the connectivity characterization
 (Phase 1).  The best next Lean targets:
 
-1. Phase 6: define the cost model and state/prove the linear-time shape for
-   fixed formula, fixed width, and fixed automaton.
-2. Phase 7 groundwork: separate proof-only objects from computable
+1. Phase 7 groundwork: separate proof-only objects from computable
    representations and begin executable encoders/evaluators.
+2. Optional state-complexity work: connect compiler state growth and formula
+   translation size to a derived tower bound.
 3. Decoding of legal Σ-trees (Phase 2, second half; now off the critical path),
    and nice-normalization only if a later final statement needs to construct
    nice decompositions internally.
