@@ -8,3 +8,4 @@ import GraphMSO.pendant
 import GraphMSO.treeLanguage.modelIso
 import GraphMSO.Decomp
 import GraphMSO.Automata
+import GraphMSO.Executable

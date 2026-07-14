@@ -19,9 +19,11 @@ handled through the colored incidence structure with predicates `Vert` and
 
 ## Current Status
 
-Verified on 2026-07-14:
+Verified on 2026-07-14, including the Phase 7 executable pipeline:
 
-- `lake build` succeeds.
+- The full `lake build` succeeds (3159 jobs), including the
+  `GraphMSO.Executable` umbrella and the root `GraphMSO` module.
+- All four maintained executable `#guard` smoke tests pass during the build.
 - No real `sorry` or `admit` placeholders were found in `GraphMSO/**/*.lean`.
 - The top-level module imports:
   - `GraphMSO.Syntax`
@@ -34,6 +36,7 @@ Verified on 2026-07-14:
   - `GraphMSO.treeLanguage.modelIso`
   - `GraphMSO.Decomp`
   - `GraphMSO.Automata`
+  - `GraphMSO.Executable`
 
 The following foundations are complete enough to stop tracking them as active
 plan items.
@@ -221,9 +224,9 @@ Completed, following `Courcelle/Thatcher-Wright-expanding.tex`:
   `Nat.card State` exists).
 
 The atomic automata and full MSO-to-automaton compilation induction are also
-complete; they are summarized in Phase 5 below.  Not yet done are the
-regularity characterization (TW §3, optional) and executable decision
-procedures (Phase 7).
+complete; they are summarized in Phase 5 below.  The executable decision
+procedure is complete in Phase 7 below.  The regularity characterization
+(TW §3) remains optional.
 
 ## Remaining Roadmap
 
@@ -476,8 +479,8 @@ Done beyond the TW §2 core:
   `SigmaLetter.instFinite` supplies the finite alphabet instance from
   `[Finite P]`.
 
-Phase 5 is complete at the theorem level.  Phase 6 now formalizes the abstract
-linear-time statement; executable model checking remains Phase 7 work.
+Phase 5 is complete at the theorem level.  Phase 6 supplies the abstract
+linear-time statement, and Phase 7 supplies the verified executable checker.
 
 ### Phase 6: Cost Model and Linear-Time Statements
 
@@ -510,25 +513,39 @@ This is an abstract fixed-formula/fixed-automaton unit-cost model: transitions,
 label queries, and accepting-set membership are primitive operations.  The
 checker remains `noncomputable` and returns `Costed Prop`; the tower envelope
 does not claim a bound on compiler state growth or Lean VM time.  Those issues
-belong to explicit state-complexity work or Phase 7.
+belong to optional explicit state-complexity work.
 
-### Phase 7: Toward Really Working Code
+### Done: Phase 7 Executable Model Checking
 
 Goal: after the proof architecture is stable, make the checker executable on
 finite inputs where possible.
 
-Main tasks:
+Implemented and verified by the full build:
 
-- Separate proof-only structures from computable data structures.
-- Add finite, decidable representations of graphs, decompositions, formulas,
-  sigma trees, and automata.
-- Implement the normalization/encoding/model-checking pipeline.
-- Prove the executable pipeline refines the mathematical semantics.
-- Maintain small examples that can be evaluated with `#eval` or tests.
+- Boolean finite presentations of `tau_P` graphs and sigma letters, with
+  refinement maps to the proof-facing structures.
+- A proof-free encoder that recurses directly over an empty-rooted
+  `InductiveNiceTree`, together with a proof that decoding its labels recovers
+  the existing ordered encoding of a certified nice decomposition.
+- Boolean tree-MSO syntax, the executable graph-to-tree translation, and a
+  structural compiler to deterministic Boolean bottom-up tree automata.
+- Lazy quantifier projection: automata retain only `Finite` proofs for state
+  types and compute with reached `Finset` states, avoiding eager enumeration of
+  the full alphabet or powerset state space.
+- `checkCode` for direct evaluation and `checkColored` for certified nice
+  decompositions, with `checkColored_eq_true_iff` connecting the Boolean answer
+  to the existing `tau_P` semantics for closed formulas.
+- `checkFin` additionally supplies a canonical globally injective coloring when
+  vertices are represented by `Fin n`; this removes the explicit coloring
+  input at the cost of using `n + 1` colors rather than the decomposition width.
+- A qualified fixed-parameter cost for direct encoding plus checking: on a
+  constructor tree with `n` nodes the abstract online cost is exactly
+  `3 * n + 2` (`GraphMSO/Executable/cost.lean`).  Four build-time `#guard`
+  smoke tests pass in `GraphMSO/Executable/examples.lean`.
 
-This phase should not block the proof formalization.  It becomes realistic once
-the mathematical interfaces for decomposition encoding, formula translation,
-and automata evaluation are stable.
+The core phase is complete.  Practical state-representation improvements and
+automatic construction of a width-sized bag coloring remain optional; the
+fixed-width checker intentionally accepts the coloring certificate as input.
 
 ## Immediate Next Step
 
@@ -543,13 +560,14 @@ characterizations and model bridge, the recognition formulas `phi_legal`,
 `phi_vtx_i`, `phi_vtx`, `phi_set`, the graph-to-tree formula translation
 (Phase 3), the incidence reduction (Phase 4), plus the incidence
 decomposition, the edge bound, and the connectivity characterization
-(Phase 1).  The best next Lean targets:
+(Phase 1), and the verified executable model checker with its qualified cost
+bound (Phase 7).  The best next Lean targets:
 
-1. Phase 7 groundwork: separate proof-only objects from computable
-   representations and begin executable encoders/evaluators.
-2. Before completing the end-to-end MSO₂ checker, formalize nice normalization
+1. Before completing the end-to-end MSO₂ checker, formalize nice normalization
    and apply it to the ordinary decomposition returned by
    `incidenceDecomposition`.
+2. Use that normalization in the incidence-graph reduction to assemble the
+   end-to-end MSO₂ checker.
 3. Optional state-complexity work: connect compiler state growth and formula
    translation size to a derived tower bound.
 4. Decoding of legal Σ-trees (Phase 2, second half; now off the critical path).
