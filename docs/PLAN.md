@@ -254,8 +254,13 @@ Done:
 Remaining:
 
 - Formalize the algorithmic nice-normalization theorem from
-  `Courcelle/nice_tree_decomp.tex`, if the final Courcelle statement needs to
-  normalize a supplied decomposition inside Lean.
+  `Courcelle/nice_tree_decomp.tex`.  This will likely be needed before the
+  end-to-end MSO₂ checker: `incidenceDecomposition` currently produces an
+  ordinary `TreeDecomposition (IncidenceGraph G)`, whereas the ordered
+  encoding and checker require an `InductiveNiceTreeDecomposition`.  The
+  eventual result should construct the inductive representation and its
+  realization, preserve the width bound, and retain the TeX node bound
+  `|N(T*)| <= (3 * omega + 5) * |N(T)|`.
 
 ### Phase 2: Encoding and Decoding Bounded Decompositions
 
@@ -542,11 +547,12 @@ decomposition, the edge bound, and the connectivity characterization
 
 1. Phase 7 groundwork: separate proof-only objects from computable
    representations and begin executable encoders/evaluators.
-2. Optional state-complexity work: connect compiler state growth and formula
+2. Before completing the end-to-end MSO₂ checker, formalize nice normalization
+   and apply it to the ordinary decomposition returned by
+   `incidenceDecomposition`.
+3. Optional state-complexity work: connect compiler state growth and formula
    translation size to a derived tower bound.
-3. Decoding of legal Σ-trees (Phase 2, second half; now off the critical path),
-   and nice-normalization only if a later final statement needs to construct
-   nice decompositions internally.
+4. Decoding of legal Σ-trees (Phase 2, second half; now off the critical path).
 
 ## Working Rules
 
