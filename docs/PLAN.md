@@ -522,6 +522,9 @@ finite inputs where possible.
 
 Implemented and verified by the full build:
 
+For a code-oriented explanation of the implementation and correctness chain,
+see [`PHASE7_EXECUTABLE_MODEL_CHECKING.md`](PHASE7_EXECUTABLE_MODEL_CHECKING.md).
+
 - Boolean finite presentations of `tau_P` graphs and sigma letters, with
   refinement maps to the proof-facing structures.
 - A proof-free encoder that recurses directly over an empty-rooted
