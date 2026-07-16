@@ -4,6 +4,7 @@ import GraphMSO.Decomp.KRootedPGraph
 inductive IncidenceVertex.{u} {V : Type u} (G : SimpleGraph V) : Type u where
   |fromV (v : V)
   |fromEdge (e : G.edgeSet)
+  deriving DecidableEq
 
 def IncidenceGraph.{u} {V : Type u} (G : SimpleGraph V) : SimpleGraph (IncidenceVertex G) where
   Adj := fun u v =>
@@ -130,6 +131,10 @@ inductive IncSort
   | vert
   | edgeObj
   deriving DecidableEq
+
+instance IncSort.instFintype : Fintype IncSort where
+  elems := {.vert, .edgeObj}
+  complete := by intro s; cases s <;> simp
 
 /-- The coloured incidence structure of `G` as a `KRootedPGraph` over `IncSort`. -/
 def colouredIncidence.{u} {V : Type u} (G : SimpleGraph V) : KRootedPGraph IncSort where

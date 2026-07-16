@@ -9,5 +9,7 @@ import GraphMSO.Executable.encoding
 import GraphMSO.Executable.encodingCorrect
 import GraphMSO.Executable.translation
 import GraphMSO.Executable.modelCheck
+import GraphMSO.Executable.incidence
 import GraphMSO.Executable.cost
+import GraphMSO.Executable.stateComplexity
 import GraphMSO.Executable.examples

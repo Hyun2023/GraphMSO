@@ -654,6 +654,41 @@ theorem satisfiesAt_toIncidence_iff (phi : Formula)
         rw [hSeq]
         exact (hstep _).mpr (h _)
 
+theorem mem_freeFO_toIncidence (phi : Formula) (z : Nat)
+    (hz : z ∈ phi.toIncidence.freeFO) :
+    (∃ x, phi.FreeFO x ∧ z = 2 * x) ∨
+      (∃ e, phi.FreeEdgeFO e ∧ z = 2 * e + 1) := by
+  induction phi <;>
+    simp_all [Formula.toIncidence, Language.Formula.freeFO,
+      Formula.FreeFO, Formula.FreeEdgeFO, vertSetGuard, edgeSetGuard] <;>
+    aesop
+
+theorem mem_freeSO_toIncidence (phi : Formula) (z : Nat)
+    (hz : z ∈ phi.toIncidence.freeSO) :
+    (∃ X, phi.FreeSO X ∧ z = 2 * X) ∨
+      (∃ F, phi.FreeEdgeSO F ∧ z = 2 * F + 1) := by
+  induction phi <;>
+    simp_all [Formula.toIncidence, Language.Formula.freeSO,
+      Formula.FreeSO, Formula.FreeEdgeSO, vertSetGuard, edgeSetGuard] <;>
+    aesop
+
+/-- A closed MSO₂ sentence translates to a closed one-sorted sentence. -/
+theorem toIncidence_free_eq_empty (phi : Formula) (hclosed : phi.Closed) :
+    phi.toIncidence.freeFO = ∅ ∧ phi.toIncidence.freeSO = ∅ := by
+  constructor
+  · rw [Set.eq_empty_iff_forall_notMem]
+    intro z hz
+    rcases mem_freeFO_toIncidence phi z hz with
+      ⟨x, hx, _⟩ | ⟨e, he, _⟩
+    · exact hclosed.1 x hx
+    · exact hclosed.2.2.1 e he
+  · rw [Set.eq_empty_iff_forall_notMem]
+    intro z hz
+    rcases mem_freeSO_toIncidence phi z hz with
+      ⟨X, hX, _⟩ | ⟨F, hF, _⟩
+    · exact hclosed.2.1 X hX
+    · exact hclosed.2.2.2 F hF
+
 /-- The closed-sentence form of Phase 4: an MSO₂ sentence holds in `G` iff
 its translation holds in the coloured incidence structure. -/
 theorem satisfies_toIncidence_iff (phi : Formula) (hclosed : phi.Closed) :

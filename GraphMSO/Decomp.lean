@@ -4,12 +4,13 @@ import GraphMSO.Decomp.bags
 import GraphMSO.Decomp.definingPairs
 import GraphMSO.Decomp.edgeBound
 import GraphMSO.Decomp.encoding
+import GraphMSO.Decomp.decoding
 import GraphMSO.Decomp.incidenceDecomp
 import GraphMSO.Decomp.treeModel
-import GraphMSO.Decomp.incidenceDecomp
 import GraphMSO.Decomp.nice
 import GraphMSO.Decomp.nice_inductive
 import GraphMSO.Decomp.nodeConeGraph
+import GraphMSO.Decomp.normalization
 import GraphMSO.Decomp.realization
 import GraphMSO.Decomp.recognition
 import GraphMSO.Decomp.rootedGraph

@@ -1,6 +1,6 @@
 # GraphMSO Plan
 
-Last status check: 2026-07-14.
+Last status check: 2026-07-16.
 
 This project formalizes the graph-theoretic and logical infrastructure needed
 for Courcelle's theorem in Lean 4.  The main proof route follows
@@ -19,9 +19,10 @@ handled through the colored incidence structure with predicates `Vert` and
 
 ## Current Status
 
-Verified on 2026-07-14, including the Phase 7 executable pipeline:
+Verified on 2026-07-16, including normalization, decoding, state complexity,
+and the end-to-end MSO₂ executable pipeline:
 
-- The full `lake build` succeeds (3159 jobs), including the
+- The full `lake build` succeeds (3163 jobs), including the
   `GraphMSO.Executable` umbrella and the root `GraphMSO` module.
 - All four maintained executable `#guard` smoke tests pass during the build.
 - No real `sorry` or `admit` placeholders were found in `GraphMSO/**/*.lean`.
@@ -131,8 +132,12 @@ Completed:
   width bounds and bag-injective colorings are equivalent on the two sides of
   a `Realizes`, so statements may mix the two nice-decomposition definitions.
 
-The informal algorithmic normalization proof is written in
-`Courcelle/nice_tree_decomp.tex`.  It is not yet formalized in Lean.
+Algorithmic normalization is formalized in
+`GraphMSO/Decomp/normalization.lean`.  It constructs an
+`InductiveNiceTreeDecomposition` from an arbitrary (rooted or unrooted)
+decomposition, proves realization and running intersection, preserves width,
+and proves the TeX node bound
+`|N(T*)| <= (3 * omega + 5) * |N(T)|`.
 
 ### Done: Incidence and Sigma-Tree Scaffolding
 
@@ -153,11 +158,13 @@ Completed:
 - Sigma trees and the legality predicate.
 - Node and cone graph definitions over unary predicate families.
 
-### Done: Encoding and Legality (Phase 2, first half)
+### Done: Encoding, Decoding, and Legality (Phase 2)
 
 Files:
 
 - `GraphMSO/Decomp/encoding.lean`
+- `GraphMSO/Decomp/decoding.lean`
+- `GraphMSO/Decomp/nodeConeGraph.lean`
 
 Completed:
 
@@ -169,9 +176,12 @@ Completed:
 - Existence forms from a width bound alone, both for
   `RootedTreeDecomposition` and, through the realization transfer lemmas, for
   `InductiveNiceTreeDecomposition` (`exists_encode_isLegal`).
-
-Not yet done: decoding of a legal tree, the decode/encode inverse lemmas, and
-the recognition corollary over an encoding.
+- Quotient-based decoding of every legal sigma tree into a `tau_P` graph,
+  width-sized coloring, and rooted tree decomposition.
+- Encode-after-decode correctness by color-indexed letter equivalence, and
+  decode-after-encode correctness by a `tau_P`-graph isomorphism.
+- `cone_isMultiGluing`: a concrete `MultiGluingData` witness showing that a
+  node graph glued with all child cones is exactly the parent cone graph.
 
 ### Done: Defining Pairs and Defining Tuples (Phase 3, combinatorial layer)
 
@@ -226,13 +236,12 @@ Completed, following `Courcelle/Thatcher-Wright-expanding.tex`:
 The atomic automata and full MSO-to-automaton compilation induction are also
 complete; they are summarized in Phase 5 below.  The executable decision
 procedure is complete in Phase 7 below.  The regularity characterization
-(TW §3) remains optional.
+(TW §3) is a possible extension, not part of the active Courcelle pipeline.
 
-## Remaining Roadmap
+## Completed Roadmap
 
-The plan is now organized by proof blocks rather than by every individual
-lemma.  When a block becomes active, split it into small Lean tasks in the PR or
-working notes for that block.
+The active proof blocks below are complete.  They remain here as an architectural
+map rather than as an outstanding task list.
 
 ### Phase 1: Finish the Decomposition Infrastructure Used by the Note
 
@@ -253,33 +262,24 @@ Done:
   edge, `incidenceDecomposition_hasWidth` bounds its width by `max omega 2`,
   and `card_incidenceVertex_le_of_hasWidth` bounds the incidence-structure
   size by `(omega + 1) * |V|`.
-
-Remaining:
-
-- Formalize the algorithmic nice-normalization theorem from
-  `Courcelle/nice_tree_decomp.tex`.  This will likely be needed before the
-  end-to-end MSO₂ checker: `incidenceDecomposition` currently produces an
-  ordinary `TreeDecomposition (IncidenceGraph G)`, whereas the ordered
-  encoding and checker require an `InductiveNiceTreeDecomposition`.  The
-  eventual result should construct the inductive representation and its
-  realization, preserve the width bound, and retain the TeX node bound
-  `|N(T*)| <= (3 * omega + 5) * |N(T)|`.
+- Nice normalization (`GraphMSO/Decomp/normalization.lean`) from ordinary
+  decompositions to realized constructor-coded nice decompositions, including
+  width preservation, occurrence connectedness, and the exact TeX node bound.
 
 ### Phase 2: Encoding and Decoding Bounded Decompositions
 
 Goal: formalize the lecture-note equivalence between colored bounded-width
 decompositions and legal sigma trees.
 
-Main tasks (encoding and its legality are done, see above):
+Completed:
 
 - Define decoding/gluing of a legal sigma tree into a graph, coloring, and
   decomposition.
 - Prove encode/decode correctness in both directions, up to the appropriate
   isomorphism/equality notion.
 - Prove cone-gluing correctness using the existing rooted-graph gluing API.
-- Per `Courcelle/lecture_note_expanded_lean_issues.tex`, prefer stating the
-  Phase 3 recognition lemmas directly over an encoded triple, so decoding
-  stays off the critical path of the main theorem.
+- The Phase 3 recognition lemmas remain stated directly over an encoded triple,
+  as recommended by `Courcelle/lecture_note_expanded_lean_issues.tex`.
 
 ### Phase 3: Translate Graph MSO to Tree MSO
 
@@ -508,12 +508,19 @@ Done (`GraphMSO/Cost.lean`, `GraphMSO/Automata/cost.lean`):
 - `exists_costed_courcelle_automaton` is uniform over all finite input graphs;
   `exists_costed_courcelle_automaton_of_width` obtains the required bag
   coloring from a coded width bound using the realization-transfer API.
+- Explicit compiler state complexity
+  (`GraphMSO/Executable/stateComplexity.lean`): `compile_state_card` gives the
+  exact recursive cardinality of the executable compiler's state type;
+  `compilerStateCount_le_tower` and
+  `compile_legalTranslate_state_le_tower` bound it by a tower whose height is
+  controlled by translated-formula size and whose base is bounded by the
+  finite executable sigma alphabet.
 
 This is an abstract fixed-formula/fixed-automaton unit-cost model: transitions,
 label queries, and accepting-set membership are primitive operations.  The
 checker remains `noncomputable` and returns `Costed Prop`; the tower envelope
-does not claim a bound on compiler state growth or Lean VM time.  Those issues
-belong to optional explicit state-complexity work.
+is an abstract online-cost statement, while `stateComplexity.lean` separately
+bounds compiler state growth.  Neither is a claim about Lean kernel or VM time.
 
 ### Done: Phase 7 Executable Model Checking
 
@@ -541,39 +548,27 @@ see [`PHASE7_EXECUTABLE_MODEL_CHECKING.md`](PHASE7_EXECUTABLE_MODEL_CHECKING.md)
 - `checkFin` additionally supplies a canonical globally injective coloring when
   vertices are represented by `Fin n`; this removes the explicit coloring
   input at the cost of using `n + 1` colors rather than the decomposition width.
+- `checkMSO2` (`GraphMSO/Executable/incidence.lean`) accepts an ordinary
+  width-`omega` decomposition of a finite simple graph, constructs and
+  nice-normalizes its incidence decomposition, chooses a width-sized bag
+  coloring, executes the verified checker on the incidence translation, and
+  proves `checkMSO2_eq_true_iff` for every closed MSO₂ formula.
 - A qualified fixed-parameter cost for direct encoding plus checking: on a
   constructor tree with `n` nodes the abstract online cost is exactly
   `3 * n + 2` (`GraphMSO/Executable/cost.lean`).  Four build-time `#guard`
   smoke tests pass in `GraphMSO/Executable/examples.lean`.
 
-The core phase is complete.  Practical state-representation improvements and
-automatic construction of a width-sized bag coloring remain optional; the
-fixed-width checker intentionally accepts the coloring certificate as input.
+The phase is complete.  `checkColored` remains useful when a caller already has
+a coloring certificate; `checkMSO2` constructs the width-sized coloring
+automatically for the incidence pipeline.
 
-## Immediate Next Step
+## Current Next Step
 
-Done so far: encoding legality (Phase 2, first half), the tree-automata core
-(Phase 5, TW §2), the full tracked MSO-to-automata compiler and correctness
-theorem, the ordered `BinTree` encoding of inductive nice decompositions, the
-ordered-encoding transfer of the graph-to-tree translation, the
-uniform decomposition-given recognizable-language Courcelle statement
-(Phase 5), the abstract costed linear-time theorem (Phase 6), the
-defining-pair/tuple layer, the tree language with its formula
-characterizations and model bridge, the recognition formulas `phi_legal`,
-`phi_vtx_i`, `phi_vtx`, `phi_set`, the graph-to-tree formula translation
-(Phase 3), the incidence reduction (Phase 4), plus the incidence
-decomposition, the edge bound, and the connectivity characterization
-(Phase 1), and the verified executable model checker with its qualified cost
-bound (Phase 7).  The best next Lean targets:
-
-1. Before completing the end-to-end MSO₂ checker, formalize nice normalization
-   and apply it to the ordinary decomposition returned by
-   `incidenceDecomposition`.
-2. Use that normalization in the incidence-graph reduction to assemble the
-   end-to-end MSO₂ checker.
-3. Optional state-complexity work: connect compiler state growth and formula
-   translation size to a derived tower bound.
-4. Decoding of legal Σ-trees (Phase 2, second half; now off the critical path).
+There is no outstanding proof block in the active Courcelle roadmap.  Possible
+future extensions are engineering or scope expansions: TW §3 regularity,
+more compact executable state representations, benchmarks, and additional
+front-end graph formats.  They are not prerequisites for the theorem or the
+verified end-to-end MSO₂ checker.
 
 ## Working Rules
 
