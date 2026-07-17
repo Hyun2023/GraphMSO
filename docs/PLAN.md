@@ -1,6 +1,6 @@
 # GraphMSO Plan
 
-Last status check: 2026-07-16.
+Last status check: 2026-07-17.
 
 This project formalizes the graph-theoretic and logical infrastructure needed
 for Courcelle's theorem in Lean 4.  The main proof route follows
@@ -19,12 +19,13 @@ handled through the colored incidence structure with predicates `Vert` and
 
 ## Current Status
 
-Verified on 2026-07-16, including normalization, decoding, state complexity,
-and the end-to-end MSO₂ executable pipeline:
+Verified on 2026-07-17, including normalization, decoding, state complexity,
+the executable rose-tree normalizer, and the end-to-end MSO₂ executable
+pipeline:
 
-- The full `lake build` succeeds (3163 jobs), including the
+- The full `lake build` succeeds (3166 jobs), including the
   `GraphMSO.Executable` umbrella and the root `GraphMSO` module.
-- All four maintained executable `#guard` smoke tests pass during the build.
+- All ten maintained executable `#guard` smoke tests pass during the build.
 - No real `sorry` or `admit` placeholders were found in `GraphMSO/**/*.lean`.
 - The top-level module imports:
   - `GraphMSO.Syntax`
@@ -138,6 +139,52 @@ Algorithmic normalization is formalized in
 decomposition, proves realization and running intersection, preserves width,
 and proves the TeX node bound
 `|N(T*)| <= (3 * omega + 5) * |N(T)|`.
+
+### Done: Executable Rose-Tree Decompositions and Normalization
+
+Files:
+
+- `GraphMSO/Decomp/execDecomp.lean`
+- `GraphMSO/Decomp/execNormalization.lean`
+
+Completed on 2026-07-17:
+
+- `DecompTree`: the algorithm-facing rose-tree presentation of a rooted
+  tree-decomposition with raw list bags.  Rootedness, tree shape, and child
+  enumeration are built into the data, so algorithms recurse structurally.
+  The API provides `HasBag`, `Occurs`, `OccursPair`, `HasWidth`, the local
+  running-intersection predicate `RunningIntersection`, and the validity
+  predicate `IsDecompFor`; algorithms consume raw data, correctness theorems
+  consume validity.
+- Computable building blocks in `normalization.lean`: `forgetList` and
+  `introduceList` are computable under `[DecidableEq V]`, and
+  `changeRootOfList`/`closeToLeafOfList` are computable list-presented
+  counterparts of `changeRoot`/`closeToLeaf` with the same lemma surface
+  (width, bag survival, occurrence, occurrence connectedness).  The
+  `Finset`-presented originals remain unchanged for the proof-facing side.
+- `DecompTree.normalizeCode`: a fully computable normalizer from a rose tree
+  to an `InductiveNiceTree V ∅`, `#eval`-able and exercised by build-time
+  `#guard` smoke tests, including a run of the verified checker `checkCode`
+  on a generated (rather than hand-written) code.
+- Correctness mirrors the proof-facing normalizer without detouring through
+  it: `normalizeCode_hasWidth`, `normalizeCode_hasBag`,
+  `normalizeCode_occurs_iff`, `normalizeCode_occPreconnected`, and the
+  certified assembly
+  `DecompTree.normalize : IsDecompFor → InductiveNiceTreeDecomposition` with
+  `normalize_tree = rfl` and
+  `normalize_hasWidth`.  Only the certificate layer is noncomputable; the
+  code consumed by `checkCode` is computable.
+- Executable width-sized bag coloring (`GraphMSO/Decomp/execColoring.lean`):
+  `DecompTree.greedyColoring` walks the rose tree root-first and gives every
+  vertex, at its topmost bag, the first color unused by the already-colored
+  members of that bag.  `greedyColoring_isBagColoring` proves bag-injectivity
+  from the width bound and running intersection via an explicit
+  accumulator invariant, and `normalizeCode_greedyColoring_isBagColoring`
+  transfers it to the normalized code through new per-block
+  `IsBagColoring` preservation lemmas in `normalization.lean` (constructors,
+  forget/introduce paths, list-presented root changes, repeated joins).
+  This replaces the `choose`-based coloring for the executable pipeline with
+  a computable `omega + 1`-color function.
 
 ### Done: Incidence and Sigma-Tree Scaffolding
 
@@ -564,11 +611,20 @@ automatically for the incidence pipeline.
 
 ## Current Next Step
 
-There is no outstanding proof block in the active Courcelle roadmap.  Possible
-future extensions are engineering or scope expansions: TW §3 regularity,
-more compact executable state representations, benchmarks, and additional
-front-end graph formats.  They are not prerequisites for the theorem or the
-verified end-to-end MSO₂ checker.
+There is no outstanding proof block in the theorem-level Courcelle roadmap.
+The active engineering track is making the end-to-end `checkMSO2` pipeline
+computable; executable normalization and the width-sized greedy bag coloring
+are done, so the remaining item is:
+
+1. A computable recomposition of `checkMSO2`: an executable incidence
+   decomposition construction over `DecompTree`, feeding
+   `DecompTree.normalizeCode` and `DecompTree.greedyColoring` into
+   `checkCode`, with a `checkMSO2_eq_true_iff`-style correctness theorem
+   preserved.
+
+Other possible extensions remain engineering or scope expansions: TW §3
+regularity, more compact executable state representations, benchmarks, and
+additional front-end graph formats.
 
 ## Working Rules
 

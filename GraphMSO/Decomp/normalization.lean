@@ -446,15 +446,72 @@ theorem join_hasWidth [Finite V] {bag : Set V}
       | inl n => simpa [nodeBag] using hleft n
       | inr n => simpa [nodeBag] using hright n
 
+/-- The leaf code is bag-injectively colored by every coloring. -/
+theorem leaf_isBagColoring {k : ℕ} (color : V → Fin k) :
+    (InductiveNiceTree.leaf : InductiveNiceTree V ∅).IsBagColoring color := by
+  intro n
+  cases n
+  simp [nodeBag]
+
+/-- Root-index transport preserves bag-injectivity of a coloring. -/
+theorem isBagColoring_castRoot_iff {A B : Set V} (h : A = B)
+    (tree : InductiveNiceTree V A) {k : ℕ} (color : V → Fin k) :
+    (castRoot h tree).IsBagColoring color ↔ tree.IsBagColoring color := by
+  subst B
+  rfl
+
+/-- An introduce constructor is bag-injectively colored when the child is and
+the coloring is injective on the new root bag. -/
+theorem introduce_isBagColoring {bag : Set V} (v : V)
+    (child : InductiveNiceTree V bag) (fresh : v ∉ bag) {k : ℕ}
+    {color : V → Fin k} (hchild : child.IsBagColoring color)
+    (hroot : Set.InjOn color (bag ∪ {v})) :
+    (InductiveNiceTree.introduce v child fresh).IsBagColoring color := by
+  intro n
+  cases n with
+  | none => simpa [nodeBag] using hroot
+  | some n => simpa [nodeBag] using hchild n
+
+/-- A forget constructor is bag-injectively colored whenever the child is:
+its root bag shrinks. -/
+theorem forget_isBagColoring {bag : Set V} (v : V)
+    (child : InductiveNiceTree V bag) (present : v ∈ bag) {k : ℕ}
+    {color : V → Fin k} (hchild : child.IsBagColoring color) :
+    (InductiveNiceTree.forget v child present).IsBagColoring color := by
+  intro n
+  cases n with
+  | none =>
+      have hroot : Set.InjOn color bag := by
+        simpa using hchild (root child)
+      simpa [nodeBag] using hroot.mono Set.diff_subset
+  | some n => simpa [nodeBag] using hchild n
+
+/-- A join of bag-injectively colored equal-bag codes is bag-injectively
+colored. -/
+theorem join_isBagColoring {bag : Set V}
+    (left right : InductiveNiceTree V bag) {k : ℕ} {color : V → Fin k}
+    (hleft : left.IsBagColoring color) (hright : right.IsBagColoring color) :
+    (InductiveNiceTree.join left right).IsBagColoring color := by
+  intro n
+  cases n with
+  | none => simpa [nodeBag] using hleft (root left)
+  | some n =>
+      cases n with
+      | inl n => simpa [nodeBag] using hleft n
+      | inr n => simpa [nodeBag] using hright n
+
+section
+
+variable [DecidableEq V]
+
 /-- Forget every vertex of a duplicate-free list, one vertex at a time. -/
-noncomputable def forgetList {bag : Set V} (xs : List V)
+def forgetList {bag : Set V} (xs : List V)
     (tree : InductiveNiceTree V bag)
     (hsub : ∀ x ∈ xs, x ∈ bag) (hnodup : xs.Nodup) :
     InductiveNiceTree V (bag \ (xs.toFinset : Set V)) :=
   match xs with
   | [] => castRoot (by simp) tree
   | v :: rest => by
-      classical
       rw [List.nodup_cons] at hnodup
       have hrest : ∀ x ∈ rest, x ∈ bag := by
         intro x hx
@@ -595,15 +652,34 @@ theorem forgetList_size {bag : Set V} (xs : List V)
       rw [ih hrest hnodup.2]
       simp [Nat.add_assoc]
 
+/-- A forget path preserves bag-injectivity of a coloring. -/
+theorem forgetList_isBagColoring {bag : Set V} (xs : List V)
+    (tree : InductiveNiceTree V bag)
+    (hsub : ∀ x ∈ xs, x ∈ bag) (hnodup : xs.Nodup) {k : ℕ}
+    {color : V → Fin k} (htree : tree.IsBagColoring color) :
+    (forgetList xs tree hsub hnodup).IsBagColoring color := by
+  induction xs with
+  | nil => exact (isBagColoring_castRoot_iff _ _ _).2 htree
+  | cons v rest ih =>
+      rw [List.nodup_cons] at hnodup
+      have hrest : ∀ x ∈ rest, x ∈ bag := by
+        intro x hx
+        exact hsub x (by simp [hx])
+      have hvbag : v ∈ bag := hsub v (by simp)
+      have hvchild : v ∈ bag \ (rest.toFinset : Set V) :=
+        ⟨hvbag, by simpa using hnodup.1⟩
+      rw [forgetList]
+      apply (isBagColoring_castRoot_iff _ _ _).2
+      exact forget_isBagColoring v _ hvchild (ih hrest hnodup.2)
+
 /-- Introduce every vertex of a duplicate-free list, one vertex at a time. -/
-noncomputable def introduceList {bag : Set V} (xs : List V)
+def introduceList {bag : Set V} (xs : List V)
     (tree : InductiveNiceTree V bag)
     (hdisjoint : ∀ x ∈ xs, x ∉ bag) (hnodup : xs.Nodup) :
     InductiveNiceTree V (bag ∪ (xs.toFinset : Set V)) :=
   match xs with
   | [] => castRoot (by simp) tree
   | v :: rest => by
-      classical
       rw [List.nodup_cons] at hnodup
       have hrest : ∀ x ∈ rest, x ∉ bag := by
         intro x hx
@@ -816,6 +892,47 @@ theorem introduceList_size {bag : Set V} (xs : List V)
       rw [ih hrest hnodup.2]
       simp [Nat.add_assoc]
 
+/-- An introduce path preserves bag-injectivity when the coloring is
+injective on the final bag. -/
+theorem introduceList_isBagColoring {bag : Set V} (xs : List V)
+    (tree : InductiveNiceTree V bag)
+    (hdisjoint : ∀ x ∈ xs, x ∉ bag) (hnodup : xs.Nodup) {k : ℕ}
+    {color : V → Fin k} (htree : tree.IsBagColoring color)
+    (hfinal : Set.InjOn color (bag ∪ (xs.toFinset : Set V))) :
+    (introduceList xs tree hdisjoint hnodup).IsBagColoring color := by
+  induction xs with
+  | nil => exact (isBagColoring_castRoot_iff _ _ _).2 htree
+  | cons v rest ih =>
+      rw [List.nodup_cons] at hnodup
+      have hrest : ∀ x ∈ rest, x ∉ bag := by
+        intro x hx
+        exact hdisjoint x (by simp [hx])
+      have hvbag : v ∉ bag := hdisjoint v (by simp)
+      have hvfresh : v ∉ bag ∪ (rest.toFinset : Set V) := by
+        intro hmem
+        rcases hmem with hmem | hmem
+        · exact hvbag hmem
+        · exact hnodup.1 (by simpa using hmem)
+      have hsubRest :
+          bag ∪ (rest.toFinset : Set V) ⊆ bag ∪ ((v :: rest).toFinset : Set V) := by
+        intro x hx
+        rcases hx with hx | hx
+        · exact Or.inl hx
+        · exact Or.inr (by
+            simp only [List.coe_toFinset, Set.mem_setOf_eq] at hx ⊢
+            exact List.mem_cons_of_mem v hx)
+      have hsubRoot :
+          (bag ∪ (rest.toFinset : Set V)) ∪ {v} ⊆
+            bag ∪ ((v :: rest).toFinset : Set V) := by
+        intro x hx
+        rcases hx with hx | rfl
+        · exact hsubRest hx
+        · exact Or.inr (by simp)
+      rw [introduceList]
+      apply (isBagColoring_castRoot_iff _ _ _).2
+      exact introduce_isBagColoring v _ hvfresh
+        (ih hrest hnodup.2 (hfinal.mono hsubRest)) (hfinal.mono hsubRoot)
+
 /--
 Change the root bag from `B` to `A` by first forgetting `B \ A` and then
 introducing `A \ B`.  The supplied tree is reused as the bottom of the path.
@@ -823,7 +940,6 @@ introducing `A \ B`.  The supplied tree is reused as the bottom of the path.
 noncomputable def changeRoot (A B : Finset V)
     (tree : InductiveNiceTree V (B : Set V)) :
     InductiveNiceTree V (A : Set V) := by
-  classical
   let removed : Finset V := B \ A
   have hremoved : ∀ x ∈ removed.toList, x ∈ (B : Set V) := by
     intro x hx
@@ -1025,6 +1141,135 @@ theorem closeToLeaf_size (A : Finset V) :
   rw [closeToLeaf, changeRoot_size]
   simp [size]
   omega
+
+/-! ### List-presented root changes
+
+`changeRootOfList` and `closeToLeafOfList` are the computable counterparts of
+`changeRoot` and `closeToLeaf`: the bags are presented as raw lists, so the
+introduce/forget chain is built by recursion on concrete data.  Duplicates are
+removed by `List.dedup`, hence callers need not supply `Nodup` certificates.
+-/
+
+private theorem toFinset_sdiff_filter_union_eq (A B : List V) :
+    ((B.toFinset : Set V) \ (((B.dedup.filter (· ∉ A)).toFinset : Set V))) ∪
+      ((A.dedup.filter (· ∉ B)).toFinset : Set V) = (A.toFinset : Set V) := by
+  ext x
+  simp [List.mem_dedup]
+  tauto
+
+/-- Change the root bag from the list-presented bag `B` to the list-presented
+bag `A` by first forgetting `B \ A` and then introducing `A \ B`.  Computable
+counterpart of `changeRoot`. -/
+def changeRootOfList (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) :
+    InductiveNiceTree V (A.toFinset : Set V) :=
+  castRoot (toFinset_sdiff_filter_union_eq A B)
+    (introduceList (A.dedup.filter (· ∉ B))
+      (forgetList (B.dedup.filter (· ∉ A)) tree
+        (fun x hx => by
+          simpa using List.mem_dedup.mp (List.mem_of_mem_filter hx))
+        ((List.nodup_dedup B).filter _))
+      (fun x hxadd hxremain => by
+        have hxB : x ∉ B := by simpa using List.of_mem_filter hxadd
+        exact hxB (by simpa using hxremain.1))
+      ((List.nodup_dedup A).filter _))
+
+/-- `changeRootOfList` preserves a width bound provided both endpoint bags
+satisfy it. -/
+theorem changeRootOfList_hasWidth [Finite V] (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) (omega : ℕ)
+    (htree : tree.HasWidth omega)
+    (hA : A.toFinset.card ≤ omega + 1) (hB : B.toFinset.card ≤ omega + 1) :
+    (changeRootOfList A B tree).HasWidth omega := by
+  unfold changeRootOfList
+  apply (hasWidth_castRoot_iff _ _ _).2
+  apply introduceList_hasWidth
+  · apply forgetList_hasWidth _ _ _ _ _ htree
+    simpa [← List.coe_toFinset, Set.ncard_coe_finset] using hB
+  · rw [toFinset_sdiff_filter_union_eq A B]
+    simpa [← List.coe_toFinset, Set.ncard_coe_finset] using hA
+
+/-- A list-presented root change reuses the entire supplied child code. -/
+theorem changeRootOfList_hasBag (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) (target : Set V)
+    (hbag : tree.HasBag target) :
+    (changeRootOfList A B tree).HasBag target := by
+  unfold changeRootOfList
+  exact (hasBag_castRoot_iff _ _).2
+    (introduceList_hasBag _ _ _ _ (forgetList_hasBag _ _ _ _ hbag))
+
+/-- Occurrence through a list-presented root change: the reused child code
+keeps all its occurrences, and the fresh introduce path adds `A \ B`. -/
+theorem changeRootOfList_occurs_iff (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) (v : V) :
+    (changeRootOfList A B tree).Occurs v ↔ tree.Occurs v ∨ (v ∈ A ∧ v ∉ B) := by
+  unfold changeRootOfList
+  rw [occurs_castRoot_iff, introduceList_occurs_iff, forgetList_occurs_iff]
+  simp [List.mem_filter, List.mem_dedup]
+
+/-- A list-presented root change preserves occurrence connectedness when
+vertices introduced above the reused child do not already occur in it. -/
+theorem changeRootOfList_occPreconnected (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) (v : V)
+    (hconn : tree.OccPreconnected v)
+    (hnew : ∀ x ∈ A, x ∉ B → ¬ tree.Occurs x) :
+    (changeRootOfList A B tree).OccPreconnected v := by
+  unfold changeRootOfList
+  apply (occPreconnected_castRoot_iff _ _ v).2
+  apply introduceList_occPreconnected
+  · exact forgetList_occPreconnected _ _ _ _ v hconn
+  · intro x hxadd hocc
+    have hxA : x ∈ A ∧ x ∉ B := by
+      simpa [List.mem_filter, List.mem_dedup] using hxadd
+    exact hnew x hxA.1 hxA.2 ((forgetList_occurs_iff _ _ _ _ x).1 hocc)
+
+/-- A list-presented root change preserves bag-injectivity when the coloring
+is injective on the new root bag. -/
+theorem changeRootOfList_isBagColoring (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) {k : ℕ}
+    {color : V → Fin k} (htree : tree.IsBagColoring color)
+    (hA : Set.InjOn color {x | x ∈ A}) :
+    (changeRootOfList A B tree).IsBagColoring color := by
+  unfold changeRootOfList
+  apply (isBagColoring_castRoot_iff _ _ _).2
+  apply introduceList_isBagColoring
+  · exact forgetList_isBagColoring _ _ _ _ htree
+  · rw [toFinset_sdiff_filter_union_eq A B]
+    simpa using hA
+
+/-- Attach a path from a list-presented bag to an empty leaf.  Computable
+counterpart of `closeToLeaf`. -/
+def closeToLeafOfList (A : List V) :
+    InductiveNiceTree V (A.toFinset : Set V) :=
+  changeRootOfList A [] (castRoot (by simp) InductiveNiceTree.leaf)
+
+theorem closeToLeafOfList_hasWidth [Finite V] (A : List V) (omega : ℕ)
+    (hA : A.toFinset.card ≤ omega + 1) :
+    (closeToLeafOfList A).HasWidth omega :=
+  changeRootOfList_hasWidth _ _ _ omega
+    ((hasWidth_castRoot_iff _ _ _).2 (leaf_hasWidth omega)) hA (by simp)
+
+theorem closeToLeafOfList_occurs_iff (A : List V) (v : V) :
+    (closeToLeafOfList A).Occurs v ↔ v ∈ A := by
+  rw [closeToLeafOfList, changeRootOfList_occurs_iff, occurs_castRoot_iff]
+  simp [Occurs, nodeBag]
+
+theorem closeToLeafOfList_occPreconnected (A : List V) (v : V) :
+    (closeToLeafOfList A).OccPreconnected v := by
+  apply changeRootOfList_occPreconnected
+  · exact (occPreconnected_castRoot_iff _ _ v).2 (leaf_occPreconnected v)
+  · intro x _hx _hxB hocc
+    rcases (occurs_castRoot_iff _ _ x).1 hocc with ⟨n, hn⟩
+    cases n
+    simp [nodeBag] at hn
+
+theorem closeToLeafOfList_isBagColoring (A : List V) {k : ℕ}
+    {color : V → Fin k} (hA : Set.InjOn color {x | x ∈ A}) :
+    (closeToLeafOfList A).IsBagColoring color :=
+  changeRootOfList_isBagColoring _ _ _
+    ((isBagColoring_castRoot_iff _ _ _).2 (leaf_isBagColoring color)) hA
+
+end
 
 /-- Map occurrence reachability from the left branch through a join. -/
 theorem join_left_map_occReachable {bag : Set V}
@@ -1250,6 +1495,28 @@ theorem joinNonempty_size {bag : Set V}
       simp [size]
       omega
 
+/-- A vertex occurs in a repeated join exactly when it occurs in some
+branch. -/
+theorem joinNonempty_occurs_iff {bag : Set V}
+    (tree : InductiveNiceTree V bag) (rest : List (InductiveNiceTree V bag))
+    (v : V) :
+    (joinNonempty tree rest).Occurs v ↔
+      tree.Occurs v ∨ ∃ next ∈ rest, next.Occurs v := by
+  induction rest generalizing tree with
+  | nil => simp [joinNonempty]
+  | cons next rest ih =>
+      rw [joinNonempty, ih, join_occurs_iff]
+      simp only [List.mem_cons]
+      constructor
+      · rintro ((h | h) | ⟨other, hother, h⟩)
+        · exact Or.inl h
+        · exact Or.inr ⟨next, Or.inl rfl, h⟩
+        · exact Or.inr ⟨other, Or.inr hother, h⟩
+      · rintro (h | ⟨other, (rfl | hother), h⟩)
+        · exact Or.inl (Or.inl h)
+        · exact Or.inl (Or.inr h)
+        · exact Or.inr ⟨other, hother, h⟩
+
 /-- Repeated joins preserve occurrence connectedness when every pair of
 distinct branch positions that contains the vertex meets in the common bag. -/
 theorem joinNonempty_occPreconnected {bag : Set V}
@@ -1292,6 +1559,20 @@ theorem joinNonempty_hasWidth [Finite V] {bag : Set V}
   | cons next rest ih =>
       apply ih (.join tree next)
       · exact join_hasWidth tree next omega htree (hrest next (by simp))
+      · intro other hother
+        exact hrest other (by simp [hother])
+
+/-- Repeated joins preserve bag-injectivity of a coloring. -/
+theorem joinNonempty_isBagColoring {bag : Set V}
+    (tree : InductiveNiceTree V bag) (rest : List (InductiveNiceTree V bag))
+    {k : ℕ} {color : V → Fin k} (htree : tree.IsBagColoring color)
+    (hrest : ∀ next ∈ rest, next.IsBagColoring color) :
+    (joinNonempty tree rest).IsBagColoring color := by
+  induction rest generalizing tree with
+  | nil => exact htree
+  | cons next rest ih =>
+      apply ih (.join tree next)
+      · exact join_isBagColoring tree next htree (hrest next (by simp))
       · intro other hother
         exact hrest other (by simp [hother])
 
