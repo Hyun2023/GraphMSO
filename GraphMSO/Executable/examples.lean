@@ -1,4 +1,5 @@
 import GraphMSO.Executable.modelCheck
+import GraphMSO.Executable.incidence
 import GraphMSO.Decomp.execColoring
 
 /-!
@@ -144,6 +145,37 @@ example : k2Tree.HasWidth 1 := by
   rcases DecompTree.hasBag_node_iff.1 hL with rfl | ⟨c, hc, _⟩
   · decide
   · simp at hc
+
+/-! ## Fully computable end-to-end MSO₂ checking
+
+`checkMSO2Exec` composes the executable incidence extension, nice
+normalization, and greedy coloring with the verified checker.  The guards
+exercise the incidence construction and its coloring; running the full
+checker compiles the width-2 incidence automaton, so complete runs are kept
+as manual stress tests. -/
+
+/-- `K₂` with decidable adjacency. -/
+def k2Graph : SimpleGraph (Fin 2) where
+  Adj u v := u ≠ v
+  symm := fun _ _ h => h.symm
+  loopless := fun _ h => h rfl
+
+instance : DecidableRel k2Graph.Adj :=
+  fun u v => inferInstanceAs (Decidable ¬(u = v))
+
+#guard (DecompTree.incidenceTree k2Graph k2Tree).normalizeCode.size == 7
+
+#guard ((DecompTree.incidenceTree k2Graph k2Tree).greedyColoring 2)
+  (.fromV 1) == 1
+
+/- Expected outputs are respectively `true` and `false` (manual stress
+tests; the width-2 incidence alphabet makes the compiled automaton large):
+
+```
+#eval checkMSO2Exec k2Graph k2Tree 1 (.neg .false_)
+#eval checkMSO2Exec k2Graph k2Tree 1 .false_
+```
+-/
 
 /-! ## Greedy bag coloring
 

@@ -90,6 +90,11 @@ theorem occurs_of_mem_rootBag {t : DecompTree V} {v : V}
     (hv : v ∈ t.rootBag) : t.Occurs v :=
   ⟨t.rootBag, t.hasBag_rootBag, hv⟩
 
+theorem occurs_node_nil_iff {bag : List V} {v : V} :
+    (node bag ([] : List (DecompTree V))).Occurs v ↔ v ∈ bag := by
+  rw [occurs_node_iff]
+  simp
+
 section
 
 variable [DecidableEq V]
@@ -137,6 +142,11 @@ inductive RunningIntersection : DecompTree V → Prop
         (fun c₁ c₂ => ∀ v, c₁.Occurs v → c₂.Occurs v → v ∈ bag))
       (hchildren : ∀ c ∈ children, RunningIntersection c) :
       RunningIntersection (node bag children)
+
+/-- A childless node satisfies the running-intersection property. -/
+theorem runningIntersection_node_nil (bag : List V) :
+    (node bag ([] : List (DecompTree V))).RunningIntersection :=
+  .node (fun c hc => by simp at hc) List.Pairwise.nil (fun c hc => by simp at hc)
 
 /-- Validity of a rose-tree presentation as a tree-decomposition of `G`.
 Algorithms run on the raw `DecompTree`; correctness theorems consume this

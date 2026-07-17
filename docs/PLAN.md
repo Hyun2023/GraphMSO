@@ -23,9 +23,10 @@ Verified on 2026-07-17, including normalization, decoding, state complexity,
 the executable rose-tree normalizer, and the end-to-end MSO₂ executable
 pipeline:
 
-- The full `lake build` succeeds (3166 jobs), including the
+- The full `lake build` succeeds (3167 jobs), including the
   `GraphMSO.Executable` umbrella and the root `GraphMSO` module.
-- All ten maintained executable `#guard` smoke tests pass during the build.
+- All twelve maintained executable `#guard` smoke tests pass during the
+  build.
 - No real `sorry` or `admit` placeholders were found in `GraphMSO/**/*.lean`.
 - The top-level module imports:
   - `GraphMSO.Syntax`
@@ -174,6 +175,23 @@ Completed on 2026-07-17:
   `normalize_tree = rfl` and
   `normalize_hasWidth`.  Only the certificate layer is noncomputable; the
   code consumed by `checkCode` is computable.
+- Executable incidence decompositions (`GraphMSO/Decomp/execIncidence.lean`):
+  `DecompTree.incidenceTree` extends a rose-tree decomposition of `G` to one
+  of `IncidenceGraph G`.  Bags are mapped through `fromV`; edges are
+  enumerated as `SimpleGraph.Dart`s built from ordered pairs of the tree's
+  vertex list (no `Sym2`/`Finset` choice), and the walk threads the pending
+  dart list so each edge object is attached as a pendant leaf at exactly one
+  node whose bag contains both endpoints.  `incidenceTree_isDecompFor` and
+  `incidenceTree_hasWidth` prove validity for the incidence graph and the
+  `max omega 2` width bound.
+- The fully computable pipeline (`GraphMSO/Executable/incidence.lean`):
+  `checkMSO2Exec` feeds `incidenceTree`, `normalizeCode`, and
+  `greedyColoring` into `checkCode`; it is a plain `def`, executable on
+  concrete inputs.  `checkMSO2Exec_eq_true_iff` proves that for a valid
+  width-`omega` rose-tree decomposition and a closed MSO₂ sentence the
+  Boolean answer agrees with `Semantics.Satisfies`.  The `choose`-based
+  `checkMSO2` remains as the proof-facing variant for math-side
+  decomposition inputs.
 - Executable width-sized bag coloring (`GraphMSO/Decomp/execColoring.lean`):
   `DecompTree.greedyColoring` walks the rose tree root-first and gives every
   vertex, at its topmost bag, the first color unused by the already-colored
@@ -611,20 +629,15 @@ automatically for the incidence pipeline.
 
 ## Current Next Step
 
-There is no outstanding proof block in the theorem-level Courcelle roadmap.
-The active engineering track is making the end-to-end `checkMSO2` pipeline
-computable; executable normalization and the width-sized greedy bag coloring
-are done, so the remaining item is:
+There is no outstanding proof block in the active roadmap: the theorem-level
+Courcelle development and the fully computable end-to-end pipeline
+(`checkMSO2Exec` with `checkMSO2Exec_eq_true_iff`) are both complete.
 
-1. A computable recomposition of `checkMSO2`: an executable incidence
-   decomposition construction over `DecompTree`, feeding
-   `DecompTree.normalizeCode` and `DecompTree.greedyColoring` into
-   `checkCode`, with a `checkMSO2_eq_true_iff`-style correctness theorem
-   preserved.
-
-Other possible extensions remain engineering or scope expansions: TW §3
-regularity, more compact executable state representations, benchmarks, and
-additional front-end graph formats.
+Possible future extensions are engineering or scope expansions: TW §3
+regularity, more compact executable state representations (complete
+`checkMSO2Exec` runs currently compile a large width-2 incidence automaton,
+so they are manual stress tests rather than build-time guards), benchmarks,
+and additional front-end graph formats.
 
 ## Working Rules
 

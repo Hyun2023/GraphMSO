@@ -6,6 +6,7 @@ import GraphMSO.Decomp.edgeBound
 import GraphMSO.Decomp.encoding
 import GraphMSO.Decomp.execColoring
 import GraphMSO.Decomp.execDecomp
+import GraphMSO.Decomp.execIncidence
 import GraphMSO.Decomp.execNormalization
 import GraphMSO.Decomp.decoding
 import GraphMSO.Decomp.incidenceDecomp

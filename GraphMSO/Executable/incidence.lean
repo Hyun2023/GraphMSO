@@ -1,6 +1,8 @@
 import GraphMSO.Executable.modelCheck
 import GraphMSO.incidenceTranslation
 import GraphMSO.Decomp.normalization
+import GraphMSO.Decomp.execIncidence
+import GraphMSO.Decomp.execColoring
 
 /-!
 # End-to-end executable MSO₂ checking
@@ -151,6 +153,45 @@ noncomputable def checkMSO2
     (hwidth : D.HasWidth omega) (phi : Formula) : Bool :=
   checkColored (omega := max omega 2) (incidenceTauGraphExec G)
     (incidenceNiceExec D) (incidenceColor D omega hwidth) phi.toIncidence
+
+/-- Fully computable end-to-end MSO₂ checker: a rose-tree decomposition of
+`G` in, a Boolean out.  The incidence extension, nice normalization, and
+width-sized greedy bag coloring are all executable; correctness is
+`checkMSO2Exec_eq_true_iff`. -/
+def checkMSO2Exec {V : Type} [DecidableEq V]
+    (G : SimpleGraph V) [DecidableRel G.Adj]
+    (t : DecompTree V) (omega : ℕ) (phi : Formula) : Bool :=
+  checkCode (omega := max omega 2) (incidenceTauGraphExec G)
+    (DecompTree.incidenceTree G t).normalizeCode
+    ((DecompTree.incidenceTree G t).greedyColoring (max omega 2))
+    phi.toIncidence
+
+/-- Correctness of the fully computable pipeline: for a valid width-`omega`
+rose-tree decomposition of `G` and a closed MSO₂ formula, the Boolean answer
+agrees with the MSO₂ semantics. -/
+theorem checkMSO2Exec_eq_true_iff {V : Type} [Fintype V] [DecidableEq V]
+    (G : SimpleGraph V) [DecidableRel G.Adj]
+    (t : DecompTree V) (omega : ℕ)
+    (hvalid : t.IsDecompFor G) (hw : t.HasWidth omega)
+    (phi : Formula) (hclosed : phi.Closed) :
+    checkMSO2Exec G t omega phi = true ↔ Semantics.Satisfies G phi := by
+  have hI : (DecompTree.incidenceTree G t).IsDecompFor
+      (incidenceTauGraphExec G).toMath.G := by
+    have h := DecompTree.incidenceTree_isDecompFor G hvalid
+    rwa [incidenceTauGraphExec_graph G] at h
+  have hwI := DecompTree.incidenceTree_hasWidth G t omega hw
+  have hcolor := DecompTree.normalizeCode_greedyColoring_isBagColoring
+    (DecompTree.incidenceTree G t) (max omega 2) hwI hI.runningIntersection
+  have hfree := toIncidence_free_eq_empty phi hclosed
+  have hcheck := checkColored_eq_true_iff (omega := max omega 2)
+    (incidenceTauGraphExec G)
+    ((DecompTree.incidenceTree G t).normalize hI)
+    ((DecompTree.incidenceTree G t).greedyColoring (max omega 2))
+    hcolor phi.toIncidence hfree.1 hfree.2
+  rw [checkMSO2Exec]
+  exact hcheck.trans (by
+    rw [incidenceTauGraphExec_toMath]
+    exact satisfies_toIncidence_iff phi hclosed)
 
 /-- Correctness of the complete incidence-reduction and executable-checker
 pipeline. -/
