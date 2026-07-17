@@ -633,11 +633,14 @@ There is no outstanding proof block in the active roadmap: the theorem-level
 Courcelle development and the fully computable end-to-end pipeline
 (`checkMSO2Exec` with `checkMSO2Exec_eq_true_iff`) are both complete.
 
-Possible future extensions are engineering or scope expansions: TW §3
-regularity, more compact executable state representations (complete
-`checkMSO2Exec` runs currently compile a large width-2 incidence automaton,
-so they are manual stress tests rather than build-time guards), benchmarks,
-and additional front-end graph formats.
+Possible future extensions are engineering or scope expansions —
+performance of complete `checkMSO2Exec` runs (currently manual stress
+tests rather than build-time guards), decidable validity checking, TW §3
+regularity, benchmarks, and additional front-end graph formats.  They are
+catalogued with concrete plans in
+[`REMAINING_EXTENSIONS.md`](REMAINING_EXTENSIONS.md); the current
+executable pipeline is documented in
+[`PHASE7_EXECUTABLE_MODEL_CHECKING_EXPANDED.md`](PHASE7_EXECUTABLE_MODEL_CHECKING_EXPANDED.md).
 
 ## Working Rules
 
