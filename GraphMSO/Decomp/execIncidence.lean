@@ -705,6 +705,59 @@ theorem incidenceAux_runningIntersection (t : DecompTree V) :
           rw [edgeLeaf]
           exact runningIntersection_node_nil _
 
+/-! ## Size accounting -/
+
+theorem incidenceForest_size (cs : List (DecompTree V)) :
+    (∀ c ∈ cs, ∀ p : List G.Dart,
+      (incidenceAux G c p).1.size + (incidenceAux G c p).2.length =
+        c.size + p.length) →
+      ∀ p : List G.Dart,
+        ((incidenceForest G cs p).1.map size).sum +
+          (incidenceForest G cs p).2.length =
+          (cs.map size).sum + p.length := by
+  induction cs with
+  | nil =>
+      intro _ p
+      rw [incidenceForest_nil]
+      simp
+  | cons c cs ih =>
+      intro hspec p
+      rw [incidenceForest_cons]
+      simp only [List.map_cons, List.sum_cons]
+      have h1 := hspec c (by simp) p
+      have h2 := ih (fun c₂ hc₂ => hspec c₂ (by simp [hc₂]))
+        (incidenceAux G c p).2
+      omega
+
+/-- Each consumed dart contributes exactly one pendant leaf: node counts plus
+pending lengths are conserved by the walk. -/
+theorem incidenceAux_size (t : DecompTree V) :
+    ∀ p : List G.Dart,
+      (incidenceAux G t p).1.size + (incidenceAux G t p).2.length =
+        t.size + p.length := by
+  induction t using DecompTree.induction_on with
+  | h bag children ih =>
+      intro p
+      rw [incidenceAux_node]
+      dsimp only
+      have hsplit :=
+        (List.length_eq_length_filter_add (l := p) (dartMem G bag)).symm
+      have hforest := incidenceForest_size G children ih
+        (p.filter fun d => !dartMem G bag d)
+      have hleaves : ∀ ds : List G.Dart,
+          ((ds.map (edgeLeaf G)).map size).sum = ds.length := by
+        intro ds
+        induction ds with
+        | nil => simp
+        | cons d ds ihd =>
+            simp only [List.map_cons, List.sum_cons, ihd, List.length_cons]
+            rw [edgeLeaf, size_node]
+            simp only [List.map_nil, List.sum_nil, Nat.add_zero]
+            omega
+      have hmine := hleaves (p.filter (dartMem G bag))
+      rw [size_node, size_node, List.map_append, List.sum_append]
+      omega
+
 /-! ## The executable incidence decomposition -/
 
 /-- The executable incidence extension of a rose-tree decomposition. -/
@@ -716,6 +769,15 @@ theorem incidenceTree_hasWidth [DecidableRel G.Adj] (t : DecompTree V)
     (omega : ℕ) (hw : t.HasWidth omega) :
     (incidenceTree G t).HasWidth (max omega 2) :=
   incidenceAux_hasWidth G t omega _ hw
+
+/-- The incidence extension adds at most one pendant leaf per enumerated
+dart. -/
+theorem incidenceTree_size_le [DecidableRel G.Adj] (t : DecompTree V) :
+    (incidenceTree G t).size ≤
+      t.size + (dartsOfList G t.vertexList).length := by
+  have h := incidenceAux_size G t (dartsOfList G t.vertexList)
+  unfold incidenceTree
+  omega
 
 /-- Every graph edge receives a pendant leaf bag in the incidence
 extension of a valid decomposition. -/

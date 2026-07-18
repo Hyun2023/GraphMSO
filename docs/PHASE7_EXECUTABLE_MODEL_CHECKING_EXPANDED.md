@@ -349,11 +349,14 @@ and the coloring certificate for the normalized `K₂` code.
    that would discharge them by `decide` on concrete inputs.
 3. **`checkFin` remains the `n + 1`-color fallback** (unchanged).
 4. **Graph correctness is stated for sentences** (unchanged).
-5. **The cost theorem is abstract** (unchanged): `3 * n + 2` counts charged
-   online operations of the core pass, not VM time, and none of the three
-   new front stages is cost-instrumented.  In particular the executable
-   normalizer has no formal node bound yet (the proof-facing
-   `(3 * omega + 5) * |N(T)|` bound has no `DecompTree` counterpart).
+5. **The cost model is abstract** (unchanged in nature): the counters count
+   charged online operations, not VM time.  The whole pipeline is now
+   instrumented — `checkMSO2ExecCosted` in
+   [`Executable/pipelineCost.lean`](../GraphMSO/Executable/pipelineCost.lean)
+   charges all five stages and bounds the total in closed form, using the
+   executable node bound `normalizeCode_size_le` — but the incidence-walk
+   term is quadratic (`n · (m + 1)` from pending-dart threading), and
+   formula translation/compilation remain deliberately uncharged.
 
 ## 10. Reading order
 

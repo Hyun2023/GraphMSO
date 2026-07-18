@@ -217,12 +217,111 @@ theorem normalizeAux_isBagColoring (t : DecompTree V) {k : ℕ}
             obtain ⟨s, hs, rfl⟩ := List.mem_map.mp hnext
             exact hbranch s (by simp [hs])
 
+/-- Constant-function sums over a list. -/
+private theorem sum_map_const {α : Type u} (l : List α) (n : ℕ) :
+    (l.map fun _ => n).sum = l.length * n := by
+  induction l with
+  | nil => simp
+  | cons a l ih =>
+      simp only [List.map_cons, List.sum_cons, ih, List.length_cons,
+        Nat.succ_mul]
+      omega
+
+/-- Amortized constructor-size bound for one normalized subtree: the additive
+term is exactly the budget of the introduce/forget path connecting the
+subtree to its parent bag. -/
+theorem normalizeAux_size_add_le (t : DecompTree V) (omega : ℕ) :
+    t.HasWidth omega →
+      (normalizeAux t).size + (2 * omega + 3) ≤ (3 * omega + 5) * t.size := by
+  induction t using DecompTree.induction_on with
+  | h bag children ih =>
+      intro hw
+      have hbag : bag.toFinset.card ≤ omega + 1 := hw.rootBag_card
+      cases children with
+      | nil =>
+          rw [normalizeAux_nil, size_node]
+          have hsize := InductiveNiceTree.closeToLeafOfList_size bag
+          simp only [List.map_nil, List.sum_nil, Nat.add_zero, Nat.mul_one]
+          omega
+      | cons c cs =>
+          rw [normalizeAux_cons, InductiveNiceTree.joinNonempty_size, size_node]
+          have hbranch : ∀ s ∈ c :: cs,
+              (InductiveNiceTree.changeRootOfList bag s.rootBag
+                (normalizeAux s)).size ≤
+                (normalizeAux s).size + (2 * omega + 2) := by
+            intro s hs
+            have h1 := InductiveNiceTree.changeRootOfList_size_le bag s.rootBag
+              (normalizeAux s)
+            have h2 : s.rootBag.toFinset.card ≤ omega + 1 :=
+              (hw.of_mem_children hs).rootBag_card
+            omega
+          -- head branch plus its path budget
+          have hhead : (InductiveNiceTree.changeRootOfList bag c.rootBag
+              (normalizeAux c)).size + 1 ≤ (3 * omega + 5) * c.size := by
+            have h1 := hbranch c (by simp)
+            have h2 := ih c (by simp) (hw.of_mem_children (by simp))
+            omega
+          -- tail branches plus the join nodes
+          have htail :
+              ((cs.map fun s => InductiveNiceTree.changeRootOfList bag
+                s.rootBag (normalizeAux s)).map InductiveNiceTree.size).sum +
+                cs.length ≤ (3 * omega + 5) * (cs.map size).sum := by
+            rw [List.map_map]
+            show (cs.map fun s => (InductiveNiceTree.changeRootOfList bag
+              s.rootBag (normalizeAux s)).size).sum + cs.length ≤ _
+            have hstep1 :
+                (cs.map fun s => (InductiveNiceTree.changeRootOfList bag
+                  s.rootBag (normalizeAux s)).size).sum ≤
+                  (cs.map fun s =>
+                    (normalizeAux s).size + (2 * omega + 2)).sum :=
+              List.sum_le_sum (fun s hs => hbranch s (by simp [hs]))
+            have hstep2 :
+                (cs.map fun s =>
+                  (normalizeAux s).size + (2 * omega + 3)).sum ≤
+                  (cs.map fun s => (3 * omega + 5) * s.size).sum :=
+              List.sum_le_sum (fun s hs =>
+                ih s (by simp [hs]) (hw.of_mem_children (by simp [hs])))
+            rw [List.sum_map_add] at hstep1 hstep2
+            rw [List.sum_map_mul_left] at hstep2
+            rw [sum_map_const] at hstep1
+            rw [sum_map_const] at hstep2
+            have hsplit : cs.length * (2 * omega + 3) =
+                cs.length * (2 * omega + 2) + cs.length := by
+              rw [show 2 * omega + 3 = (2 * omega + 2) + 1 by omega,
+                Nat.mul_add, Nat.mul_one]
+            omega
+          have hexpand : (3 * omega + 5) * (1 + (c.size + (cs.map size).sum)) =
+              (3 * omega + 5) + (3 * omega + 5) * c.size +
+                (3 * omega + 5) * (cs.map size).sum := by
+            rw [Nat.mul_add, Nat.mul_add, Nat.mul_one]
+            omega
+          simp only [List.map_cons, List.sum_cons, List.length_map]
+          omega
+
 /-- The complete computable normalization: an empty root path is attached
 above the normalized rose tree.  Computable counterpart of
 `RootedTreeDecomposition.normalizeCode`. -/
 def normalizeCode (t : DecompTree V) : InductiveNiceTree V ∅ :=
   InductiveNiceTree.castRoot (by simp)
     (InductiveNiceTree.changeRootOfList [] t.rootBag (normalizeAux t))
+
+/-- The computable normalizer satisfies the TeX node bound
+`|N(T*)| ≤ (3ω + 5) · |N(T)|`. -/
+theorem normalizeCode_size_le (t : DecompTree V) (omega : ℕ)
+    (hw : t.HasWidth omega) :
+    t.normalizeCode.size ≤ (3 * omega + 5) * t.size := by
+  unfold normalizeCode
+  rw [InductiveNiceTree.size_castRoot, InductiveNiceTree.changeRootOfList_size]
+  have h1 := normalizeAux_size_add_le t omega hw
+  have h2 : (t.rootBag.dedup.filter (· ∉ ([] : List V))).length ≤ omega + 1 := by
+    have hf := List.length_filter_le
+      (fun x => decide (x ∉ ([] : List V))) t.rootBag.dedup
+    have hd := List.dedup_length_eq_card_toFinset t.rootBag
+    have hc := hw.rootBag_card
+    omega
+  have h3 : ((([] : List V)).dedup.filter (· ∉ t.rootBag)).length = 0 := by
+    simp
+  omega
 
 theorem normalizeCode_occurs_iff (t : DecompTree V) (v : V) :
     t.normalizeCode.Occurs v ↔ t.Occurs v := by

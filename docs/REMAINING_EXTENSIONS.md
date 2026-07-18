@@ -136,12 +136,17 @@ meaningful after at least §1.1–1.2.
 
 ## 5. Smaller formal-hygiene items
 
-- **Node bound for the executable normalizer** — **S/M**.  The
-  proof-facing normalizer has the TeX bound
-  `|N(T*)| ≤ (3ω + 5)·|N(T)|`; `DecompTree.normalizeCode` has no size
-  bound yet.  The ingredients (`changeRootOfList` size lemmas mirroring
-  `changeRoot_size`, a `DecompTree.size` measure) are routine; this was
-  deliberately left out of the priority-2 block as a stretch item.
+- ~~**Node bound for the executable normalizer**~~ — **done**
+  (`DecompTree.normalizeCode_size_le` in
+  [`execNormalization.lean`](../GraphMSO/Decomp/execNormalization.lean)).
+- ~~**Cost instrumentation of the new stages**~~ — **done**
+  ([`Executable/pipelineCost.lean`](../GraphMSO/Executable/pipelineCost.lean)):
+  `checkMSO2ExecCosted` charges all five pipeline stages under a documented
+  policy, with the exact stage sum and a closed-form total bound
+  (`checkMSO2ExecCosted_cost_le`).  Note the incidence-walk term is
+  `n · (m + 1)` — the pending-dart threading is quadratic, so a linear-time
+  claim for the full front end would additionally need a better threading
+  data structure.
 - **Merging `changeRoot` with `changeRootOfList`** — **S**.  The
   `Finset`-presented `changeRoot` could be redefined as
   `changeRootOfList` on `toList`s, deriving its five lemmas instead of
@@ -149,11 +154,6 @@ meaningful after at least §1.1–1.2.
   [`normalization.lean`](../GraphMSO/Decomp/normalization.lean)).  Pure
   refactor; touches stable proof-facing code, so it should ride on a full
   build gate.
-- **Cost instrumentation of the new stages** — **M**.  `Costed` versions
-  of `incidenceTree`, `normalizeCode`, and `greedyColoring` in the style
-  of [`Executable/cost.lean`](../GraphMSO/Executable/cost.lean), if the
-  abstract linear-time statement is ever to cover the full front end
-  rather than the core pass only.
 
 ## Recommended sequences
 

@@ -1157,6 +1157,14 @@ private theorem toFinset_sdiff_filter_union_eq (A B : List V) :
   simp [List.mem_dedup]
   tauto
 
+/-- The deduplicated length of a list is the cardinality of its finset. -/
+theorem _root_.List.dedup_length_eq_card_toFinset {α : Type*} [DecidableEq α]
+    (l : List α) : l.dedup.length = l.toFinset.card := by
+  rw [← List.toFinset_card_of_nodup l.nodup_dedup]
+  congr 1
+  ext x
+  simp [List.mem_dedup]
+
 /-- Change the root bag from the list-presented bag `B` to the list-presented
 bag `A` by first forgetting `B \ A` and then introducing `A \ B`.  Computable
 counterpart of `changeRoot`. -/
@@ -1206,6 +1214,28 @@ theorem changeRootOfList_occurs_iff (A B : List V)
   unfold changeRootOfList
   rw [occurs_castRoot_iff, introduceList_occurs_iff, forgetList_occurs_iff]
   simp [List.mem_filter, List.mem_dedup]
+
+/-- Exact constructor cost of a list-presented root change. -/
+theorem changeRootOfList_size (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) :
+    (changeRootOfList A B tree).size =
+      tree.size + (B.dedup.filter (· ∉ A)).length +
+        (A.dedup.filter (· ∉ B)).length := by
+  unfold changeRootOfList
+  rw [size_castRoot, introduceList_size, forgetList_size]
+
+/-- The introduce/forget chain of a list-presented root change is bounded by
+the two endpoint bag cardinalities. -/
+theorem changeRootOfList_size_le (A B : List V)
+    (tree : InductiveNiceTree V (B.toFinset : Set V)) :
+    (changeRootOfList A B tree).size ≤
+      tree.size + B.toFinset.card + A.toFinset.card := by
+  rw [changeRootOfList_size]
+  have hB := (List.length_filter_le (· ∉ A) B.dedup).trans
+    (le_of_eq (List.dedup_length_eq_card_toFinset B))
+  have hA := (List.length_filter_le (· ∉ B) A.dedup).trans
+    (le_of_eq (List.dedup_length_eq_card_toFinset A))
+  omega
 
 /-- A list-presented root change preserves occurrence connectedness when
 vertices introduced above the reused child do not already occur in it. -/
@@ -1268,6 +1298,15 @@ theorem closeToLeafOfList_isBagColoring (A : List V) {k : ℕ}
     (closeToLeafOfList A).IsBagColoring color :=
   changeRootOfList_isBagColoring _ _ _
     ((isBagColoring_castRoot_iff _ _ _).2 (leaf_isBagColoring color)) hA
+
+/-- Exact constructor cost of closing a list-presented bag to a leaf. -/
+theorem closeToLeafOfList_size (A : List V) :
+    (closeToLeafOfList A).size ≤ A.toFinset.card + 1 := by
+  rw [closeToLeafOfList]
+  have h := changeRootOfList_size_le A []
+    (castRoot (by simp) (InductiveNiceTree.leaf : InductiveNiceTree V ∅))
+  simp [size, size_castRoot] at h
+  omega
 
 end
 

@@ -35,6 +35,20 @@ def rootBag : DecompTree V → List V
     (node bag children).rootBag = bag :=
   rfl
 
+/-- Number of rose-tree nodes. -/
+def size : DecompTree V → ℕ
+  | node _ children => 1 + (children.attach.map fun c => size c.1).sum
+decreasing_by
+  have := List.sizeOf_lt_of_mem c.2
+  simp
+  omega
+
+theorem size_node (bag : List V) (children : List (DecompTree V)) :
+    (node bag children).size = 1 + (children.map size).sum := by
+  simp only [size]
+  congr 2
+  exact List.attach_map_val (l := children) (f := size)
+
 /-- Rose-tree induction with the child hypotheses gathered by membership. -/
 @[elab_as_elim]
 theorem induction_on {motive : DecompTree V → Prop} (t : DecompTree V)

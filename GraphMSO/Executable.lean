@@ -11,5 +11,6 @@ import GraphMSO.Executable.translation
 import GraphMSO.Executable.modelCheck
 import GraphMSO.Executable.incidence
 import GraphMSO.Executable.cost
+import GraphMSO.Executable.pipelineCost
 import GraphMSO.Executable.stateComplexity
 import GraphMSO.Executable.examples

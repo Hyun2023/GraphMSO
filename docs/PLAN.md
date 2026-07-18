@@ -23,7 +23,7 @@ Verified on 2026-07-17, including normalization, decoding, state complexity,
 the executable rose-tree normalizer, and the end-to-end MSO₂ executable
 pipeline:
 
-- The full `lake build` succeeds (3167 jobs), including the
+- The full `lake build` succeeds (3168 jobs), including the
   `GraphMSO.Executable` umbrella and the root `GraphMSO` module.
 - All twelve maintained executable `#guard` smoke tests pass during the
   build.
@@ -192,6 +192,19 @@ Completed on 2026-07-17:
   Boolean answer agrees with `Semantics.Satisfies`.  The `choose`-based
   `checkMSO2` remains as the proof-facing variant for math-side
   decomposition inputs.
+- Combined pipeline cost (`GraphMSO/Executable/pipelineCost.lean`):
+  `checkMSO2ExecCosted` charges every stage of the pipeline — vertex and
+  dart enumeration, the incidence walk, normalization (one operation per
+  constructed node, using the new executable node bound
+  `normalizeCode_size_le : |N(T*)| ≤ (3ω + 5) · |N(T)|`), the greedy
+  coloring walk, and the core `3n + 2` pass — in one abstract counter.
+  `checkMSO2ExecCosted_value` identifies its value with `checkMSO2Exec`,
+  `checkMSO2ExecCosted_cost` gives the exact stage sum, and
+  `checkMSO2ExecCosted_cost_le` bounds the total by a closed form in the
+  rose-tree size, the enumerated pair/dart counts, and the width.
+  Supporting size accounting: `DecompTree.size`, exact
+  `changeRootOfList_size`, and conservation of nodes plus pending darts
+  through the incidence walk (`incidenceAux_size`).
 - Executable width-sized bag coloring (`GraphMSO/Decomp/execColoring.lean`):
   `DecompTree.greedyColoring` walks the rose tree root-first and gives every
   vertex, at its topmost bag, the first color unused by the already-colored
