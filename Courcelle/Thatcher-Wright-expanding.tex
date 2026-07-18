@@ -2836,6 +2836,341 @@ closure, and Theorem~\ref{thm:tw-emptiness} decides the required emptiness
 question.  Therefore the truth of \(S\) is decidable.
 \end{proof}
 
+\section{The Automata-to-MSO Converse for Ordered Finite Trees}
+\label{sec:automata-to-mso-converse}
+
+This section records the converse direction that is useful for completing the
+usual B\"uchi--Elgot--Trakhtenbrot-style equivalence on finite trees.  It also
+separates that converse carefully from what is actually proved in the source
+paper.
+
+\begin{remark}[Relation to \TW{} \S3]
+\label{rem:tw3-scope}
+\TW{} Section~3 does \emph{not} prove that every recognizable tree language is
+MSO-definable.  Its Theorems~8 and~9 prove the algebraic equivalence
+\[
+  \text{recognizable}=\text{generalized regular},
+\]
+expanded in Theorem~\ref{thm:tw-recognizable-regular} above.  In Section~4 the
+paper proves the other logical direction, definable implies recognizable.  It
+mentions a related definability result of Wright, but does not give the direct
+finite-run argument below.  Thus the present section is a standard supplement
+to \TW{}, not a transcription of a missing proof from their Section~3.
+\end{remark}
+
+\subsection{Why the unordered parent vocabulary is insufficient}
+
+There is a small but essential vocabulary issue.  A deterministic bottom-up
+automaton on binary terms receives an \emph{ordered} pair of child states.  In
+contrast, a structure containing only the parent relation
+\[
+  \operatorname{parent}(x,y)
+  \quad\Longleftrightarrow\quad
+  \child_1(x,y)\vee\child_2(x,y)
+\]
+forgets which child occupies which slot.  Consequently the following tempting
+statement is false:
+
+\begin{quote}
+Every language recognized by an ordered binary-tree automaton is definable
+over the original node labels using only \(\operatorname{parent}\).
+\end{quote}
+
+Indeed, take a one-letter alphabet \(\{a\}\) and the two trees
+\[
+  t_L=a(a(\bot,\bot),\bot),
+  \qquad
+  t_R=a(\bot,a(\bot,\bot)).
+\]
+After absent subtrees are removed, their parent-and-label structures are
+isomorphic.  Hence every MSO sentence over that vocabulary has the same truth
+value on them.  On the other hand, let the state set be \(\{0,1\}\), put
+\[
+  q_\bot=0,
+  \qquad
+  \delta_a(q_0,q_1)=1-q_1,
+\]
+and accept state \(1\).  This automaton accepts \(t_L\) and rejects \(t_R\).
+Thus an ordered-child predicate, or information equivalent to it, is
+mathematically necessary.
+
+For the Lean development we keep the existing syntax, whose only edge atom is
+\(\operatorname{parent}\), and put the missing order information into the
+labels.  This is purely additive and is equivalent to using ordered-child
+atoms.
+
+\subsection{Canonical direction labels}
+
+Let \(A\) be the alphabet of real node labels and put
+\[
+  D=\{\mathsf{root},\mathsf{left},\mathsf{right}\},
+  \qquad
+  A^{\mathrm{dir}}=A\times D.
+\]
+For a possibly empty ordered binary tree \(t\), let \(t^{\mathrm{dir}}\) be the
+structure whose domain is the set of real nodes of \(t\), whose edge relation
+is the unordered parent relation, and whose label at a node \(x\) is
+\[
+  (a(x),d(x)),
+\]
+where \(d(x)=\mathsf{root}\) at the root and otherwise records whether \(x\)
+is the left or right child of its parent.  This decoration is canonical: it
+adds no choice and does not change the underlying nodes.
+
+In the existing \(\operatorname{parent}\)-and-\(\operatorname{labelMem}\)
+language define
+\begin{equation}
+\label{eq:ordered-child-from-direction}
+\begin{aligned}
+  E_L(x,y)
+    &:=\operatorname{parent}(x,y)\wedge
+       \operatorname{labelMem}(A\times\{\mathsf{left}\},y),\\
+  E_R(x,y)
+    &:=\operatorname{parent}(x,y)\wedge
+       \operatorname{labelMem}(A\times\{\mathsf{right}\},y).
+\end{aligned}
+\end{equation}
+On a canonically decorated tree these formulas are exactly \(\child_1\) and
+\(\child_2\), respectively.  Therefore a formula using ordered-child atoms
+can equivalently be written in the existing Lean syntax after the canonical
+direction decoration.
+
+\subsection{The run sentence}
+
+Let
+\[
+  \Aut=(Q,q_\bot,\delta,F)
+\]
+be a deterministic bottom-up automaton on possibly empty ordered binary
+\(A\)-trees.  Thus \(Q\) is finite, \(q_\bot\in Q\) is the state of an absent
+subtree,
+\[
+  \delta:A\times Q\times Q\longrightarrow Q
+\]
+is the node transition, and \(F\subseteq Q\) is the accepting set.  Enumerate
+the states without repetition as
+\[
+  Q=\{q_0,\ldots,q_{m-1}\}
+\]
+and introduce one monadic second-order variable \(X_i\) for each \(q_i\).
+
+First say that these variables partition the real nodes:
+\begin{equation}
+\label{eq:run-state-partition}
+\begin{split}
+  \operatorname{Part}(\bar X):={}&
+  \forall x\,
+    \bigvee_{i<m}
+      \left(
+        X_i(x)\wedge
+        \bigwedge_{\substack{j<m\\j\ne i}}\neg X_j(x)
+      \right).
+\end{split}
+\end{equation}
+
+Because absent children are not elements of the MSO domain, they need a
+special clause.  For \(d\in\{L,R\}\), define
+\begin{equation}
+\label{eq:child-carries-state}
+  C_{d,i}(x):=
+    \bigl(\exists y\,(E_d(x,y)\wedge X_i(y))\bigr)
+    \vee
+    \bigl(q_i=q_\bot\wedge\neg\exists y\,E_d(x,y)\bigr).
+\end{equation}
+Thus \(C_{d,i}(x)\) says that the subtree in slot \(d\) has state \(q_i\):
+either the child is present and belongs to \(X_i\), or the child is absent and
+\(q_i\) is the distinguished absent-subtree state.
+Here \(q_i=q_\bot\) is evaluated while constructing the sentence and is
+replaced by truth or falsity; it is not an additional object-language atom.
+
+For \(i,k,j<m\), let
+\begin{equation}
+\label{eq:transition-letter-class}
+  B_{i,k,j}
+  =\{(a,d)\in A^{\mathrm{dir}}:
+       \delta(a,q_i,q_k)=q_j\}.
+\end{equation}
+The direction component \(d\) is deliberately unrestricted here; it is the
+node's original label \(a\) that determines the transition.  Transition
+consistency is the sentence
+\begin{equation}
+\label{eq:run-transition-consistency}
+\begin{split}
+  \operatorname{Cons}(\bar X):={}&
+  \forall x\,
+  \bigvee_{i,k,j<m}
+  \bigl(
+    C_{L,i}(x)\wedge C_{R,k}(x)\wedge
+    \operatorname{labelMem}(B_{i,k,j},x)\wedge X_j(x)
+  \bigr).
+\end{split}
+\end{equation}
+All disjunctions and conjunctions here are finite because \(Q\) is finite.
+Notice that \(A\) itself need not be enumerated: the atom
+\(\operatorname{labelMem}(B_{i,k,j},x)\) directly names the corresponding
+letter class.
+
+Define the root formula and root-acceptance condition by
+\[
+  \operatorname{Root}(x):=
+    \neg\exists y\,\operatorname{parent}(y,x),
+\]
+and
+\begin{equation}
+\label{eq:run-root-acceptance}
+  \operatorname{Acc}(\bar X):=
+    \exists x\left(
+      \operatorname{Root}(x)\wedge
+      \bigvee_{\substack{i<m\\q_i\in F}}X_i(x)
+    \right).
+\end{equation}
+Likewise, the displayed accepting-state disjunction is constructed by retaining
+exactly those indices for which the meta-level condition \(q_i\in F\) holds.
+For a nonempty input, put
+\begin{equation}
+\label{eq:nonempty-run-sentence}
+  \operatorname{Run}_\Aut:=
+  \exists X_0\cdots\exists X_{m-1}\,
+  \bigl(
+    \operatorname{Part}(\bar X)\wedge
+    \operatorname{Cons}(\bar X)\wedge
+    \operatorname{Acc}(\bar X)
+  \bigr).
+\end{equation}
+
+Finally, let
+\[
+  \operatorname{Empty}:=\neg\exists x\,(x=x).
+\]
+The formula for all possibly empty binary trees is
+\begin{equation}
+\label{eq:automaton-mso-sentence}
+  \Phi_\Aut:=
+  \begin{cases}
+    \operatorname{Empty}\vee\operatorname{Run}_\Aut,
+      & q_\bot\in F,\\
+    \operatorname{Run}_\Aut,
+      & q_\bot\notin F.
+  \end{cases}
+\end{equation}
+The empty-tree disjunct is necessary because the MSO domain contains only real
+nodes, whereas the automaton assigns \(q_\bot\) to the empty tree.
+
+\begin{theorem}[Automaton run encoded in MSO]
+\label{thm:automaton-to-mso-ordered-binary}
+For every deterministic bottom-up automaton \(\Aut\) on ordered binary
+\(A\)-trees and every possibly empty ordered binary tree \(t\),
+\begin{equation}
+\label{eq:automaton-mso-correctness}
+  t^{\mathrm{dir}}\models\Phi_\Aut
+  \quad\Longleftrightarrow\quad
+  h_\Aut(t)\in F.
+\end{equation}
+The sentence \(\Phi_\Aut\) uses only equality,
+\(\operatorname{parent}\), \(\operatorname{labelMem}\), Boolean operations,
+and first- and second-order quantification.
+\end{theorem}
+
+\begin{proof}
+If \(t\) is empty, its decorated model has empty domain, so
+\(\operatorname{Empty}\) is true and \(\operatorname{Run}_\Aut\) is false:
+the latter contains the root-existence condition
+\eqref{eq:run-root-acceptance}.  Also \(h_\Aut(t)=q_\bot\).  Thus
+\eqref{eq:automaton-mso-sentence} gives
+\eqref{eq:automaton-mso-correctness} immediately.
+
+Assume from now on that \(t\) is nonempty.  For every real node \(x\), write
+\(t\mathbin{\upharpoonright}x\) for the ordered subtree rooted at \(x\), and
+define
+\begin{equation}
+\label{eq:canonical-run-state-sets}
+  X_i^*=
+  \{x:h_\Aut(t\mathbin{\upharpoonright}x)=q_i\}.
+\end{equation}
+The deterministic run gives exactly one state to every subtree, and the
+enumeration of \(Q\) is without repetition.  Hence the sets \(X_i^*\) satisfy
+\(\operatorname{Part}\).
+
+Fix a node \(x\).  If its left child exists and its subtree has state \(q_i\),
+then that child belongs to \(X_i^*\), and the first disjunct of
+\eqref{eq:child-carries-state} holds.  If the child is absent, the second
+disjunct holds exactly for the index of \(q_\bot\).  Thus there is a unique
+\(i\) such that \(C_{L,i}(x)\) holds, and
+it denotes the automaton state supplied to the left input of \(\delta\).
+The same argument gives the unique right state \(q_k\).  If \(x\) has original
+letter \(a\), its run state is
+\[
+  q_j=\delta(a,q_i,q_k).
+\]
+Consequently its decorated label lies in \(B_{i,k,j}\), and
+\(x\in X_j^*\).  This proves every instance of
+\eqref{eq:run-transition-consistency}, so the canonical run sets satisfy
+\(\operatorname{Cons}\).
+
+If \(h_\Aut(t)\in F\), the root belongs to \(X_j^*\) for an accepting state
+\(q_j\), and therefore \eqref{eq:run-root-acceptance} holds.  The sets
+\eqref{eq:canonical-run-state-sets} witness all second-order quantifiers in
+\eqref{eq:nonempty-run-sentence}, proving the right-to-left implication of
+\eqref{eq:automaton-mso-correctness}.
+
+Conversely, suppose the decorated tree satisfies
+\(\operatorname{Run}_\Aut\), and choose witnessing sets
+\(X_0,\ldots,X_{m-1}\).  We prove, by structural induction from the leaves
+toward the root, that
+\begin{equation}
+\label{eq:run-state-uniqueness}
+  x\in X_i
+  \quad\Longleftrightarrow\quad
+  h_\Aut(t\mathbin{\upharpoonright}x)=q_i
+\end{equation}
+for every real node \(x\) and every \(i<m\).
+
+Suppose the claim is known for the children of \(x\).  By the partition
+formula there is a unique \(j\) with \(x\in X_j\).  For each present child,
+the induction hypothesis and \eqref{eq:run-state-partition} identify the unique
+state set containing that child.  For an absent child,
+\eqref{eq:child-carries-state} identifies its state as \(q_\bot\).  Hence there
+are unique indices \(i,k\) for which \(C_{L,i}(x)\) and \(C_{R,k}(x)\) hold.
+Equation~\eqref{eq:run-transition-consistency}, together with the uniqueness in
+\eqref{eq:run-state-partition}, forces
+\[
+  q_j=\delta(a(x),q_i,q_k).
+\]
+This is exactly the recursive definition of the bottom-up state of the
+subtree at \(x\), proving \eqref{eq:run-state-uniqueness}.  The leaf case is the
+same argument with both children absent, so the induction is complete.
+
+Apply \eqref{eq:run-state-uniqueness} at the root.  Formula
+\eqref{eq:run-root-acceptance} says that its unique state belongs to \(F\),
+hence \(h_\Aut(t)\in F\).  This proves the left-to-right implication.
+\end{proof}
+
+\begin{corollary}[Recognizable implies MSO-definable, ordered version]
+Every recognizable language of finite ordered binary trees is MSO-definable
+on its canonical direction-labelled representation.  Equivalently, it is
+MSO-definable over the usual vocabulary with \(\child_1\) and \(\child_2\).
+Together with the compilation theorem, this yields the full equivalence
+between MSO-definability and recognizability for finite ordered labelled
+binary trees.
+\end{corollary}
+
+\begin{proof}
+Choose a deterministic bottom-up automaton recognizing the language and apply
+Theorem~\ref{thm:automaton-to-mso-ordered-binary}.  Formula
+\eqref{eq:ordered-child-from-direction} translates between direction labels
+plus \(\operatorname{parent}\) and the usual ordered child predicates.  The
+reverse implication is
+Theorem~\ref{thm:mso-tree-automata}.
+\end{proof}
+
+The same construction works for any finite ranked alphabet: tag every
+non-root node by its child index, introduce one state variable per automaton
+state, and replace \eqref{eq:child-carries-state}--
+\eqref{eq:run-transition-consistency} by one child-state clause for each
+argument slot of the node's ranked symbol.  The binary specialization above matches the
+\texttt{BinTree}/padded-automaton representation used by the Lean project and
+makes the treatment of absent children explicit.
+
 \paragraph{Path choice for the Lean development.}
 There are two possible routes from \TW{} to
 Theorem~\ref{thm:mso-tree-automata}.  The literal \TW{} route encodes weak MSO

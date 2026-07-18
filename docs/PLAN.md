@@ -1,6 +1,6 @@
 # GraphMSO Plan
 
-Last status check: 2026-07-17.
+Last status check: 2026-07-19.
 
 This project formalizes the graph-theoretic and logical infrastructure needed
 for Courcelle's theorem in Lean 4.  The main proof route follows
@@ -313,8 +313,9 @@ Completed, following `Courcelle/Thatcher-Wright-expanding.tex`:
 
 The atomic automata and full MSO-to-automaton compilation induction are also
 complete; they are summarized in Phase 5 below.  The executable decision
-procedure is complete in Phase 7 below.  The regularity characterization
-(TW §3) is a possible extension, not part of the active Courcelle pipeline.
+procedure is complete in Phase 7 below.  The algebraic regularity
+characterization (TW §3) and the separate automata-to-MSO converse are possible
+theory extensions, not parts of the active Courcelle pipeline.
 
 ## Completed Roadmap
 
@@ -560,6 +561,30 @@ Done beyond the TW §2 core:
 Phase 5 is complete at the theorem level.  Phase 6 supplies the abstract
 linear-time statement, and Phase 7 supplies the verified executable checker.
 
+### Deferred Theory Extension: Recognizable to MSO-Definable
+
+The converse direction is intentionally postponed; it is not needed for
+Courcelle's theorem or for the executable MSO2 checker.  A complete paper proof
+is now recorded in Section ``The Automata-to-MSO Converse for Ordered Finite
+Trees'' of
+[`Courcelle/Thatcher-Wright-expanding.tex`](../Courcelle/Thatcher-Wright-expanding.tex).
+
+This extension must not be stated as a direct formalization of Thatcher--Wright
+Section 3: that section proves recognizable iff generalized regular, whereas
+the automaton-to-MSO run encoding is a separate standard argument.  Moreover,
+the current `TreeLanguage.Formula` has only the unordered `parent` atom, while
+`TreeAutomaton` and `ExecTreeAutomaton` have ordered left/right transitions.
+Thus the proposed theorem over the original labels is false in general.
+
+When this Lean extension is resumed, use a purely additive canonical
+direction-label encoding: label each real node by its original letter together
+with `root`, `left`, or `right`, define the two ordered-child relations using
+`parent` plus `labelMem`, and construct one second-order state set per finite
+automaton state.  The correctness theorem must cover the state partition,
+transition consistency, root acceptance, and the empty-tree/absent-child state.
+Its target statement is satisfaction of the generated sentence on the
+direction-labelled model iff the deterministic bottom-up automaton accepts.
+
 ### Phase 6: Cost Model and Linear-Time Statements
 
 Goal: make the linear-time part of the Courcelle statement precise without
@@ -648,8 +673,9 @@ Courcelle development and the fully computable end-to-end pipeline
 
 Possible future extensions are engineering or scope expansions —
 performance of complete `checkMSO2Exec` runs (currently manual stress
-tests rather than build-time guards), decidable validity checking, TW §3
-regularity, benchmarks, and additional front-end graph formats.  They are
+tests rather than build-time guards), decidable validity checking, the
+deferred automata-to-MSO converse described above, TW §3 algebraic regularity,
+benchmarks, and additional front-end graph formats.  They are
 catalogued with concrete plans in
 [`REMAINING_EXTENSIONS.md`](REMAINING_EXTENSIONS.md); the current
 executable pipeline is documented in
