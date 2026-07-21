@@ -1,0 +1,195 @@
+\documentclass[11pt]{article}
+
+%======== Packages ========================
+%======== Page style
+\usepackage[
+	a4paper,
+	margin=1in
+]{geometry}
+\usepackage{setspace}
+\usepackage{sectsty} % for \allsectionsfont
+\usepackage{titlesec}
+\usepackage{appendix}
+
+%======== Math
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+
+
+%======== Cross-referencing and bibliography
+\usepackage[
+	setpagesize=false,
+	colorlinks=true,
+	linkcolor=BrickRed,
+        citecolor=OliveGreen,
+        urlcolor=black,
+	pdfencoding=auto,
+	psdextra,
+]{hyperref}
+\usepackage{cleveref}
+
+
+%======== Miscellaneous
+\usepackage{etoolbox} % for \AtBeginEnvironment
+\usepackage[shortlabels]{enumitem}
+\usepackage{xparse} % for \mins
+
+%======== Graphical
+\usepackage{graphicx}
+\usepackage[dvipsnames]{xcolor}
+\usepackage{tikz}
+
+%======== Revising draft
+\usepackage{todonotes}
+\usepackage[
+    % defaultcolor=orange,
+    deletedmarkup=sout,
+    commentmarkup=uwave,
+    authormarkuptext=name
+]{changes}
+
+\usepackage{comment}
+
+%======== Settings ========================
+%======== Miscellaneous
+\onehalfspacing
+
+\setlist[enumerate,1]{label=(\arabic*), ref=(\arabic*)}
+\setlist[enumerate,3]{label=(\roman*), ref=(\roman*)}
+
+\allsectionsfont{\boldmath} % embolden math in title
+
+\renewcommand*{\thefootnote}{\fnsymbol{footnote}}
+
+\titlelabel{\thetitle.\quad}
+
+
+%======== Theorem-like environments
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{question}[theorem]{Question}
+
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem*{claim*}{Claim}
+\renewcommand{\theclaim}{\arabic{claim}}
+\makeatletter
+\newenvironment{claimproof}[1][Proof]{\par
+	\pushQED{\qed}%
+	\renewcommand{\qedsymbol}{$\blacksquare$}
+	\normalfont \topsep6\p@\@plus6\p@\relax
+	\trivlist
+	\item[\hskip\labelsep
+	\textit{#1}\@addpunct{.}~]\ignorespaces
+}{%
+	\popQED\endtrivlist\@endpefalse
+}
+\makeatother
+
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem*{definition*}{Definition}
+%\newtheorem{remark}[]{Remark}
+
+\newenvironment{proofsketch}[1][Proof sketch]{%
+	\begin{proof}[#1]
+}{%
+	\end{proof}
+}
+
+
+
+%======== Math symbols
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\ZZ}{\mathbb{Z}}
+
+\newcommand{\calA}{\mathcal{A}}
+\newcommand{\calB}{\mathcal{B}}
+\newcommand{\calC}{\mathcal{C}}
+\newcommand{\calD}{\mathcal{D}}
+\newcommand{\calF}{\mathcal{F}}
+\newcommand{\calG}{\mathcal{G}}
+\newcommand{\calH}{\mathcal{H}}
+\newcommand{\calL}{\mathcal{L}}
+\newcommand{\calM}{\mathcal{M}}
+\newcommand{\calP}{\mathcal{P}}
+\newcommand{\calQ}{\mathcal{Q}}
+\newcommand{\calR}{\mathcal{R}}
+\newcommand{\calS}{\mathcal{S}}
+\newcommand{\calT}{\mathcal{T}}
+\newcommand{\calV}{\mathcal{V}}
+\newcommand{\calW}{\mathcal{W}}
+\newcommand{\calX}{\mathcal{X}}
+\newcommand{\calY}{\mathcal{Y}}
+\newcommand{\calZ}{\mathcal{Z}}
+
+
+
+
+\newcommand{\ve}{\varepsilon}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
+\newcommand{\eps}{\varepsilon}
+
+
+
+
+% definition equality sign
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\eqdef}{\eqqcolon}
+
+
+
+
+
+%======== Paper info
+\title{}
+
+\author{
+}
+
+
+
+\usepackage[square,sort,comma,numbers]{natbib}
+\setlength{\bibsep}{0pt plus 0.2ex}
+
+%======== Beginning of the document ========================
+\begin{document}
+\maketitle
+
+\begin{abstract}
+    Courcelle's theorem is a fundamental result in algorithmic graph theory and parameterized complexity, which states that any graph property definable in monadic second-order logic of the second kind (MSO$_2$) can be decided in linear time on graphs of bounded treewidth. 
+    In this paper, we present a self-contained full formalization of Courcelle's theorem by Lean 4, a theorem prover based on dependent type theory.
+\end{abstract}
+
+\section{Introduction}
+
+In algorithmic graph theory, the study of graph properties and their computational complexity is a central topic. 
+On the one hand, many fundamental graph problems, such as \textsc{Clique}, \textsc{$k$-Coloring}, and \textsc{Hamiltonian Cycle}, are known to be NP-hard in general.
+For such problems, it is natural to consider restricted classes of graphs, such as planar graphs or graphs of bounded degree, and investigate whether these restrictions lead to more efficient algorithms.
+A systematic approach to this line of research is to consider the parameterized complexity of graph problems, where the input consists of a graph $G$ and a parameter $k$, and the goal is to design algorithms whose running time is efficient with respect to the size of the input graph, but may depend on the parameter $k$ in exponentially or even worse ways.
+
+In more formal terms, a parameterized problem is a decision problem whose instances are pairs $(x, k)$, where $x$ is the main part of the input and $k$ is the parameter. We consider the input size as $|x| + k$.
+We say that a parameterized problem is \emph{fixed-parameter tractable} (FPT) if there exists an algorithm that solves the problem in time $f(k) \cdot (|x| + k)^{O(1)}$, where $f$ is a computable function depending only on $k$, and a problem is \emph{XP} if it can be solved in time $f(k) \cdot (|x| + k)^{g(k)}$ for some computable functions $f$ and $g$.
+We also say an algorithm is \emph{FPT} if it runs in FPT time, and \emph{XP} if it runs in XP time.
+The fundamental question in parameterized complexity is to determine whether a given problem is FPT. 
+For instance, the \textsc{Clique} is FPT if we parameterized the problem by the maximum degree of the input graph, but it is not FPT under the Exponential Time Hypothesis (ETH)\footnote{Exponential Time Hypothesis (ETH) asserts that 3-SAT cannot be solved in $2^{o(n)}$ time, where $n$ is the number of variables.} if we parameterized the problem by the size of the clique that we want to find.
+
+\emph{Tree-width} is a fundamental graph parameter that measures how close a graph is to being a tree.
+It has been extensively studied in graph theory especially its important role in the graph minor theory by Robertson and Seymour.
+See Section~\ref{} for a formal definition of tree-width.
+Courcelle's theorem is an algorithmic meta-theorem that states that any graph property definable in monadic second-order logic of the second kind (MSO$_2$) is fixed-parameter tractable when parameterized by the tree-width of the input graph.
+\begin{theorem}
+    Let $\phi$ be an MSO$_2$ formula. Then there exists a computable function $f$ such that for any graph $G$ of tree-width at most $k$ we can decide whether $G \models \phi$ in time $f(k, |\phi|) \cdot |G|$.
+\end{theorem}
+This captures a wide range of graph problems including \textsc{Hamilton Cycle}, \text{$k$-Coloring}, and \textsc{$K_r$-factor}, which are all NP-hard in general.
+
+We present a self-contained full formalization of Courcelle's theorem by Lean 4 without any assumption on the external theorems.
+
+\end{document}

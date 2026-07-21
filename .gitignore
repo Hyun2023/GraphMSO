@@ -18,6 +18,8 @@
 *.toc
 *.blg
 *.xdv
+*.soc
+*.loc
 !/Courcelle/tree_decomp_and_tree_automata.pdf
 !/Courcelle/Thatcher-Wright.pdf
 
