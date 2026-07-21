@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(./build.sh Thatcher-Wright-expanding-issues.tex)",
-      "Bash(mdls -name kMDItemNumberOfPages Thatcher-Wright-expanding-issues.pdf)"
+      "Bash(mdls -name kMDItemNumberOfPages Thatcher-Wright-expanding-issues.pdf)",
+      "Bash(rm -f Lean_Basics.aux Lean_Basics.log Lean_Basics.out Lean_Basics.toc && ls)"
+    ],
+    "additionalDirectories": [
+      "/Users/haesongseo/Desktop/GraphMSO/Lean_explain"
     ]
   }
 }
