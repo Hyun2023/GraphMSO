@@ -1,0 +1,867 @@
+\documentclass[11pt]{article}
+
+\usepackage{kotex}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{remark}[definition]{Remark}
+\theoremstyle{plain}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{corollary}[definition]{Corollary}
+
+\newcommand{\MSO}{\mathrm{MSO}}
+\newcommand{\lean}[1]{\texttt{#1}}
+\newcommand{\leanfile}[1]{\texttt{#1}}
+\newcommand{\TW}{Thatcher--Wright}
+
+\title{GraphMSO Lean 형식화 해설 IV: Tree Automata}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+\section{개요}
+\label{aut:sec:overview}
+
+\leanfile{Lean\_MSO.tex}는 graph 위의 문제를 tree $\MSO$ sentence의 문제로
+바꾸는 데까지 갔다. 이 문서는 그 sentence를 \emph{tree automaton}으로
+컴파일한다. 참조 문서는 \leanfile{Courcelle/Thatcher-Wright-expanding.tex}이며,
+목표는 그 Theorem \lean{thm:mso-tree-automata} (강의노트 Theorem 26)이다.
+
+\begin{theorem}[목표]
+\label{aut:thm:goal}
+유한 alphabet $\Sigma$에 대해, 모든 tree $\MSO$ sentence $\varphi$에 대해
+$\varphi$를 만족하는 $\Sigma$-tree들의 집합은 recognizable하다.
+\end{theorem}
+
+이 목표에 도달하려면 두 개의 간극을 메워야 한다. 둘 다 \emph{표현의} 간극이며,
+수학적 내용의 간극이 아니다.
+
+\begin{itemize}
+  \item \textbf{순서 없음 $\to$ 순서 있음.} \leanfile{Lean\_MSO.tex}의
+    $\Sigma$-tree와 tree model은 순서 없는 tree다
+    (\leanfile{Lean\_MSO.tex}의 \lean{mso:rem:unordered}). Automaton은 자식의
+    순서를 본다. $\to$ \S\ref{aut:sec:bintree}의 \lean{BinTree},
+    \S\ref{aut:sec:orderedencoding}의 \lean{orderedEncodeIso}.
+  \item \textbf{Tree model $\to$ ranked term.} $\MSO$의 model은 ``node 집합 $+$
+    관계''이고, automaton이 먹는 것은 ranked term이다. $\to$
+    \S\ref{aut:sec:bintree}의 \lean{toTerm} (padding), 그리고 자유 변수를
+    label의 Boolean track으로 옮기는 \S\ref{aut:sec:tracks}.
+\end{itemize}
+
+문서 구성은 파일의 \lean{import} 순서를 따른다:
+\S\ref{aut:sec:term}--\S\ref{aut:sec:emptiness}가 \TW{} \S2의 일반론,
+\S\ref{aut:sec:bintree}--\S\ref{aut:sec:compile}가 컴파일 층,
+\S\ref{aut:sec:orderedencoding}이 최종 조립, \S\ref{aut:sec:cost}가 비용
+모형이다.
+
+\section{Ranked alphabet과 term}
+\label{aut:sec:term}
+
+\emph{파일: \leanfile{GraphMSO/Automata/term.lean}}
+
+\emph{참조: \leanfile{Thatcher-Wright-expanding.tex} Definition (Species and
+terms, TW \S2)}
+
+\begin{definition}[\lean{RankedAlphabet}, \lean{Term}, \lean{Hom}]
+\label{aut:def:rankedalphabet}
+\begin{itemize}
+  \item \lean{RankedAlphabet}: symbol type \lean{Symb}과 arity
+    $\lean{arity} : \lean{Symb} \to \mathbb{N}$의 쌍. \TW{}의 \emph{species}.
+  \item \lean{Term S}: inductive type. \lean{node} $f$ $ts$에서
+    $ts : \lean{Fin}(\lean{arity}\ f) \to \lean{Term}\ S$. Arity가 $0$인
+    symbol이 leaf가 된다.
+  \item \lean{Hom S T}: arity를 보존하는 symbol map. \TW{}의
+    \emph{projection}.
+  \item \lean{Term.map} $\pi$: 모든 node에 $\pi$를 적용.
+  \item \lean{Term.depth}: leaf에서 $1$, 그 외에는 자식 depth의 최댓값$+1$.
+\end{itemize}
+\end{definition}
+
+\begin{remark}[자식을 함수로 표현한다]
+\label{aut:rem:childrenasfunction}
+자식을 list가 아니라 \emph{함수} $\lean{Fin}(\lean{arity}\ f) \to \lean{Term}$로
+둔 점에 주목하라. 이렇게 하면 ``자식의 개수가 정확히 arity와 같다''가 타입으로
+강제되어 별도 조건이 필요 없다.
+
+대가는 \lean{Hom}을 적용할 때 나타난다. $\pi(f)$의 arity와 $f$의 arity가
+\emph{같다}는 것은 \lean{arity\_eq}가 주는 \emph{명제}이지 정의상 등식이
+아니므로, 자식 index를 옮기려면 명시적 형변환 \lean{Fin.cast}를 써야 한다.
+코드 곳곳의 \lean{Fin.cast (π.arity\_eq f)}가 그것이며, 수학적 내용은 없다.
+\leanfile{Lean\_Nice.tex}의 \lean{castRoot}
+(\lean{nice:rem:castrootwhy})와 같은 성격의 잡음이다.
+
+Alphabet의 유한성은 structure에 넣지 않았다. 필요한 정리에서만
+\lean{[Finite S.Symb]}를 가정한다.
+\end{remark}
+
+\section{Tree automaton과 Boolean closure}
+\label{aut:sec:automaton}
+
+\emph{파일: \leanfile{GraphMSO/Automata/automaton.lean}}
+
+\emph{참조: \TW{} Theorem 1 (\lean{thm:tw-subset}), Theorem 2
+(\lean{thm:tw-boolean})}
+
+\begin{definition}[\lean{TreeAutomaton}, \lean{NTreeAutomaton}]
+\label{aut:def:automaton}
+결정적 bottom-up tree automaton은 세 field를 갖는다: 유한 state type
+\lean{State}, 각 symbol의 해석
+$\lean{step} : (f) \to (\lean{Fin}(\lean{arity}\ f) \to \lean{State}) \to \lean{State}$,
+그리고 accepting set. 비결정적 판은 \lean{step}이 관계
+$\cdots \to \lean{State} \to \lean{Prop}$이다.
+
+\lean{run}은 term에 대한 재귀이고 (결정적 판), \lean{runSet}은 도달 가능한
+state의 집합이다 (비결정적 판). \lean{language}는 accept되는 term의 집합,
+\lean{Recognizable L}은 ``$L$을 정확히 인식하는 결정적 automaton이 존재''다.
+\end{definition}
+
+\begin{remark}[결정적 automaton은 유한 $S$-대수다]
+\lean{step}의 타입을 보면 이것이 정확히 ranked alphabet $S$에 대한
+\emph{대수(algebra)}임을 알 수 있고, \lean{run}은 term 대수에서 오는 유일한
+준동형이다. 그래서 \lean{run\_node}가 \lean{rfl}로 성립하고, 이후 모든
+closure 정리의 증명이 ``두 automaton의 \lean{step}이 같으므로 \lean{run}도
+같다''는 형태의 짧은 귀납이 된다.
+\end{remark}
+
+\begin{remark}[state type이 \lean{Type}에 고정되어 있다]
+\label{aut:rem:universe}
+\lean{State : Type}이며 \lean{Type u}가 아니다. 즉 state는 가장 낮은 universe에
+산다. 파일 주석이 밝히듯, state가 어차피 유한하므로 일반성을 잃지 않고,
+powerset 구성(\lean{determinize})과 곱 구성(\lean{prod})이 같은 universe에
+머무르게 하는 이점이 있다.
+
+대신 \S\ref{aut:sec:atomic}의 label 관련 automaton들이 alphabet $A$를
+\lean{Type}으로 요구하게 된다. 이것이 \S\ref{aut:sec:orderedencoding}에서
+$P$를 \lean{Type}으로 두는 이유다.
+\end{remark}
+
+\begin{theorem}[\lean{recognizable\_iff\_nondet}, \TW{} Theorem 1]
+\label{aut:thm:subset}
+Powerset 구성 \lean{determinize}에 대해
+$\lean{run}(\lean{determinize}\ N) = \lean{runSet}\ N$이며, 따라서 결정적
+인식성과 비결정적 인식성이 동치다.
+\end{theorem}
+
+\begin{theorem}[\TW{} Theorem 2]
+\label{aut:thm:boolean}
+Recognizable set은 complement (\lean{compl}), intersection (\lean{inter}),
+union (\lean{union})에 대해 닫혀 있다.
+\end{theorem}
+
+\begin{remark}[complement에는 결정성이 필수다]
+\lean{compl}은 \lean{step}을 그대로 두고 accepting set만 뒤집는다. 이것이
+옳으려면 각 term에 대해 state가 \emph{하나로} 정해져야 하므로 결정적
+automaton이어야 한다. 그래서 \lean{Recognizable}의 정의를 결정적 automaton으로
+잡고, 비결정적 판이 필요할 때 \S\ref{aut:thm:subset}로 오간다.
+
+\lean{inter}와 \lean{union}은 곱 automaton \lean{prod} 하나를 accepting set만
+바꿔 두 번 쓴다. 이 구조 덕분에 \lean{run\_prod} 하나만 증명하면 된다.
+\end{remark}
+
+\section{Replacement와 emptiness}
+\label{aut:sec:emptiness}
+
+\emph{파일: \leanfile{GraphMSO/Automata/emptiness.lean}}
+
+\emph{참조: \TW{} Lemma 5 (\lean{lem:tw-replacement}), Lemma 6
+(\lean{lem:tw-bounded-depth}), Theorem 7 (\lean{thm:tw-emptiness})}
+
+\begin{definition}[\lean{Context}, \lean{fill}]
+\label{aut:def:context}
+구멍이 하나인 term (one-hole context)과 그 구멍을 채우는 연산.
+\end{definition}
+
+\begin{theorem}[\lean{run\_fill\_eq\_of\_run\_eq}, \TW{} Lemma 5]
+\label{aut:thm:replacement}
+$\lean{run}\ t_1 = \lean{run}\ t_2$이면 임의의 context $C$에 대해
+$\lean{run}(C[t_1]) = \lean{run}(C[t_2])$.
+\end{theorem}
+
+\begin{theorem}[\lean{exists\_depth\_le\_of\_run\_eq}, \TW{} Lemma 6]
+\label{aut:thm:boundeddepth}
+도달 가능한 모든 state는 depth가 $|\lean{State}|$ 이하인 term으로 도달된다.
+\end{theorem}
+
+\begin{remark}[\TW{}와 다른 증명: depth 지표 도달가능성]
+\label{aut:rem:emptinessproof}
+\TW{}는 최소 반례를 잡고 root-to-leaf 경로에서 같은 state가 두 번 나오는 곳을
+찾아 pumping하는 방식으로 증명한다. Lean 증명은 다른 길을 간다.
+
+\lean{reachableAtDepth k} $:=$ ``depth $\le k$인 term으로 도달되는 state의
+집합''을 정의한다. 이 열은 단조증가하고 (\lean{reachableAtDepth\_mono}), 각
+단계는 직전 단계에서 transition 한 번으로 생성되며
+(\lean{reachableAtDepth\_succ}), 유한 집합의 단조증가 부분집합열은 반드시
+$|\lean{State}|$ 단계 안에 안정화된다 (\lean{exists\_reachableAtDepth\_stab}).
+한 번 안정화되면 그 뒤로 계속 같다 (\lean{reachableAtDepth\_eq\_of\_stab}).
+따라서 $\lean{reachable} = \lean{reachableAtDepth}\ |\lean{State}|$.
+
+이 방식의 이점은 ``term 안의 root-to-leaf subterm 사슬''을 형식화하지 않아도
+된다는 것이다. Pumping 논증은 종이 위에서는 한 문단이지만 형식화하면
+subterm 관계, 경로, 대입을 모두 다뤄야 한다. 단조열 안정화는 mathlib의
+유한성 도구만으로 끝난다. 같은 상계를 얻으면서 작업량이 훨씬 적다.
+\end{remark}
+
+\begin{corollary}[\lean{language\_nonempty\_iff}]
+\label{aut:cor:emptiness}
+언어가 비어 있지 않은 것은 depth $\le |\lean{State}|$인 원소를 갖는 것과
+동치다.
+\end{corollary}
+
+\begin{remark}[결정 가능성은 미룬다]
+\TW{} Theorem 7은 emptiness가 \emph{결정 가능}하다고 말한다. 위 따름정리는
+그 수학적 내용(유한 탐색으로 충분하다)만 준다. ``유한 alphabet 위에서 depth가
+제한된 term을 실제로 열거한다''는 부분은 파일 주석이 명시하듯 의도적으로
+executable 단계(\leanfile{Lean\_Algorithm.tex})로 미뤄져 있다.
+\end{remark}
+
+\section{순서 있는 이진 tree와 padded term}
+\label{aut:sec:bintree}
+
+\emph{파일: \leanfile{GraphMSO/Automata/binTree.lean}}
+
+\begin{definition}[\lean{BinTree}]
+\label{aut:def:bintree}
+\[
+  \lean{BinTree}\ A ::= \lean{nil} \mid \lean{node}\ (a : A)\ (l\ r : \lean{BinTree}\ A).
+\]
+\lean{nil}은 \emph{없는 자식}을 뜻한다.
+\end{definition}
+
+\begin{definition}[\lean{Pos}, \lean{labelAt}, \lean{childRel}, \lean{toTreeModel}]
+\label{aut:def:bintreepos}
+\[
+  \lean{Pos}\ \lean{nil} = \lean{Empty}, \qquad
+  \lean{Pos}\ (\lean{node}\ a\ l\ r) = \lean{Option}(\lean{Pos}\ l \oplus \lean{Pos}\ r).
+\]
+\lean{childRel b} ($b \in \{\lean{false}, \lean{true}\}$)가 \TW{}의
+\lean{child₁}/\lean{child₂}이고,
+\lean{toTreeModel}은 \lean{parentRel}을 두 방향의 합
+$\lean{childRel}\ \lean{false} \lor \lean{childRel}\ \lean{true}$로 정의한
+tree model이다.
+\end{definition}
+
+\begin{remark}[\lean{nil}은 위치를 갖지 않는다]
+\label{aut:rem:nilnopos}
+$\lean{Pos}\ \lean{nil} = \lean{Empty}$가 핵심이다. \lean{nil}은 ``자식이
+없다''는 표시일 뿐 실제 node가 아니므로 위치를 내주지 않는다. 그래서
+\lean{toTreeModel}의 node 집합은 정확히 \emph{진짜} node들의 집합이고,
+$\MSO$ 논리식이 padding에 대해 아무것도 말하지 않게 된다.
+
+이것이 \leanfile{Lean\_Basics.tex}의 tree language가 순서 있는 자식 관계
+없이도 잘 작동하는 이유이기도 하다: 논리는 \lean{parentRel}만 보고,
+\lean{childRel}의 $b$는 automaton 쪽에서만 쓰인다.
+\end{remark}
+
+\begin{definition}[\lean{paddedAlphabet}, \lean{toTerm}, \lean{ofTerm}]
+\label{aut:def:padded}
+\[
+  \lean{paddedAlphabet}\ A := \bigl(\lean{Symb} = \lean{Option}\ A,\
+    \lean{arity}(\lean{none}) = 0,\ \lean{arity}(\lean{some}\ a) = 2\bigr).
+\]
+즉 nullary symbol $\bot$ 하나와 letter마다 하나씩의 binary symbol.
+\lean{toTerm}은 \lean{nil}을 $\bot$로, \lean{node a l r}을 두 자식을 갖는
+$\lean{some}\ a$로 보낸다. \lean{ofTerm}이 그 역이며,
+\lean{ofTerm\_toTerm}과 \lean{toTerm\_ofTerm}이 서로 역임을 보인다
+(따라서 \lean{toTerm\_injective}).
+\end{definition}
+
+\begin{remark}[padding의 대가와 이득]
+Padding은 node 개수를 늘린다: 진짜 node가 $n$개면 term의 symbol은
+$2n+1$개다 (\S\ref{aut:sec:cost}의 \lean{toTerm\_nodeCount}).
+그 대신 \emph{모든 node의 arity가 정확히 $2$}가 되어
+\S\ref{aut:sec:term}의 ranked term 형식에 그대로 들어맞는다. 자식이 하나뿐인
+node를 다루기 위해 arity가 다른 symbol을 따로 두는 것보다 훨씬 단순하다.
+
+\lean{paddedMapHom f}는 label 변환 $f$를 padded alphabet의 \lean{Hom}으로
+올린다 ($\lean{Option.map}\ f$, arity 보존은 case 분석). 이것이
+\S\ref{aut:sec:compile}에서 track을 지우거나 재배치할 때 쓰이는 projection이다.
+\end{remark}
+
+\section{Boolean track: 자유 변수를 label에 싣기}
+\label{aut:sec:tracks}
+
+\emph{파일: \leanfile{GraphMSO/Automata/binTree.lean} 후반부}
+
+Automaton은 tree 하나만 읽는다. 자유 변수를 가진 논리식을 다루려면 변수의
+값(위치, 또는 위치의 집합)을 tree 안에 실어야 한다. 표준적인 방법이
+\emph{track}이다.
+
+\begin{definition}[track 기계]
+\label{aut:def:tracks}
+$\lean{TrackBits}\ n := \lean{Fin}\ n \to \lean{Bool}$이라 두고, tracked tree를
+$\lean{BinTree}\ (A \times \lean{TrackBits}\ n)$으로 둔다.
+\begin{itemize}
+  \item \lean{withTracks} $t$ $\lean{tracks}$: $A$-tree와 $n$개의 위치 집합을
+    받아 tracked tree를 만든다.
+  \item \lean{eraseTracks}: Boolean 성분을 지운다.
+  \item \lean{trackSet} $t$ $i$: track $i$가 켜진 위치들의 집합.
+  \item \lean{remapTracks} $\iota$: track을 재배치/삭제한다
+    ($\iota : \lean{Fin}\ m \to \lean{Fin}\ n$).
+  \item \lean{eraseTracksHom}, \lean{remapTracksHom}: 위 두 연산의
+    alphabet \lean{Hom} 판. 이것이 \S\ref{aut:sec:automaton}의 projection에
+    먹인다.
+\end{itemize}
+정합성 정리들: \lean{trackSet\_withTracks\_iff},
+\lean{eraseTracks\_withTracks}, \lean{eraseTracks\_remapTracks},
+\lean{trackSet\_remapTracks\_iff}, \lean{toTerm\_eraseTracks},
+\lean{toTerm\_remapTracks}.
+\end{definition}
+
+\begin{remark}[존재 한정 $=$ projection]
+\label{aut:rem:projectionidea}
+왜 track이 좋은가. 논리식 $\exists X\, \varphi$를 생각하자. $\varphi$는 자유
+변수 $X$를 갖고, tracked tree에서 $X$는 어떤 track $i$로 표현된다.
+``$X$가 존재한다''는 ``track $i$의 값이 무엇이든 상관없다''는 뜻이므로,
+\emph{track $i$를 지우는} alphabet projection을 따라 언어의 상(image)을 취하면
+된다.
+
+즉 $\MSO$의 존재 한정이 \S\ref{aut:sec:automaton}의 TW Theorem 3 (projection
+closure)로 정확히 대응된다. 이것이 \TW{} 경로 전체의 요점이며,
+\S\ref{aut:sec:compile}의 \lean{TrackLanguage}가 그 대응을 형식화한 것이다.
+\end{remark}
+
+\section{원자 automaton과 assignment 다리}
+\label{aut:sec:atomic}
+
+\emph{파일: \leanfile{GraphMSO/Automata/atomic.lean} (1847줄)}
+
+\begin{definition}[\lean{fold}, \lean{foldAutomaton}]
+\label{aut:def:fold}
+\lean{fold}는 binary tree를 bottom-up 요약값으로 접는 연산이고,
+\lean{foldAutomaton}은 그 요약을 padded term 위의 결정적 automaton으로
+포장한다. \lean{run\_foldAutomaton}이 둘을 동일시한다.
+\end{definition}
+
+이 파일의 모든 원자 automaton은 \lean{foldAutomaton}의 사례다. 즉 ``어떤 유한
+요약값을 bottom-up으로 계산하면 되는가''만 정하면 automaton과 인식성 증명이
+따라온다.
+
+\begin{definition}[원자 automaton 목록]
+\label{aut:def:atomiclist}
+\begin{itemize}
+  \item \lean{trackCount} / \lean{trackSingletonAutomaton}: track $i$가 켜진
+    위치의 개수를 \lean{Count} ($\lean{zero}/\lean{one}/\lean{many}$)로 세어
+    ``정확히 하나''를 인식한다. First-order 변수용.
+  \item \lean{rootTrack} / \lean{rootTrackAutomaton}: root에 track $i$가
+    켜져 있는가.
+  \item \lean{tracksIntersect} / \lean{tracksIntersectAutomaton}: track $i$와
+    $j$가 동시에 켜진 위치가 있는가. 등호 atom과 소속 atom에 쓰인다.
+  \item \lean{parentTrackSummary} / \lean{parentTrackAutomaton}: track
+    \lean{parent}가 켜진 위치가 track \lean{child}가 켜진 위치의 부모인가.
+  \item \lean{labelsOnTrack} / \lean{labelMemTrackAutomaton}: track $i$가
+    켜진 위치들의 label 집합. \lean{labelMem} atom용.
+  \item \lean{labelPairSummary} / \lean{labelMem₂TrackAutomaton}:
+    두 track의 label 쌍. \lean{labelMem₂} atom용.
+\end{itemize}
+\end{definition}
+
+\begin{remark}[\lean{Count}가 세 값뿐인 이유]
+First-order 변수는 ``정확히 한 위치''를 가리켜야 하므로 track이 singleton임을
+확인해야 한다. 그런데 개수를 $\mathbb{N}$으로 세면 state가 무한해진다. 그래서
+$\{0, 1, \text{다수}\}$로 절단한 \lean{Count}를 쓴다. \lean{add}와
+\lean{addMark}가 그 절단된 덧셈이고, \lean{add\_eq\_one\_iff} 등이 절단이
+정보를 잃지 않음을 보장한다. 유한 automaton을 만들기 위한 전형적인 기법이다.
+
+\lean{trackCount\_eq\_one\_iff\_exists\_unique}가 요약값과 ``유일한 위치가
+존재한다''를 잇는다.
+\end{remark}
+
+\begin{remark}[label 관련 automaton의 universe 제약]
+\lean{labelsOnTrackAutomaton}과 \lean{labelPairAutomaton}은 state로 ``label의
+집합''을 쓰므로 \lean{[Finite A]}와 $A : \lean{Type}$을 요구한다
+(\S\ref{aut:rem:universe}). 이 제약이 최종 정리에서 $P : \lean{Type}$과
+\lean{[Finite P]}로 나타난다.
+\end{remark}
+
+\subsection{\lean{CarriesAssignment}: 논리와 automaton의 접점}
+
+\begin{definition}[\lean{CarriesAssignment}]
+\label{aut:def:carriesassignment}
+Tracked tree $t$, track 배정
+$\lean{foTrack} : \lean{FOVar} \to \lean{Fin}\ n$,
+$\lean{soTrack} : \lean{SOVar} \to \lean{Fin}\ n$, 그리고 track을 지운 model
+위의 assignment $\rho$에 대해:
+\[
+  \lean{CarriesAssignment}\ t\ \lean{foTrack}\ \lean{soTrack}\ \rho
+  \;:=\;
+  \begin{cases}
+    \forall x, p.\ \rho(x) = \lean{some}\ p \iff p \in \lean{trackSetErased}\ t\ (\lean{foTrack}\ x) \\
+    \forall X.\ \rho(X) = \lean{trackSetErased}\ t\ (\lean{soTrack}\ X)
+  \end{cases}
+\]
+\end{definition}
+
+\begin{remark}[이 정의가 이 파일의 목적이다]
+\label{aut:rem:carriespoint}
+파일의 나머지 1500여 줄은 대부분 이 술어를 다루기 위한 것이다. 이것이
+``tree의 Boolean track''과 ``논리식의 assignment''를 동일시하는 사전이며,
+이 사전이 있어야 \S\ref{aut:sec:compile}의 컴파일 정확성을 formula 귀납으로
+증명할 수 있다.
+
+주의할 점은 $\rho$가 \lean{t.eraseTracks.toTreeModel} 위의 assignment라는 것이다.
+즉 track을 \emph{지운} model 위에서 산다. 그래서 track이 켜진 위치를
+``지운 tree의 위치''로 옮기는 표준 동치 \lean{erasePosEquiv}와 그것을 통과한
+집합 \lean{trackSetErased}가 필요하다. 위치의 타입이 다르다는 이 사소해
+보이는 사실이 파일 분량의 상당 부분을 차지한다.
+
+주요 보조정리군:
+\begin{itemize}
+  \item 원자식마다 ``$\models$ atom $\iff$ 해당 요약값''
+    (\lean{satisfiesAt\_equal\_iff\_tracksIntersect} 등 여섯 개);
+  \item assignment 갱신에 대한 보존
+    (\lean{CarriesAssignment.updateFO}, \lean{.updateSO});
+  \item \lean{remapTracks}를 건너는 전달
+    (\lean{.of\_remapTracks}, \lean{.to\_remapTracks});
+  \item 신선한 track을 추가하는 \lean{liftTracksWithFresh}와 그에 대한
+    보존 정리 (\lean{.of\_liftTracksWithFresh\_updateFO}, \lean{\_updateSO}).
+\end{itemize}
+마지막 것이 \S\ref{aut:rem:quantifierconverse}에서 쓰인다.
+\end{remark}
+
+또 \lean{eraseWithTracksIso}: tracked tree에서 track을 지운 model이 원래
+tree의 model과 동형이다. \leanfile{Lean\_Basics.tex}의 동형 불변성
+(\lean{basics:thm:isoinvariance})과 함께 쓰여, 논리식의 진리값을 두 표현
+사이에서 옮긴다.
+
+\section{Formula-to-automaton 컴파일러}
+\label{aut:sec:compile}
+
+\emph{파일: \leanfile{GraphMSO/Automata/compile.lean} (990줄)}
+
+\begin{definition}[\lean{TrackLanguage}]
+\label{aut:def:tracklanguage}
+\[
+  \lean{TrackLanguage}\ \lean{foTrack}\ \lean{soTrack}\ \varphi\ L
+\]
+는 ``track 배정 아래에서 논리식 $\varphi$가 padded term의 집합 $L$에
+대응한다''는 \emph{inductive 관계}다. 논리식의 각 생성자마다 constructor가
+하나씩 있다.
+\end{definition}
+
+\begin{remark}[함수가 아니라 관계인 이유]
+\label{aut:rem:whyrelation}
+가장 눈에 띄는 설계 선택이다. ``논리식을 받아 언어를 돌려주는 함수''로
+정의하는 것이 자연스러워 보이지만, 그러면 quantifier를 다룰 수 없다.
+
+$\exists x\, \varphi$를 컴파일하려면 \emph{$x$를 위한 새 track이 있는 더 큰
+track 문맥}에서 $\varphi$를 먼저 컴파일한 뒤, 그 track을 projection으로
+지워야 한다. 즉 재귀 호출이 \emph{다른 $n$}에서 일어난다. 함수로 쓰면
+``어떤 $n$을 고를 것인가''를 미리 정해야 하고, 그러면 신선한 track 번호를
+관리하는 장치가 필요해진다.
+
+관계로 두면 그 선택을 constructor의 \emph{인자}로 미룰 수 있다.
+\lean{existsFO} constructor는 더 큰 문맥 $m$, 그 문맥으로의 매립
+$\lean{keep} : \lean{Fin}\ n \to \lean{Fin}\ m$, 새 track \lean{xTrack},
+그리고 다음 조건들을 인자로 받는다:
+\begin{itemize}
+  \item \lean{hkeep}: \lean{keep}이 단사 (기존 track이 뭉개지지 않음);
+  \item \lean{hfo}: $y \ne x$인 변수는 기존 track을 \lean{keep}으로 옮긴 것;
+  \item \lean{hx}: $x$는 새 track \lean{xTrack}에 배정;
+  \item \lean{hfresh}: \lean{xTrack}은 \lean{keep}의 상 밖 (진짜 새 track);
+  \item \lean{hso}: 집합 변수는 모두 기존 track을 옮긴 것.
+\end{itemize}
+정확성 증명은 이 조건들을 그대로 쓰면 되고, 실제 track 번호는
+\lean{exists\_compile}이 나중에 골라 준다.
+\end{remark}
+
+\begin{definition}[quantifier constructor의 언어]
+\label{aut:def:quantifierlanguages}
+\begin{align*}
+  \exists x\, \varphi &\mapsto
+    \lean{map}(\lean{remapTracksHom}\ \lean{keep})\ ''\
+      \bigl(\{\lean{trackCount}\ \lean{xTrack} = \lean{one}\} \cap L\bigr) \\
+  \forall x\, \varphi &\mapsto
+    \Bigl(\lean{map}(\lean{remapTracksHom}\ \lean{keep})\ ''\
+      \bigl(\{\lean{trackCount}\ \lean{xTrack} = \lean{one}\} \cap L^c\bigr)\Bigr)^c \\
+  \exists X\, \varphi &\mapsto
+    \lean{map}(\lean{remapTracksHom}\ \lean{keep})\ ''\ L \\
+  \forall X\, \varphi &\mapsto
+    \bigl(\lean{map}(\lean{remapTracksHom}\ \lean{keep})\ ''\ L^c\bigr)^c
+\end{align*}
+\end{definition}
+
+\begin{remark}[FO와 SO의 차이, 그리고 $\forall$의 처리]
+\label{aut:rem:quantifiershapes}
+두 가지를 짚는다.
+
+\emph{(a) FO만 singleton 교집합이 붙는다.} 집합 변수는 아무 집합이나 될 수
+있으므로 track을 그냥 지우면 되지만, 개체 변수는 정확히 한 위치를 가리켜야
+하므로 \S\ref{aut:def:atomiclist}의 singleton automaton과 교집합을 먼저
+취한다.
+
+\emph{(b) $\forall$은 언어 층에서 $\lnot \exists \lnot$로 처리된다.}
+\leanfile{Lean\_MSO.tex}에서 $\forall$을 \emph{논리식으로는} 직접 번역했는데
+(\lean{mso:def:translate}), 여기서는 언어를 만들 때 complement--image--complement
+를 쓴다. 모순이 아니다: 논리식은 원시 $\forall$로 남아 있고, 그 논리식에
+대응하는 \emph{언어}를 만드는 방법이 이것일 뿐이다. Projection은 존재 한정에만
+직접 대응하므로 전칭은 이 우회가 불가피하다. 대신 complement가 두 번 들어가
+determinize가 두 번 필요해지고, 이것이 \S\ref{aut:sec:cost}에서 언급하는
+state 폭발의 원인이다.
+\end{remark}
+
+\begin{theorem}[\lean{TrackLanguage.recognizable}]
+\label{aut:thm:compilerecognizable}
+이 관계가 만들어 내는 모든 언어는 recognizable하다.
+\end{theorem}
+
+증명은 관계에 대한 귀납이며, 각 경우가 \S\ref{aut:sec:automaton}과
+\S\ref{aut:sec:term}의 closure 정리를 그대로 호출한다: Boolean 경우는
+\lean{compl}/\lean{inter}/\lean{union}, quantifier 경우는
+\lean{recognizable\_remapTracks} (즉 TW Theorem 3)와 singleton automaton의
+인식성.
+
+\begin{theorem}[\lean{TrackLanguage.correct}]
+\label{aut:thm:compilecorrect}
+$\lean{TrackLanguage}\ \lean{foTrack}\ \lean{soTrack}\ \varphi\ L$이고
+$\rho$가 \lean{CarriesAssignment}를 만족하면
+\[
+  t.\lean{eraseTracks}.\lean{toTreeModel},\ \rho \models \varphi
+  \iff
+  t.\lean{toTerm} \in L.
+\]
+\end{theorem}
+
+\begin{remark}[quantifier 경우의 두 방향]
+\label{aut:rem:quantifierconverse}
+원자식과 Boolean 경우는 \S\ref{aut:rem:carriespoint}의 사전을 적용하면
+끝난다. Quantifier 경우가 본론이며 방향마다 다른 도구를 쓴다.
+
+\emph{언어 $\to$ 의미론} (\lean{existsFO\_sound\_of\_mem\_image},
+\lean{existsSO\_sound\_of\_mem\_image}): projection의 상에 속한다는 것을
+풀어 원본 term의 witness를 얻어야 한다. \lean{exists\_remapTracks\_eq\_of\_toTerm\_mem\_image}가
+그 term이 실제로 \lean{BinTree}에서 온 것임을 준다 (padded term이 아무거나가
+아니라 tree의 상이어야 함). 그다음 그 tracked tree가 나르는 assignment를
+읽어 내면 그것이 의미론 쪽 witness다.
+
+\emph{의미론 $\to$ 언어} (\lean{existsFO\_mem\_image\_of\_satisfies} 등):
+반대로 의미론 쪽 witness (위치 하나 또는 집합 하나)로부터 \emph{새 track을
+가진 tree}를 만들어야 한다. \lean{liftTracksWithFresh}
+(\S\ref{aut:rem:carriespoint})가 그 구성이고,
+\lean{remapTracks\_withTracks\_liftTracksWithFresh\_eq}가 그것을 다시
+projection하면 원래 tree로 돌아옴을 보인다. \lean{CarriesAssignment}의 lift
+보존 정리들이 새 tree가 갱신된 assignment를 나른다는 것을 준다.
+
+네 quantifier가 \lean{existsFO\_correct}, \lean{existsSO\_correct},
+\lean{forallFO\_correct}, \lean{forallSO\_correct}로 포장되고, 이들이
+\lean{correct}의 해당 경우가 된다.
+\end{remark}
+
+\begin{theorem}[\lean{exists\_recognizable\_sentence\_language}]
+\label{aut:thm:sentencelanguage}
+$A$가 유한하면, 모든 tree $\MSO$ sentence $\varphi$에 대해
+$(\lean{paddedAlphabet}\ A)$ 위의 recognizable한 언어 $L$이 존재하여
+\[
+  \forall t : \lean{BinTree}\ A.\quad
+  t.\lean{toTreeModel} \models \varphi \iff t.\lean{toTerm} \in L.
+\]
+\end{theorem}
+
+\begin{remark}[더미 track 제거]
+\lean{exists\_compile}은 track이 최소 하나 있는 문맥에서 작동하므로, sentence를
+컴파일해도 쓰이지 않는 track $1$개가 남는다. 이것을 없애기 위해
+\lean{addEmptyTracksHom} (모든 track을 \lean{false}로 채우는 alphabet
+\lean{Hom})을 따라 \emph{역상}을 취한다. TW Theorem 4 (inverse projection
+closure)가 인식성을 보존한다.
+
+증명은 이 세 조각을 잇는다: (i) 빈 track을 채운 tree가 원래 tree와 동형인
+model을 준다 (\lean{eraseWithTracksIso} $+$
+\lean{basics:thm:isoinvariance}), (ii) \lean{correct}, (iii) 역상.
+이것이 정리 \ref{aut:thm:goal}의 순서 있는 이진 tree 판이다.
+\end{remark}
+
+\begin{remark}[\lean{QFTrackLanguage}]
+같은 파일에 quantifier-free 부분관계 \lean{QFTrackLanguage}와 그 정확성이
+따로 있다. \lean{TrackLanguage}가 완성되기 전에 원자/Boolean 조각만으로
+먼저 검증해 둔 층이며, 지금은 \lean{toTrackLanguage}로 본체에 포함된다.
+\end{remark}
+
+\section{최종 조립: decomposition의 순서 있는 encoding}
+\label{aut:sec:orderedencoding}
+
+\emph{파일: \leanfile{GraphMSO/Automata/orderedEncoding.lean}}
+
+이제 \leanfile{Lean\_MSO.tex}의 결과와 \S\ref{aut:thm:sentencelanguage}를
+잇는다. 남은 간극은 \S\ref{aut:sec:overview}에서 말한 순서 문제다.
+
+\begin{definition}[\lean{toBinTree}]
+\label{aut:def:tobintree}
+\leanfile{Lean\_Nice.tex}의 constructor-coded nice tree
+(\lean{nice:def:inductivenicetree})를 순서 있는 이진 tree로 읽는다:
+\begin{itemize}
+  \item \lean{leaf} $\mapsto$ \lean{node} (label) \lean{nil} \lean{nil};
+  \item \lean{introduce}/\lean{forget} $\mapsto$ 자식을 \emph{왼쪽} 슬롯에,
+    오른쪽은 \lean{nil};
+  \item \lean{join} $\mapsto$ 두 자식을 왼쪽과 오른쪽에.
+\end{itemize}
+\end{definition}
+
+\begin{remark}[nice 형태가 여기서 값을 한다]
+왜 nice tree decomposition이 필요했는지가 여기서 드러난다. Nice tree는 자식이
+최대 두 개이고 각 node의 종류가 정해져 있으므로, 자식의 순서를 \emph{정준적으로}
+정할 수 있다. 임의의 tree decomposition이었다면 자식이 몇 개인지 모르고
+순서도 임의여서 이 단계가 불가능하다.
+
+\leanfile{Lean\_Nice.tex}의 normalization
+(\lean{nice:def:normalizecode})이 결국 이 한 줄을 가능하게 하기 위한
+작업이었던 셈이다.
+\end{remark}
+
+\begin{definition}[\lean{nodeEquivToBinTreePos}, \lean{orderedEncode}]
+\label{aut:def:orderedencode}
+\lean{nodeEquivToBinTreePos}는 code의 position과 이진 tree의 position 사이의
+동치이고, \lean{labelAt\_toBinTree\_nodeEquiv}와
+\lean{parentRel\_toBinTree\_nodeEquiv\_iff}가 label과 parent 관계가 그
+동치를 따라 대응함을 보인다.
+
+\lean{orderedEncode}는 \leanfile{Lean\_MSO.tex}의 $\Sigma$-tree encoding
+(\lean{mso:def:encodeletter})의 letter를 이 이진 tree에 붙인 것이다.
+\end{definition}
+
+\begin{theorem}[\lean{orderedEncodeIso}]
+\label{aut:thm:orderedencodeiso}
+\lean{orderedEncode}의 tree model과 \lean{encode}의 tree model은 동형이다.
+\end{theorem}
+
+\begin{remark}[두 동치의 합성]
+동형사상의 bijection이
+\[
+  \lean{BinTree.Pos} \;\xrightarrow{\ \lean{nodeEquivToBinTreePos}^{-1}\ }\;
+  \lean{CodeNode} \;\xrightarrow{\ \lean{realize}\ }\;
+  \lean{Node}
+\]
+로 두 조각의 합성이다. 앞쪽은 \S\ref{aut:def:orderedencode}, 뒤쪽은
+\leanfile{Lean\_Nice.tex}의 realization (\lean{nice:def:realizes})이 준다.
+두 번째 조각은 \lean{Equiv.ofBijective}로 만드는데, 이는
+\leanfile{CLAUDE.md}가 권장하는 표준 인프라 사용의 예다 --- 새 \lean{Equiv}
+구조체를 손으로 만들지 않는다.
+\end{remark}
+
+\begin{theorem}[\lean{orderedEncode\_satisfies\_legal\_translate\_iff}]
+\label{aut:thm:orderedtranslate}
+$\theta$가 닫힌 $\tau_P$ formula이면
+\[
+  \lean{orderedEncode}.\lean{toTreeModel} \models
+    (\varphi_{\mathrm{legal}} \land \theta^\ast)
+  \iff
+  (V, G, \lean{vpred}) \models \theta.
+\]
+\end{theorem}
+
+증명은 \S\ref{aut:thm:orderedencodeiso}의 동형과
+\leanfile{Lean\_Basics.tex}의 동형 불변성으로 좌변을 \lean{encode} 쪽으로
+옮긴 뒤, \leanfile{Lean\_MSO.tex}의 \lean{mso:cor:finaldisplay}를 적용하는
+것이다.
+
+\begin{theorem}[\lean{exists\_recognizable\_orderedEncode\_language}]
+\label{aut:thm:courcellestatement}
+$P$가 유한하고 $\theta$가 닫힌 $\tau_P$ formula이면,
+$(\lean{paddedAlphabet}(\lean{SigmaLetter}\ P\ \omega))$ 위의 recognizable한
+언어 $L$이 존재하여, 모든 inductive nice decomposition $T$와 coloring에 대해
+\[
+  (\lean{orderedEncode}\ T\ \cdots).\lean{toTerm} \in L
+  \iff
+  (V, G, \lean{vpred}) \models \theta.
+\]
+\end{theorem}
+
+\begin{theorem}[\lean{exists\_recognizable\_orderedEncode\_language\_uniform}]
+\label{aut:thm:uniform}
+같은 진술에서 \emph{모든 유한 입력 graph}가 언어의 존재 한정 \emph{뒤}에
+온다. 즉 $L$과 그것을 인식하는 automaton은 $P$, $\omega$, $\theta$에만
+의존한다.
+\end{theorem}
+
+\begin{remark}[uniform 판이 진짜 Courcelle 정리다]
+두 정리의 차이가 중요하다. \ref{aut:thm:courcellestatement}은 graph $G$가 이미
+고정된 문맥 안에 있으므로, 원리적으로 $L$이 $G$에 의존해도 참일 수 있다.
+\ref{aut:thm:uniform}은 그 가능성을 배제한다: 하나의 automaton이 모든 입력
+graph를 처리한다. Courcelle 정리의 ``고정된 $\varphi$와 $\omega$에 대해 하나의
+automaton''이라는 내용이 이쪽이다.
+
+Lean에서 이 차이는 정리 진술의 한정기호 순서로만 나타난다. 형식화의
+가치가 잘 드러나는 지점이다 --- 종이 증명에서는 두 진술이 구별 없이 쓰이기
+쉽다.
+\end{remark}
+
+\section{비용 모형}
+\label{aut:sec:cost}
+
+\emph{파일: \leanfile{GraphMSO/Automata/cost.lean}}
+
+\leanfile{Lean\_Basics.tex}의 \lean{Costed} 계층
+(\lean{basics:def:costed})을 이 pipeline에 적용한다. 어떤 연산에 $1$을
+매기는지가 먼저 정해진다: graph의 vertex 하나, automaton transition 하나,
+encoding node 하나 구성, padded term symbol 하나 구성, 마지막 accepting-set
+검사.
+
+\begin{definition}[costed 판들]
+\label{aut:def:costedversions}
+\begin{itemize}
+  \item \lean{Term.nodeCount}, \lean{BinTree.nodeCount},
+    \lean{InductiveNiceTree.nodeCount}, \lean{SigmaTree.nodeCount},
+    그리고 논리식의 \lean{size} (graph 쪽과 tree 쪽 각각).
+  \item \lean{runCosted}, \lean{acceptsCosted}: automaton 실행.
+  \item \lean{toBinTreeCosted}, \lean{toTermCosted}: 구성 단계.
+  \item \lean{modelCheckCosted}: 전체 pass.
+\end{itemize}
+각각 값이 기존 정의와 일치함이 증명되고 (\lean{\_value} 정리), 비용이 정확히
+계산된다.
+\end{definition}
+
+\begin{theorem}[\lean{modelCheckCosted\_cost}]
+\label{aut:thm:exactcost}
+전체 pass의 비용은 정확히
+\[
+  |V(G)| + 5\,|N(T)| + 3,
+\]
+따라서 \lean{modelCheckCosted\_cost\_le}에 의해 $8\,(|V(G)| + |N(T)|)$ 이하다.
+\end{theorem}
+
+\begin{remark}[$5|N(T)|$의 출처]
+$|N(T)|$개의 code node를 만드는 데 $|N(T)|$, padded term symbol이
+$2|N(T)|+1$개, automaton transition이 symbol마다 하나이므로 다시
+$2|N(T)|+1$개, 그리고 accepting 검사 $1$. 합이 $5|N(T)|+3$이다.
+\S\ref{aut:def:padded}에서 말한 padding의 대가($2n+1$)가 여기 두 번
+나타난다.
+\end{remark}
+
+\begin{definition}[\lean{explicitCourcelleFactor}]
+\label{aut:def:tower}
+\[
+  \lean{courcelleTower}\ 0\ b = b, \qquad
+  \lean{courcelleTower}\ (h{+}1)\ b = 2^{\lean{courcelleTower}\ h\ b},
+\]
+\[
+  \lean{explicitCourcelleFactor}\ \omega\ \varphi
+    := \lean{courcelleTower}\ (|\varphi|+1)\ (\omega+2) + 8.
+\]
+\end{definition}
+
+\begin{remark}[이 tower가 무엇을 주장하고 무엇을 주장하지 \emph{않는가}]
+\label{aut:rem:towerhonest}
+반드시 정확히 이해해야 할 부분이다. Courcelle 정리의 표준 진술은 실행 시간이
+$f(\omega, |\varphi|) \cdot n$ 꼴이고 $f$가 tower 형태라는 것인데, 위
+정의는 그 \emph{모양}을 제공한다.
+
+그러나 \lean{modelCheckCosted\_cost\_le\_explicit}가 증명하는 것은
+\[
+  \text{비용} \le \lean{explicitCourcelleFactor}\ \omega\ \varphi
+    \cdot (|V(G)| + |N(T)|)
+\]
+이고, 이는 \S\ref{aut:thm:exactcost}의 상수 $8$ 상계에서 \emph{바로} 따라온다
+(tower가 항상 $8$ 이상이므로). 즉 tower는 실제로 어떤 어려움도 극복하지
+않으며, 파일 주석이 스스로 밝히듯 ``deliberately conservative''한 포장이다.
+
+특히 이것은 \textbf{automaton 구성 비용이나 state 개수에 대한 상계가 아니다}.
+진짜 tower가 나타나는 곳은 논리식을 automaton으로 컴파일할 때의 state 폭발
+(\S\ref{aut:rem:quantifiershapes}의 반복적 determinize)이며, 그것은 이 파일이
+아니라 \leanfile{Lean\_Algorithm.tex}의
+\lean{stateComplexity.lean}에서 별도로 다뤄진다.
+
+또한 \leanfile{Lean\_Basics.tex}의 \lean{basics:rem:costmeaning}이 말한
+대로, 이 모든 것은 추상 단위비용 모형에서의 연산 횟수이지 Lean의 실제 실행
+시간이 아니다.
+\end{remark}
+
+\begin{theorem}[\lean{exists\_costed\_courcelle\_automaton}]
+\label{aut:thm:costedcourcelle}
+\S\ref{aut:thm:uniform}에 비용 진술을 결합한 형태. 모든 유한 입력 graph에
+대해 uniform하며, \lean{exists\_costed\_courcelle\_automaton\_of\_width}는
+필요한 bag coloring을 code 쪽 width bound에서 얻어 준다
+(\leanfile{Lean\_Nice.tex}의 \lean{nice:cor:codecoloring}).
+\end{theorem}
+
+\section{형식화되지 않은 것: 역방향}
+\label{aut:sec:converse}
+
+\emph{참조: \leanfile{Thatcher-Wright-expanding.tex}
+\S\lean{sec:automata-to-mso-converse}}
+
+Recognizable $\Rightarrow$ $\MSO$-definable (역방향)은 \emph{형식화되어 있지
+않으며}, 의도적으로 미뤄져 있다. Courcelle 정리에도, 실행 가능한 checker에도
+필요하지 않기 때문이다. 다만 참조 문서에 완전한 종이 증명이 기록되어 있고,
+\leanfile{docs/PLAN.md}에 재개 시의 지침이 남아 있다. 두 가지 경고가 특히
+중요하다.
+
+\begin{remark}[순진한 진술은 \emph{거짓}이다]
+\label{aut:rem:conversefalse}
+현재의 \lean{TreeLanguage.Formula}는 순서 없는 \lean{parent} atom만 갖는 반면
+\lean{TreeAutomaton}은 순서 있는 좌/우 transition을 갖는다. 따라서
+``모든 recognizable 언어가 원래 label 위의 $\MSO$ sentence로 정의된다''는
+진술은 일반적으로 거짓이다. 순서를 구별하는 automaton이 존재하지만 순서 없는
+논리로는 그것을 표현할 수 없기 때문이다.
+
+재개할 때는 label에 \lean{root}/\lean{left}/\lean{right} 방향 표시를
+\emph{추가}하는 정준 encoding을 쓰고, 순서 있는 자식 관계를 \lean{parent}와
+\lean{labelMem}으로 정의해야 한다.
+\end{remark}
+
+\begin{remark}[TW \S3의 직접 형식화가 아니다]
+\TW{} \S3은 ``recognizable $\iff$ generalized regular''를 증명한다. 반면
+automaton을 $\MSO$로 옮기는 run encoding 논증은 별개의 표준 논증이다.
+전자를 형식화하는 것으로 후자를 대신할 수 없다.
+\end{remark}
+
+\section{요약: 참조 문서와의 대응}
+\label{aut:sec:summary}
+
+\begin{center}
+\begin{tabular}{p{0.40\textwidth}p{0.52\textwidth}}
+\hline
+\leanfile{Thatcher-Wright-expanding.tex} & Lean \\
+\hline
+Species and terms (TW \S2) &
+  \lean{RankedAlphabet}, \lean{Term}, \lean{Hom} \\
+Deterministic / nondeterministic automata &
+  \lean{TreeAutomaton}, \lean{NTreeAutomaton} \\
+Recognizable sets &
+  \lean{RankedAlphabet.Recognizable} \\
+Theorem 1 (\lean{thm:tw-subset}) &
+  \lean{determinize}, \lean{recognizable\_iff\_nondet} \\
+Theorem 2 (\lean{thm:tw-boolean}) &
+  \lean{compl}, \lean{inter}, \lean{union} \\
+Theorem 3 (\lean{thm:tw-projection}) &
+  \lean{Hom.imageAutomaton}, \lean{Recognizable.map} \\
+Theorem 4 (\lean{thm:tw-inverse-projection}) &
+  \lean{Hom.comapAutomaton}, \lean{Recognizable.comap} \\
+Lemma 5 (\lean{lem:tw-replacement}) &
+  \lean{Context}, \lean{run\_fill\_eq\_of\_run\_eq} \\
+Lemma 6 (\lean{lem:tw-bounded-depth}) &
+  \lean{exists\_depth\_le\_of\_run\_eq} (다른 증명, \S\ref{aut:rem:emptinessproof}) \\
+Theorem 7 (\lean{thm:tw-emptiness}) &
+  \lean{language\_nonempty\_iff} (수학적 내용만) \\
+\S3 regularity (\lean{thm:tw-recognizable-regular}) &
+  형식화 안 됨 (경로에 불필요) \\
+Multi-track encoding (Lemma 16) &
+  \lean{TrackBits}, \lean{withTracks}, \lean{remapTracks} \\
+Lemma 18 (atomic formulas) &
+  \S\ref{aut:def:atomiclist}의 원자 automaton들 \\
+Lemma 19 (logical closure) &
+  \lean{TrackLanguage}의 constructor들 \\
+Theorem 17 / Corollary (effective MSO-to-automata) &
+  \lean{exists\_recognizable\_sentence\_language} \\
+Theorem \lean{thm:mso-tree-automata} (강의노트 Thm 26) &
+  \lean{exists\_recognizable\_orderedEncode\_language\_uniform} \\
+\S\lean{sec:automata-to-mso-converse} &
+  형식화 안 됨 (\S\ref{aut:sec:converse}) \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{remark}[다음 단계]
+여기까지가 \emph{정리 수준}의 Courcelle 정리다. 모든 것이
+\lean{noncomputable}이며 ``automaton이 존재한다''만 말한다. 실제로 돌릴 수
+있는 판정 절차는 \leanfile{Lean\_Algorithm.tex}의 내용이며, 거기서는
+\lean{Prop} 대신 \lean{Bool}, 존재 한정 대신 구체적 구성이 등장한다.
+\end{remark}
+
+\end{document}

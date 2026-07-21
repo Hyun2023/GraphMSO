@@ -1,0 +1,747 @@
+\documentclass[11pt]{article}
+
+\usepackage{kotex}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{margin=1in}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{remark}[definition]{Remark}
+\theoremstyle{plain}
+\newtheorem{theorem}[definition]{Theorem}
+\newtheorem{lemma}[definition]{Lemma}
+\newtheorem{corollary}[definition]{Corollary}
+
+\newcommand{\MSO}{\mathrm{MSO}}
+\newcommand{\MSOtwo}{\mathrm{MSO}_2}
+\newcommand{\lean}[1]{\texttt{#1}}
+\newcommand{\leanfile}[1]{\texttt{#1}}
+
+\title{GraphMSO Lean 형식화 해설 V: Executable Algorithm}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+
+\section{개요: \texorpdfstring{$\lean{Prop}$}{Prop}에서 \texorpdfstring{$\lean{Bool}$}{Bool}로}
+\label{alg:sec:overview}
+
+앞의 네 문서는 \emph{정리}를 만들었다. ``$\cdots$를 인식하는 automaton이
+존재한다''(\leanfile{Lean\_Automata.tex}의 \lean{aut:thm:uniform})까지 갔지만,
+그 automaton을 실제로 손에 쥐고 돌릴 수는 없다. 존재 한정과 선택공리,
+그리고 \lean{Prop} 값들이 곳곳에 박혀 있기 때문이다.
+
+이 문서는 그 간극을 메우는 층을 다룬다. 결과물은 다음 하나의 함수다.
+
+\begin{definition}[\lean{checkMSO2Exec}]
+\label{alg:def:checkmso2exec}
+\[
+  \lean{checkMSO2Exec} : \lean{SimpleGraph}\ V \to \lean{DecompTree}\ V \to \mathbb{N} \to \lean{Formula} \to \lean{Bool}.
+\]
+Graph $G$, 그 tree decomposition의 rose-tree 표현 $t$, width $\omega$,
+$\MSOtwo$ formula $\varphi$를 받아 Boolean을 돌려준다. \lean{noncomputable}이
+아닌 평범한 \lean{def}이며 \lean{\#eval}로 실행할 수 있다.
+\end{definition}
+
+\begin{theorem}[\lean{checkMSO2Exec\_eq\_true\_iff}]
+\label{alg:thm:main}
+$t$가 $G$의 유효한 decomposition이고 width가 $\omega$ 이하이며 $\varphi$가
+sentence이면
+\[
+  \lean{checkMSO2Exec}\ G\ t\ \omega\ \varphi = \lean{true}
+  \iff
+  G \models \varphi.
+\]
+\end{theorem}
+
+\begin{remark}[\lean{Prop}과 \lean{Bool}의 차이]
+\label{alg:rem:propvsbool}
+\leanfile{Lean\_Basics.tex}의 \lean{basics:sec:leansyntax}에서 언급한 구분이
+이 문서의 주제다. \lean{Prop}은 ``명제 그 자체''이고 그 진리값을 계산하는
+방법이 딸려 오지 않는다. 예를 들어 ``$\rho(X)$가 connected이다''는
+\lean{Prop}이지만, 이것을 계산하려면 별도의 알고리즘이 필요하다.
+\lean{Bool}은 계산 결과가 실제로 있는 값이다.
+
+증명 쪽 개발을 처음부터 \lean{Bool}로 하지 않은 이유는 명확하다. 중간 단계의
+대상들(무한 집합, 선택으로 얻은 coloring, 존재 한정으로 얻은 automaton)이
+계산 가능하지 않고, 그것들을 계산 가능하게 만들려면 수학적 내용과 무관한
+부담이 크게 늘어난다.
+
+그래서 이 프로젝트는 \emph{두 층}을 만들고 그 사이에 \emph{refinement
+boundary}를 둔다. 계산 가능한 Boolean 구조를 따로 정의하고, 그것을 수학적
+구조로 보내는 함수(\lean{toMath}, \lean{decode}, \lean{toFormula})를 두고,
+``계산 결과가 수학적 진리값과 일치한다''를 증명한다. 이 패턴이 이 문서 전체를
+관통한다.
+\end{remark}
+
+\subsection{Pipeline 전경}
+
+\begin{center}
+\begin{tabular}{lcl}
+rose tree $t$ (decomposition of $G$) & \quad & $\MSOtwo$ formula $\varphi$ \\
+$\downarrow$ \lean{incidenceTree} (\S\ref{alg:sec:execincidence}) & & $\downarrow$ \lean{toIncidence} \\
+\lean{DecompTree}\ (\lean{IncidenceVertex}\ $G$) & & $\MSO_1$ formula over $\tau_I$ \\
+$\downarrow$ \lean{normalizeCode} (\leanfile{Lean\_Nice.tex}) & & $\downarrow$ \\
+\lean{InductiveNiceTree}\ $\emptyset$ \quad + \quad \lean{greedyColoring} & & $\downarrow$ \\
+\multicolumn{3}{c}{$\downarrow$ \qquad \lean{checkCode} (\S\ref{alg:sec:modelcheck}) \qquad $\downarrow$} \\
+\multicolumn{3}{c}{\lean{Bool}} \\
+\end{tabular}
+\end{center}
+
+\lean{checkCode} 내부는 다시 네 단계다: encode $\to$ legalTranslate $\to$
+compile $\to$ run. \S\ref{alg:sec:boolean}--\S\ref{alg:sec:modelcheck}가
+그 내부를, \S\ref{alg:sec:execincidence}--\S\ref{alg:sec:assembly}가 앞단을
+다룬다.
+
+\section{Boolean 표현 층}
+\label{alg:sec:boolean}
+
+\emph{파일: \leanfile{GraphMSO/Executable/graph.lean},
+\leanfile{sigma.lean}, \leanfile{formula.lean}}
+
+세 개의 수학적 대상 각각에 Boolean 대응물이 있고, 각각에 refinement 함수가
+있다.
+
+\begin{definition}[세 개의 refinement boundary]
+\label{alg:def:refinements}
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Boolean 판 & refinement & 수학 판 \\
+\hline
+\lean{Executable.TauPGraph P V} & \lean{toMath} & \lean{τPGraph P} \\
+\lean{ExecSigmaLetter P omega} & \lean{decode} & \lean{SigmaLetter P omega} \\
+\lean{ExecFormula A} & \lean{toFormula} & \lean{TreeLanguage.Formula A} \\
+\hline
+\end{tabular}
+\end{center}
+\end{definition}
+
+\begin{remark}[각각이 무엇을 Boolean으로 바꾸는가]
+\label{alg:rem:whatbecomesbool}
+\begin{itemize}
+  \item \lean{Executable.TauPGraph}: adjacency와 unary predicate가
+    $V \to V \to \lean{Bool}$과 $P \to V \to \lean{Bool}$이다. 대칭성과
+    비반사성은 여전히 \emph{증명}으로 들어 있다 (\lean{adj\_symm},
+    \lean{adj\_loopless}) --- 그것들은 계산할 필요가 없고 정확성 증명에서만
+    쓰이기 때문이다.
+  \item \lean{ExecSigmaLetter}: \leanfile{Lean\_MSO.tex}의 \lean{SigmaLetter}
+    (\lean{mso:def:sigmaletter})가 \lean{Set}과 \lean{SimpleGraph},
+    \lean{Prop}-값 tag로 되어 있던 것을 전부 Boolean 표
+    ($\lean{present}, \lean{root}, \lean{adj}, \lean{tag}$)로 바꾼다.
+    이 덕분에 \lean{Fintype}과 \lean{DecidableEq} instance가 실제로 계산
+    가능하게 얻어지고 (\lean{derive\_fintype}), \lean{compatible} 같은
+    legality 검사가 실행 가능한 함수가 된다.
+  \item \lean{ExecFormula}: \leanfile{Lean\_Basics.tex}의 tree formula
+    (\lean{basics:def:treeformula})와 constructor가 하나하나 대응하는데,
+    \emph{label atom 두 개만} 다르다. \lean{labelMem}이 \lean{Set A} 대신
+    $A \to \lean{Bool}$을, \lean{labelMem₂}가 $A \to A \to \lean{Bool}$을
+    받는다.
+\end{itemize}
+\end{remark}
+
+\begin{remark}[label atom만 바꾸면 되는 이유]
+\label{alg:rem:onlylabelatoms}
+왜 formula 전체가 아니라 label atom만 Boolean화하는가. Compiler가
+formula를 훑으면서 \emph{실제로 값을 물어봐야 하는} 유일한 곳이 label atom이기
+때문이다. ``이 letter가 집합 $S$에 속하는가''를 알아야 automaton의 accepting
+집합을 만들 수 있다. 나머지 constructor(결합자, quantifier, 변수 번호)는
+구조를 따라 재귀할 뿐 값을 묻지 않는다.
+
+\lean{toFormula}는 Boolean predicate를 ``\lean{true}를 주는 원소들의 집합''으로
+해석해 수학 판으로 되돌린다. 그리고 \lean{ExecFormula}에도 유도 formula
+(\lean{conn}, \lean{top}, \lean{dangle}, \lean{legal}, \lean{definingPair},
+\lean{vtxTuple}, \dots)가 \leanfile{Lean\_Basics.tex}와 같은 이름으로 다시
+정의되어 있으며, \lean{toFormula}가 그것들을 정확히 대응시킨다.
+\end{remark}
+
+\section{실행 가능한 automaton}
+\label{alg:sec:execautomaton}
+
+\emph{파일: \leanfile{GraphMSO/Executable/automaton.lean}}
+
+\begin{definition}[\lean{ExecTreeAutomaton}]
+\label{alg:def:execautomaton}
+이진 tree 위의 결정적 bottom-up automaton:
+state type \lean{State}, \lean{nil} state, transition
+$\lean{node} : A \to \lean{State} \to \lean{State} \to \lean{State}$,
+Boolean 판정 $\lean{accept} : \lean{State} \to \lean{Bool}$.
+Instance로 \lean{[Finite State]}와 \lean{[DecidableEq State]}를 갖는다.
+
+\lean{run}이 \lean{BinTree}를 직접 훑고 (padded term을 거치지 않는다),
+\lean{toTreeAutomaton}이 \leanfile{Lean\_Automata.tex}의 수학적
+\lean{TreeAutomaton} (\lean{aut:def:automaton})으로 보낸다.
+\end{definition}
+
+\begin{remark}[\lean{Finite}만 갖고 \lean{Fintype}은 갖지 않는다]
+\label{alg:rem:finitenotfintype}
+이 파일에서 가장 중요한 설계 결정이며, 주석이 명시적으로 이유를 밝힌다.
+
+\lean{Fintype S}는 ``$S$의 모든 원소를 나열한 목록''이라는 \emph{데이터}를
+갖고 있다. \lean{Finite S}는 ``유한하다''는 \emph{명제}일 뿐이다. State type이
+powerset 구성으로 만들어질 때 (quantifier 처리), \lean{Fintype}을 요구하면
+automaton을 만드는 순간 \emph{powerset 전체를 나열}하게 된다. 알파벳이
+$\lean{ExecSigmaLetter}$처럼 큰 경우 그 자체로 실행이 불가능해진다.
+
+\lean{Finite}만 두면 state type은 타입 수준에서만 존재하고, 실행 중에는
+\emph{실제로 도달한 state만} \lean{Finset}으로 다룬다. 이것이 아래
+\lean{projectLast}의 요점이다.
+\end{remark}
+
+\begin{definition}[\lean{projectLast}: 게으른 quantifier projection]
+\label{alg:def:projectlast}
+\lean{projectLast}는 마지막 track을 지우는 projection을 실행 가능하게 구현한다.
+결정론을 유지하기 위해 state를 $\lean{Finset}(\text{원래 state})$로 두되,
+transition은 \emph{두 자식이 실제로 도달한 state 집합에서만} 후보를 만든다.
+즉 \lean{LastTrackExtension} (마지막 bit를 \lean{false} 또는 \lean{true}로
+붙이는 두 가지 확장)을 두 자식의 도달 state에 적용한 것들만 모은다.
+\end{definition}
+
+\begin{remark}[게으름이 무엇을 해결하고 무엇을 해결하지 않는가]
+\label{alg:rem:lazydoesnotsolve}
+\lean{projectLast}는 alphabet 전체나 powerset 전체를 열거하지 않는다. 그
+점에서 순진한 subset construction보다 훨씬 낫다.
+
+그러나 \emph{state 폭발 자체를 없애지는 않는다}. 도달 가능한 state 집합이
+실제로 클 수 있고, quantifier가 중첩되면 \lean{Finset}의 \lean{Finset}의
+$\cdots$가 된다. \S\ref{alg:sec:statecomplexity}가 그 증가율을 정확히
+계산하고, \S\ref{alg:rem:performance}가 그 실제 결과를 보고한다.
+
+정확성은 \lean{language\_toTreeAutomaton\_projectLast}가 준다: 실행 가능한
+projection의 언어가 수학적 projection(\leanfile{Lean\_Automata.tex}의
+\lean{aut:def:tracklanguage}에 쓰인 \lean{remapTracksHom}의 상)과 같다.
+\end{remark}
+
+Boolean closure도 실행 가능하게 다시 정의된다: \lean{compl} (accept를 뒤집음),
+\lean{inter}, \lean{union} (state는 곱). 각각 언어가 기대대로임이 증명된다.
+
+\section{실행 가능한 원자 automaton과 compiler}
+\label{alg:sec:execcompile}
+
+\emph{파일: \leanfile{GraphMSO/Executable/atomic.lean},
+\leanfile{compile.lean}}
+
+\leanfile{Lean\_Automata.tex}의 원자 automaton들
+(\lean{aut:def:atomiclist})이 각각 실행 가능한 판을 갖는다:
+\lean{falseAutomaton}, \lean{trackSingletonAutomaton},
+\lean{tracksIntersectAutomaton}, \lean{parentTrackAutomaton},
+\lean{labelMemTrackAutomaton}, \lean{labelMem₂TrackAutomaton}.
+모두 실행 가능한 \lean{foldAutomaton}의 사례이며, label 관련 둘은 state로
+\lean{Set A} 대신 \lean{Finset A}를 쓴다 (\lean{labelsOnTrackFinset}).
+
+\begin{definition}[\lean{Compiled}와 \lean{compile}]
+\label{alg:def:compiled}
+\[
+  \lean{Compiled}\ \lean{foTrack}\ \lean{soTrack}\ \varphi :=
+  \begin{cases}
+    \lean{automaton} : \lean{ExecTreeAutomaton}\ (A \times \lean{TrackBits}\ n) \\
+    \lean{correct} : \lean{TrackLanguage}\ \lean{foTrack}\ \lean{soTrack}\ \varphi.\lean{toFormula}\ (\lean{automaton}.\lean{toTreeAutomaton}.\lean{language})
+  \end{cases}
+\]
+\[
+  \lean{compile} : (\varphi : \lean{ExecFormula}\ A) \to (n : \mathbb{N}) \to \cdots \to \lean{Compiled}\ \cdots
+\]
+\end{definition}
+
+\begin{remark}[증명서를 결과에 실어 나르는 설계]
+\label{alg:rem:compiledcarries}
+이 문서 전체에서 가장 눈여겨볼 설계다. \lean{compile}은 automaton만 돌려주지
+않고, ``이 automaton이 \leanfile{Lean\_Automata.tex}의 \lean{TrackLanguage}
+관계 (\lean{aut:def:tracklanguage})를 만족한다''는 증명을 \emph{함께} 돌려준다.
+
+대안은 automaton을 만드는 함수와 그 정확성 정리를 따로 두는 것인데, 그러면
+정리를 formula에 대한 귀납으로 증명할 때 각 재귀 호출의 결과에 대한 귀납
+가설을 따로 관리해야 한다. 증명서를 결과 타입에 넣으면 재귀 호출이 증명서를
+\emph{자동으로} 물어 오므로, \lean{compile}의 각 경우가
+\begin{center}
+``자식의 automaton을 조합하고, 자식의 증명서를 대응하는
+\lean{TrackLanguage} constructor에 넘긴다''
+\end{center}
+는 한두 줄로 끝난다. 코드를 보면 실제로 각 경우가
+\lean{simpa using TrackLanguage.conj left.correct right.correct} 같은 모양이다.
+
+즉 \emph{컴파일러와 그 정확성 증명이 같은 재귀}다. 이것이 dependent type을
+가진 언어에서만 가능한 방식이며, 이 프로젝트에서 그 이점이 가장 잘 드러나는
+지점이다.
+\end{remark}
+
+\begin{remark}[quantifier 경우의 track 관리]
+\leanfile{Lean\_Automata.tex}의 \lean{aut:rem:whyrelation}에서 관계로 둔
+덕분에 미뤄 두었던 ``어느 track을 새로 쓸 것인가''의 선택이 여기서 구체화된다.
+\lean{compile}은 항상 \lean{keep} $:= \lean{Fin.castSucc}$ (기존 $n$개를
+$n+1$개 중 앞쪽으로)와 새 track \lean{Fin.last n}을 쓴다. 신선함
+(\lean{hfresh})은 \lean{Fin.castSucc\_ne\_last}가 준다.
+
+\lean{existsFO}는 singleton automaton과 \lean{inter}한 뒤 \lean{projectLast},
+\lean{existsSO}는 곧바로 \lean{projectLast}. 전칭은
+\leanfile{Lean\_Automata.tex}의 \lean{aut:rem:quantifiershapes}대로
+\lean{compl}--\lean{projectLast}--\lean{compl}이다.
+\end{remark}
+
+\begin{theorem}[\lean{checkTree\_eq\_true\_iff}]
+\label{alg:thm:checktree}
+\lean{checkTree} $\varphi$ $t$ (더미 track을 하나 붙이고 컴파일한 automaton을
+$t$에 돌린 결과)가 \lean{true}인 것은
+$t.\lean{toTreeModel} \models \varphi.\lean{toFormula}$와 동치다.
+\end{theorem}
+
+\section{실행 가능한 encoder와 translation}
+\label{alg:sec:execencode}
+
+\emph{파일: \leanfile{GraphMSO/Executable/encoding.lean},
+\leanfile{encodingCorrect.lean}, \leanfile{translation.lean},
+\leanfile{relabel.lean}}
+
+\begin{definition}[\lean{Executable.encode}]
+\label{alg:def:execencode}
+\leanfile{Lean\_Nice.tex}의 constructor-coded nice tree
+(\lean{nice:def:inductivenicetree})를 직접 훑으면서 각 node의
+\lean{ExecSigmaLetter}를 만들고 \lean{BinTree}를 조립한다.
+\lean{encodeLetter}는 bag 위의 Boolean 탐색(\lean{encodeAny})으로
+$\lean{present}, \lean{root}, \lean{adj}, \lean{tag}$ 표를 채운다.
+\end{definition}
+
+\begin{remark}[왜 새로 짜는가]
+\label{alg:rem:whyreencode}
+\leanfile{Lean\_MSO.tex}의 \lean{encode} (\lean{mso:def:encodeletter})와
+\leanfile{Lean\_Automata.tex}의 \lean{orderedEncode}
+(\lean{aut:def:orderedencode})를 그대로 쓸 수 없는 이유는, 그것들이
+rooted decomposition의 \lean{adhesion}과 \lean{parent}를 참조하는데
+그 둘이 ``root까지의 유일한 경로''로 정의되어 \lean{noncomputable}이기
+때문이다 (\leanfile{Lean\_Basics.tex}의 \lean{basics:def:parent}).
+
+Constructor code에서는 그런 계산이 필요 없다. 부모-자식 관계가 데이터에
+들어 있으므로 각 constructor에서 무엇이 adhesion인지 국소적으로 알 수 있다.
+그래서 파일 주석대로 ``경로나 부모를 계산하지 않고'' 재귀만으로 encoding을
+만든다.
+\end{remark}
+
+\begin{theorem}[\lean{encode\_map\_decode}]
+\label{alg:thm:encodecorrect}
+\[
+  (\lean{Executable.encode}\ X\ c\ \lean{tree}).\lean{map}\ \lean{decode}
+  = T.\lean{orderedEncode}\ \cdots
+\]
+즉 실행 가능한 encoder의 결과를 letter마다 \lean{decode}하면
+\leanfile{Lean\_Automata.tex}의 증명 쪽 ordered encoding과 \emph{정확히
+같다}.
+\end{theorem}
+
+\begin{remark}[이 등식이 정확성 증명의 축이다]
+\label{alg:rem:encodecorrectaxis}
+\S\ref{alg:sec:modelcheck}의 주 정리가 이 한 등식 위에 서 있다.
+\lean{checkColored\_eq\_true\_iff\_of\_encode\_eq}가 이 등식을 \emph{가설로}
+받는 형태로 먼저 서술되어 있고, \lean{checkColored\_eq\_true\_iff}가
+\lean{encode\_map\_decode}로 그 가설을 채운다. 정확성 증명의 논리적 구조와
+``두 encoder가 같다''는 기술적 사실을 분리한 것이다.
+
+증명 자체(\leanfile{encodingCorrect.lean}, 483줄)는 만만치 않다. 두 encoder가
+letter를 만드는 방식이 다르므로(하나는 bag의 색 상, 하나는 Boolean 표),
+letter의 외연성 정리 \lean{sigmaLetter\_ext\_of\_observations}
+(``관찰 가능한 네 술어가 일치하면 같은 letter'')를 먼저 세우고,
+constructor마다 bag이 어떻게 변하는지
+(\lean{coe\_erase\_eq\_of\_coe\_eq\_union\_singleton} 등)를 맞춰 나간다.
+\end{remark}
+
+\begin{definition}[\lean{legalTranslate}]
+\label{alg:def:legaltranslate}
+\lean{Executable.translate}가 \leanfile{Lean\_MSO.tex}의
+\lean{Formula.translate} (\lean{mso:def:translate})를 \lean{ExecFormula}로
+옮긴 것이고,
+\[
+  \lean{legalTranslate}\ \omega\ \theta :=
+    \lean{conj}\ (\lean{legalFormula}\ P\ \omega)\ (\lean{translate}\ \omega\ \theta)
+\]
+가 \leanfile{Lean\_MSO.tex}의 최종 display
+(\lean{mso:cor:finaldisplay})의 실행 가능한 판이다.
+\lean{toFormula\_legalTranslate}가 \lean{toFormula}를 통해 두 판이 일치함을
+보인다.
+\end{definition}
+
+\leanfile{relabel.lean}은 부수적이지만 필요하다: label을 함수 $f$로 바꾸면
+tree model의 satisfaction이 formula를 $f$로 pullback한 것과 대응한다
+(\lean{satisfies\_map\_iff}). \lean{ExecSigmaLetter}로 라벨된 tree를
+\lean{SigmaLetter}로 라벨된 tree로 옮길 때 쓰인다.
+
+\section{핵심 checker}
+\label{alg:sec:modelcheck}
+
+\emph{파일: \leanfile{GraphMSO/Executable/modelCheck.lean}}
+
+\begin{definition}[\lean{checkCode}]
+\label{alg:def:checkcode}
+\[
+  \lean{checkCode}\ X\ \lean{tree}\ \lean{color}\ \theta :=
+    \lean{checkTree}\ (\lean{legalTranslate}\ \omega\ \theta)\ (\lean{encode}\ X\ \lean{color}\ \lean{tree}).
+\]
+증명을 전혀 받지 않는다. \lean{\#eval}용 진입점이다.
+\end{definition}
+
+\begin{definition}[\lean{checkColored}, \lean{checkFin}]
+\label{alg:def:checkcolored}
+\lean{checkColored}는 인증된 \lean{InductiveNiceTreeDecomposition}을 받아
+그 안의 \lean{tree}를 꺼내 \lean{checkCode}를 호출한다.
+\lean{checkFin}은 vertex가 $\lean{Fin}\ n$일 때 coloring 인자를
+\lean{Fin.castSucc}로 자동 공급한다.
+\end{definition}
+
+\begin{theorem}[\lean{checkColored\_eq\_true\_iff}]
+\label{alg:thm:checkcolored}
+$c$가 code의 bag coloring이고 $\theta$가 sentence이면
+\[
+  \lean{checkColored}\ X\ T\ c\ \theta = \lean{true}
+  \iff
+  X.\lean{toMath} \models \theta.
+\]
+\end{theorem}
+
+증명은 네 단계의 재작성이다: \lean{checkTree\_eq\_true\_iff}
+(\S\ref{alg:thm:checktree}) $\to$ \lean{toFormula\_legalTranslate}
+(\S\ref{alg:def:legaltranslate}) $\to$ \lean{satisfies\_map\_iff} 와
+\lean{encode\_map\_decode} (\S\ref{alg:thm:encodecorrect}) $\to$
+\leanfile{Lean\_Automata.tex}의 \lean{aut:thm:orderedtranslate}.
+
+\begin{remark}[\lean{checkFin}은 대체재가 아니다]
+\label{alg:rem:checkfin}
+\lean{checkFin}은 coloring 인자를 없애 주지만, $\lean{Fin.castSucc}$가
+전역적으로 단사이므로 색을 $n+1$개 쓴다. Alphabet
+$\lean{ExecSigmaLetter}\ P\ \omega$의 크기가 $\omega$에 대해 지수적이므로
+(\S\ref{alg:sec:statecomplexity}), 색을 $n+1$개 쓰는 것은 ``고정된 $\omega$에
+대한 알고리즘''이라는 Courcelle 정리의 요점을 잃는다는 뜻이다. 편의용
+fallback이며, 실제 parameterized 알고리즘의 진입점은 \lean{checkColored}
+(그리고 \S\ref{alg:sec:assembly}의 \lean{checkMSO2Exec})다.
+\end{remark}
+
+\section{실행 가능한 incidence 확장}
+\label{alg:sec:execincidence}
+
+\emph{파일: \leanfile{GraphMSO/Decomp/execIncidence.lean} (863줄)}
+
+\leanfile{Lean\_MSO.tex}의 \lean{incidenceDecomposition}
+(\lean{mso:def:incidencedecomp})을 실행 가능하게 다시 만든다. 두 가지 표현
+문제를 선택공리 없이 풀어야 한다.
+
+\begin{remark}[문제 1: edge를 어떻게 열거하는가]
+\label{alg:rem:edgeenum}
+$G.\lean{edgeSet}$의 원소는 \lean{Sym2}이고, \lean{Sym2}나 \lean{Finset}에서
+원소를 계산 가능하게 뽑아낼 수 없다.
+
+해결책: edge 대신 \emph{dart}(방향이 붙은 edge)를 쓰고, 그것을 rose tree에
+실제로 나타나는 vertex 목록에서 만든다.
+\begin{itemize}
+  \item \lean{vertexList}: rose tree의 모든 bag을 이어 붙인 목록.
+  \item \lean{offDiagPairs}: 중복 제거한 목록에서 ``앞쪽 원소, 뒤쪽 원소''
+    순서쌍만 뽑는다. 즉 각 무순서쌍이 정확히 한 번 나온다.
+  \item \lean{dartsOfList}: 그 순서쌍 중 실제로 인접한 것만 dart로 만든다
+    (\lean{DecidableRel G.Adj} 필요).
+\end{itemize}
+\lean{dartsOfList\_pairwise\_edge\_ne}가 ``각 무순서 edge마다 dart가 정확히
+하나''를 보장한다. \lean{offDiagPairs}의 비대칭성(앞/뒤)이 그 유일성의
+근거다.
+\end{remark}
+
+\begin{remark}[문제 2: 각 edge를 정확히 한 번만 붙이기]
+\label{alg:rem:exactlyonce}
+Edge $e$의 leaf는 $e$의 양 끝점을 담는 \emph{어떤} node 아래에 붙어야 하는데,
+그런 node가 여러 개일 수 있다. 하나를 고르는 것은 선택이다.
+
+해결책: 상호 재귀 \lean{incidenceAux}/\lean{incidenceForest}가 ``아직 붙이지
+않은 dart 목록''을 상태로 들고 tree를 훑는다. 각 node에서 양 끝점이 그 bag에
+들어 있는 dart를 \emph{붙이고 목록에서 제거}한 뒤, 남은 것을 자식들에게
+왼쪽부터 차례로 넘긴다. 따라서 한 subtree에서 소비된 dart는 이후 어떤 형제의
+목록에도 없다.
+
+이 ``정확히 한 번'' 성질이 곧 edge object의 occurrence 집합이 한 점이라는
+뜻이고, 그것이 running intersection을 보존한다. 선택 대신 \emph{훑는 순서}가
+결정을 내린 것이다.
+\end{remark}
+
+주요 결과: \lean{incidenceTree\_isDecompFor} (유효성),
+\lean{incidenceTree\_hasWidth} (width $\le \max(\omega,2)$),
+\lean{incidenceTree\_size\_le} (크기 $\le n + m$, $n$은 원래 node 수,
+$m$은 dart 수).
+
+\section{최종 조립}
+\label{alg:sec:assembly}
+
+\emph{파일: \leanfile{GraphMSO/Executable/incidence.lean}}
+
+\begin{definition}[\lean{checkMSO2Exec}, 다시]
+\label{alg:def:checkmso2exec2}
+\[
+  \lean{checkMSO2Exec}\ G\ t\ \omega\ \varphi :=
+  \lean{checkCode}_{\max(\omega,2)}\
+    (\lean{incidenceTauGraphExec}\ G)\
+    \bigl(\lean{incidenceTree}\ G\ t\bigr).\lean{normalizeCode}\
+    \bigl(\cdots\bigr).\lean{greedyColoring}\ (\max(\omega,2))\
+    \varphi.\lean{toIncidence}.
+\]
+\end{definition}
+
+\begin{remark}[정확성 증명이 짧은 이유]
+\label{alg:rem:shortproof}
+정리 \ref{alg:thm:main}의 증명은 20줄 남짓이다. 각 단계의 정리가 다음 단계의
+\emph{가설 모양 그대로} 만들어져 있기 때문이다.
+\begin{itemize}
+  \item \lean{incidenceTree\_isDecompFor} $\Rightarrow$
+    \lean{checkColored\_eq\_true\_iff}의 유효성 가설;
+  \item \lean{incidenceTree\_hasWidth} $\Rightarrow$
+    \lean{normalizeCode\_greedyColoring\_isBagColoring}
+    (\leanfile{Lean\_Nice.tex}의 \lean{nice:thm:greedytransfer})의 width 가설;
+  \item 그 결과가 \lean{checkColored\_eq\_true\_iff}의 coloring 가설;
+  \item \lean{toIncidence\_free\_eq\_empty} $\Rightarrow$ sentence 가설;
+  \item 마지막에 \leanfile{Lean\_MSO.tex}의
+    \lean{satisfies\_toIncidence\_iff} (\lean{mso:cor:incidencereduction})로
+    $\MSO_1$ 진술을 $\MSOtwo$ 진술로 되돌린다.
+\end{itemize}
+접착용 보조정리(``glue axiom'')가 하나도 없다. 각 층의 정리 진술을 다음 층이
+쓸 모양으로 미리 맞춰 둔 설계의 결과다.
+
+\lean{normalize\_tree = rfl} (\leanfile{Lean\_Nice.tex}의
+\lean{nice:rem:whatcomputes})이 여기서 결정적으로 쓰인다: \lean{checkMSO2Exec}은
+계산 가능한 \lean{normalizeCode}를 부르고, 정리는 \lean{noncomputable}한
+\lean{normalize}를 언급하는데, 둘이 \emph{정의상} 같으므로 재작성 없이
+연결된다.
+\end{remark}
+
+\lean{checkMSO2}는 수학적 \lean{TreeDecomposition}을 받는 증명 쪽 변종이며,
+\lean{choose} 기반 coloring을 쓴다. 두 판이 정확성 인프라를 전부 공유한다.
+
+\section{비용}
+\label{alg:sec:cost}
+
+\emph{파일: \leanfile{GraphMSO/Executable/cost.lean},
+\leanfile{pipelineCost.lean}}
+
+\leanfile{Lean\_Basics.tex}의 \lean{Costed} 계층
+(\lean{basics:def:costed})을 실행 가능한 pipeline에 적용한다. 과금 정책은
+파일 주석에 명시되어 있다: automaton이 \lean{BinTree} constructor를 방문할
+때마다 1(없는 자식 포함), 마지막 Boolean 판정에 1, encoding node 하나 구성에
+1(그 안의 bag 탐색은 고정폭 primitive로 취급).
+
+\begin{theorem}[\lean{checkCodeCosted\_cost}]
+\label{alg:thm:corecost}
+Constructor node가 $n$개인 code에 대해 핵심 pass의 비용은 정확히
+\[
+  3n + 2.
+\]
+\end{theorem}
+
+내역: encoding $n$, 없는 자식을 포함한 순회 $2n+1$, 최종 판정 $1$.
+
+\begin{theorem}[\lean{checkMSO2ExecCosted\_cost}, \lean{\_cost\_le}]
+\label{alg:thm:pipelinecost}
+전체 pipeline의 비용은 다섯 단계 요금의 합이며, $n = t.\lean{size}$,
+$q = |\lean{offDiagPairs}|$, $m = |\lean{dartsOfList}|$,
+$\omega' = \max(\omega,2)$로 쓰면
+\[
+  \lean{cost} \;\le\;
+    n + q + \underbrace{n\,(m+1)}_{\text{incidence walk}}
+    + \bigl(4(3\omega'+5) + (\omega'+2)\bigr)(n+m) + 2.
+\]
+\end{theorem}
+
+\begin{remark}[incidence walk 항이 이차식이다]
+\label{alg:rem:quadratic}
+$n(m+1)$ 항에 주목하라. 이것은 \S\ref{alg:rem:exactlyonce}의 pending dart
+목록 때문이다: 각 node에서 아직 붙이지 않은 dart 전체를 훑어야 하므로
+최악의 경우 node마다 $m$번의 검사가 일어난다.
+
+즉 이 pipeline은 \emph{선형이 아니다}. Courcelle 정리의 선형 시간 주장과
+맞추려면 dart를 미리 attach node별로 분배하는 자료구조가 필요한데, 현재
+구현은 그렇게 하지 않는다. 형식화가 이런 종류의 사실을 정직하게 드러내
+준다는 점이 여기서도 확인된다.
+
+나머지 항들은 $n+m$에 선형이며, 계수는 width $\omega'$에 선형이다. 계수의
+$3\omega'+5$가 \leanfile{Lean\_Nice.tex}의 normalization node bound
+(\lean{nice:thm:nodebound})에서, $\omega'+2$가 greedy coloring의 순회 비용에서
+온다.
+\end{remark}
+
+\begin{remark}[여전히 세지 않는 것]
+Formula의 translation과 compilation은 \emph{의도적으로 과금되지 않는다}.
+그런데 \S\ref{alg:rem:performance}가 보여 주듯 실제 시간의 대부분이 바로
+거기서 소비된다. 따라서 위 비용 정리는 ``고정된 formula에 대해 입력 크기에
+대한 온라인 비용''이라는 좁은 의미로만 읽어야 하며,
+\leanfile{Lean\_Basics.tex}의 \lean{basics:rem:costmeaning}이 말한 대로 Lean의
+실제 실행 시간과는 무관하다.
+\end{remark}
+
+\section{State 복잡도}
+\label{alg:sec:statecomplexity}
+
+\emph{파일: \leanfile{GraphMSO/Executable/stateComplexity.lean}}
+
+\leanfile{Lean\_Automata.tex}의 \lean{aut:rem:towerhonest}에서 ``진짜 tower가
+나타나는 곳''이라고 예고한 부분이다.
+
+\begin{definition}[\lean{compilerStateCount}]
+\label{alg:def:statecount}
+Alphabet 크기 $\alpha$에 대한 정확한 점화식:
+\[
+\begin{array}{ll}
+  \lean{false\_} & 1 \\
+  \lean{equal},\ \lean{inSet} & 2 \\
+  \lean{parent} & 4 \\
+  \lean{labelMem} & 2^{\alpha} \\
+  \lean{labelMem₂} & (2^{\alpha})^2 \\
+  \lean{neg}\ \varphi & s(\varphi) \\
+  \lean{conj}/\lean{disj}/\lean{impl}\ \varphi\ \psi & s(\varphi)\cdot s(\psi) \\
+  \lean{biimpl}\ \varphi\ \psi & (s(\varphi)\cdot s(\psi))^2 \\
+  \exists x / \forall x\ \varphi & 2^{3\,s(\varphi)} \\
+  \exists X / \forall X\ \varphi & 2^{s(\varphi)}
+\end{array}
+\]
+\end{definition}
+
+\begin{theorem}[\lean{compile\_state\_card}]
+\label{alg:thm:statecard}
+\lean{compile}이 만든 automaton의 state 개수는 정확히 위 점화식의 값이다
+(등호, 상계가 아니다).
+\end{theorem}
+
+\begin{remark}[점화식 읽는 법]
+\label{alg:rem:readingrecurrence}
+\begin{itemize}
+  \item \lean{labelMem}의 $2^\alpha$: state가 ``track 위에 나타난 label들의
+    \lean{Finset}''이므로 alphabet의 powerset이다. 여기서 이미
+    $\alpha = |\lean{ExecSigmaLetter}\ P\ \omega|$가 $\omega$에 대해
+    지수적임을 기억해야 한다 (\lean{execSigmaLetter\_card\_le}).
+  \item 개체 quantifier의 $2^{3s}$: singleton automaton의 state가 3개
+    (\leanfile{Lean\_Automata.tex}의 \lean{Count}), \lean{inter}로 $3s$,
+    \lean{projectLast}의 powerset으로 $2^{3s}$.
+  \item 집합 quantifier의 $2^s$: 교집합 없이 바로 powerset.
+  \item 전칭도 존재와 \emph{같은} 값이다. \lean{compl}이 state 개수를 바꾸지
+    않기 때문이다 (accepting 집합만 뒤집는다).
+\end{itemize}
+따라서 quantifier가 하나 중첩될 때마다 지수가 한 층 쌓인다. 이것이 Courcelle
+정리의 non-elementary 상수의 정체이며, 회피할 수 없다는 것이 알려져 있다.
+\end{remark}
+
+\begin{theorem}[\lean{compilerStateCount\_le\_tower},
+\lean{compile\_legalTranslate\_state\_le\_tower}]
+\label{alg:thm:towerbound}
+State 개수는 높이가 formula 크기로 제어되고 밑이 alphabet 크기로 제어되는
+tower로 상계된다.
+\end{theorem}
+
+\begin{remark}[\leanfile{Lean\_Automata.tex}의 tower와 다른 것이다]
+\label{alg:rem:twotowers}
+혼동하기 쉬운 지점이므로 명확히 해 둔다. 이 프로젝트에는 tower가 두 번
+나온다.
+\begin{itemize}
+  \item \leanfile{Lean\_Automata.tex}의 \lean{explicitCourcelleFactor}
+    (\lean{aut:def:tower}): \emph{온라인 pass의 비용}에 붙은 계수. 실제로는
+    상수 8이면 충분하고, tower는 요구되는 진술 모양을 맞추기 위한 보수적
+    포장이다 (\lean{aut:rem:towerhonest}).
+  \item 이 절의 \lean{compilerStateCount}: \emph{automaton의 크기}. 이쪽이
+    진짜 tower이며, 실제 비용이 여기 있다.
+\end{itemize}
+두 번째가 있어야 첫 번째의 ``고정된 formula와 automaton'' 가정이 얼마나 비싼
+가정인지 알 수 있다.
+\end{remark}
+
+\section{시험과 한계}
+\label{alg:sec:limits}
+
+\subsection{Build-time 시험}
+
+\emph{파일: \leanfile{GraphMSO/Executable/examples.lean}}
+
+열두 개의 \lean{\#guard}가 build 중에 실행되어 통과한다. 내용은:
+한 node짜리 labeled tree에 대한 $\exists x\,\lean{label}(x)$의 참/거짓,
+빈 graph에 대한 \lean{checkCode}, 정규화된 code의 크기
+(\lean{emptyDecompTree} $=1$, $K_2$ $=5$, path $=7$, $K_2$의 incidence code
+$=7$), path decomposition의 greedy coloring이 $[0,1,0]$, 그리고 $K_2$의
+incidence tree 위 greedy 색 하나.
+
+\begin{remark}[\lean{\#guard}가 무엇을 보장하는가]
+\lean{\#guard}는 build 중에 실제로 식을 계산해 \lean{true}인지 확인한다.
+즉 이 열두 개는 ``정리가 참이다''가 아니라 ``코드가 실제로 돌아가고 기대한
+값을 낸다''를 보장한다. 형식화된 정확성 정리와 독립적인 검사이며, 정의가
+계산 가능하다는 것 자체의 증거다. 특히 11번은
+\lean{vertexList}/\lean{dartsOfList}/\lean{incidenceAux}/\lean{normalizeCode}를
+끝에서 끝까지 실행한다.
+\end{remark}
+
+\subsection{한계}
+
+\begin{remark}[완전한 실행은 느리다]
+\label{alg:rem:performance}
+정직하게 기록해야 할 사실이다. 각 단계(구성, 정규화, coloring)는 작은 예제에서
+즉시 끝나고 실제로 \lean{\#guard}로 검증된다. 그러나 \emph{완전한}
+\lean{checkMSO2Exec} 실행은 width $\max(\omega,2) = 2$에서 incidence
+alphabet 위의 \lean{legalTranslate}를 컴파일해야 하는데,
+\leanfile{docs/PHASE7\_EXECUTABLE\_MODEL\_CHECKING\_EXPANDED.md}의 보고에
+따르면 $K_2$ 예제조차 해석 실행으로 \emph{20분 안에 끝나지 않았다}.
+
+이것은 구현 버그가 아니라 \S\ref{alg:sec:statecomplexity}의 상수 그 자체다.
+\S\ref{alg:rem:lazydoesnotsolve}에서 말한 대로 게으른 projection은 열거를
+피할 뿐 state 폭발을 없애지 못한다. 완전 실행은 주석 처리된 수동 stress
+test로 남아 있다.
+\end{remark}
+
+\begin{remark}[유효성은 실행 시간 검사가 아니다]
+\label{alg:rem:validitynotchecked}
+정리 \ref{alg:thm:main}은 \lean{t.IsDecompFor G}와 \lean{t.HasWidth omega}를
+\emph{가설로} 받는다. 즉 사용자가 그 증명을 제시해야 한다. 이 두 술어에 대한
+\lean{Decidable} instance는 아직 없으므로, 구체적 입력에 대해
+\lean{decide}로 자동 확인할 수 없다.
+
+\lean{checkMSO2Exec} 자체는 유효하지 않은 입력에도 어떤 Boolean을 돌려주지만,
+그 값에 대해 보장되는 것은 아무것도 없다. 실용적인 checker가 되려면 유효성
+검사기를 추가해야 하며, 이는
+\leanfile{docs/REMAINING\_EXTENSIONS.md}에 항목으로 올라 있다.
+\end{remark}
+
+\begin{remark}[그 밖]
+\begin{itemize}
+  \item \lean{checkFin}은 $n+1$색 fallback이다 (\S\ref{alg:rem:checkfin}).
+  \item Graph 쪽 정확성은 sentence에 대해서만 서술된다.
+  \item 비용 모형은 추상적이며 translation/compilation을 세지 않는다
+    (\S\ref{alg:sec:cost}).
+  \item Incidence walk 항이 이차식이라 전체가 선형이 아니다
+    (\S\ref{alg:rem:quadratic}).
+\end{itemize}
+\end{remark}
+
+\section{요약}
+\label{alg:sec:summary}
+
+\begin{center}
+\begin{tabular}{p{0.30\textwidth}p{0.30\textwidth}p{0.32\textwidth}}
+\hline
+수학 층 & refinement & 실행 층 \\
+\hline
+\lean{τPGraph} & \lean{toMath} & \lean{Executable.TauPGraph} \\
+\lean{SigmaLetter} & \lean{decode} & \lean{ExecSigmaLetter} \\
+\lean{TreeLanguage.Formula} & \lean{toFormula} & \lean{ExecFormula} \\
+\lean{TreeAutomaton} & \lean{toTreeAutomaton} & \lean{ExecTreeAutomaton} \\
+\lean{orderedEncode} & \lean{encode\_map\_decode} & \lean{Executable.encode} \\
+\lean{Formula.translate} & \lean{toFormula\_translate} & \lean{Executable.translate} \\
+\lean{TrackLanguage} (관계) & \lean{Compiled.correct} & \lean{compile} (함수) \\
+\lean{TreeDecomposition} & \lean{IsDecompFor} & \lean{DecompTree} \\
+\lean{incidenceDecomposition} & \lean{incidenceTree\_isDecompFor} & \lean{incidenceTree} \\
+\lean{exists\_bagColoring} & \lean{greedyColoring\_isBagColoring} & \lean{greedyColoring} \\
+\lean{normalize} & \lean{normalize\_tree = rfl} & \lean{normalizeCode} \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{remark}[이 문서가 보여 주는 것]
+왼쪽 열은 존재 정리와 \lean{Prop}으로 이루어져 있고, 오른쪽 열은 실제로
+돌아가는 코드다. 가운데 열이 둘을 잇는 정리들이며, 그 정리들이 있기 때문에
+오른쪽 코드의 출력을 왼쪽 수학의 진술로 읽을 수 있다.
+
+정리 \ref{alg:thm:main}은 그 전체를 한 줄로 요약한다: 실행 결과 Boolean이
+$G \models \varphi$와 동치다. 이것이 ``검증된 실행 가능 알고리즘''이 뜻하는
+바이며, 이 프로젝트가 도달한 지점이다. 실용성은 아직 아니다
+(\S\ref{alg:rem:performance}).
+\end{remark}
+
+\end{document}
